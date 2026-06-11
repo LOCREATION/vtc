@@ -1,0 +1,87 @@
+<!DOCTYPE html><html lang="fr"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Mes Revenus | LOC'RÉATION SAS</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="../assets/css/main.css">
+</head><body>
+<div id="global-loader" class="global-loader"><div class="spinner"></div><div class="loader-text">Chargement…</div></div>
+<nav class="navbar">
+  <div style="display:flex;align-items:center;gap:14px">
+    <a href="../index.html" class="nav-logo"><div class="nav-logo-icon"><i class="fas fa-bolt"></i></div>Loc'<span>Réation</span></a>
+    <span class="nav-title">Mes Revenus</span>
+  </div>
+  <div class="nav-right">
+    <div class="nav-user"><div class="nav-avatar" id="nav-av">?</div><div><div class="nav-name" id="nav-nm">…</div><div class="nav-role" id="nav-rl">…</div></div></div>
+    <button class="nav-icon-btn" id="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
+  </div>
+</nav>
+<div class="dashboard-wrap">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-profile"><div class="sidebar-avatar" id="sb-av">?</div><div class="sidebar-name" id="sb-nm">…</div><div class="sidebar-role" id="sb-rl">…</div><div class="sidebar-stats" id="sb-st"></div></div>
+    <div class="sidebar-section"><div class="sidebar-label">Navigation</div><ul class="sidebar-menu"><li><a href="../driver/dashboard.html" class=""><i class="fas fa-tachometer-alt"></i>Tableau de bord</a></li>
+<li><a href="../driver/earnings.html" class="active"><i class="fas fa-chart-line"></i>Mes Revenus</a></li>
+<li><a href="../driver/profile.html" class=""><i class="fas fa-user-cog"></i>Mon Profil</a></li></ul></div>
+    <div class="sidebar-section"><ul class="sidebar-menu"><li><a href="#" id="logout-link"><i class="fas fa-sign-out-alt"></i>Déconnexion</a></li></ul></div>
+  </aside>
+  <main class="main-content">
+<div class="wallet-card" style="background:linear-gradient(135deg,#1a1a2e,#2d2d4e)">
+  <div class="wallet-label">Revenus totaux</div>
+  <div style="display:flex;align-items:baseline;gap:8px"><div class="wallet-balance" id="e-total">0,00</div><div style="font-size:1.2rem;opacity:.8;color:#fff">EUR</div></div>
+  <div style="font-size:.8rem;color:rgba(255,255,255,.6);margin-top:6px" id="e-subtitle">0 courses réalisées</div>
+</div>
+<div class="stats-grid">
+  <div class="stat-card"><div class="stat-icon green"><i class="fas fa-calendar-day"></i></div><div><div class="stat-value" id="e-jour">0€</div><div class="stat-label">Aujourd'hui</div></div></div>
+  <div class="stat-card"><div class="stat-icon navy"><i class="fas fa-calendar-week"></i></div><div><div class="stat-value" id="e-semaine">0€</div><div class="stat-label">Cette semaine</div></div></div>
+  <div class="stat-card"><div class="stat-icon gold"><i class="fas fa-calendar-alt"></i></div><div><div class="stat-value" id="e-mois">0€</div><div class="stat-label">Ce mois</div></div></div>
+  <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-road"></i></div><div><div class="stat-value" id="e-km">0 km</div><div class="stat-label">KM totaux</div></div></div>
+</div>
+<div class="card"><div class="card-header"><div class="card-title">Revenus 7 derniers jours</div></div><canvas id="weekChart" height="80"></canvas></div>
+<div class="card">
+  <div class="card-title" style="margin-bottom:16px">Détail de mes courses</div>
+  <div class="table-wrap"><table><thead><tr><th>Date</th><th>Trajet</th><th>Distance</th><th>Durée</th><th>Note reçue</th><th>Revenu</th></tr></thead><tbody id="earnings-table"></tbody></table></div>
+  <div class="empty-state" id="e-empty" style="display:none"><i class="fas fa-route"></i><h3>Aucune course</h3></div>
+</div>
+</main>
+</div>
+<div id="toast-container"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script type="module">
+import {supabase,getCurrentUser,requireAuth,logout,formatPrice,formatDate,formatDateTime,formatInitials,showToast,hideLoader,getWallet,creditWallet,debitWallet,searchAddress,calculateRidePrice} from '../assets/js/supabase.js'
+async function _init(){
+  const user=await requireAuth()
+  if(!user)return
+  document.getElementById('nav-av').textContent=formatInitials(user.prenom,user.nom)
+  document.getElementById('nav-nm').textContent=user.prenom+' '+user.nom
+  document.getElementById('nav-rl').textContent=user.role
+  document.getElementById('sb-av').textContent=formatInitials(user.prenom,user.nom)
+  document.getElementById('sb-nm').textContent=user.prenom+' '+user.nom
+  document.getElementById('sb-rl').textContent=user.role
+  document.getElementById('logout-btn').onclick=()=>logout()
+  document.getElementById('logout-link').onclick=(e)=>{e.preventDefault();logout()}
+  hideLoader()
+  if(typeof pageInit==='function') await pageInit(user)
+}
+
+async function pageInit(user){
+  const {data:rides}=await supabase.from('rides').select('*').eq('chauffeur_id',user.id).eq('statut','termine').order('created_at',{ascending:false})
+  const all=rides||[]
+  const total=all.reduce((s,r)=>s+(r.prix||0),0),km=all.reduce((s,r)=>s+(r.distance_km||0),0)
+  document.getElementById('e-total').textContent=total.toFixed(2).replace('.',',')
+  document.getElementById('e-subtitle').textContent=all.length+' courses réalisées'
+  document.getElementById('e-km').textContent=km.toFixed(1)+' km'
+  const today=new Date().toISOString().slice(0,10),week=new Date(Date.now()-7*86400000).toISOString().slice(0,10),month=new Date().toISOString().slice(0,7)
+  document.getElementById('e-jour').textContent=formatPrice(all.filter(r=>r.created_at?.startsWith(today)).reduce((s,r)=>s+(r.prix||0),0))
+  document.getElementById('e-semaine').textContent=formatPrice(all.filter(r=>r.created_at>=week).reduce((s,r)=>s+(r.prix||0),0))
+  document.getElementById('e-mois').textContent=formatPrice(all.filter(r=>r.created_at?.startsWith(month)).reduce((s,r)=>s+(r.prix||0),0))
+  const days=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim']
+  new Chart(document.getElementById('weekChart'),{type:'bar',data:{labels:days,datasets:[{label:'Revenus €',data:days.map((_,i)=>all.filter(r=>{const d=new Date(r.created_at);return d.getDay()===(i+1)%7}).reduce((s,r)=>s+(r.prix||0),0)),backgroundColor:'rgba(10,26,56,.8)',borderRadius:8}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}})
+  const tb=document.getElementById('earnings-table'),em=document.getElementById('e-empty')
+  if(!all.length){em.style.display='block';return}
+  tb.innerHTML=all.map(r=>`<tr><td>${formatDate(r.created_at)}</td><td><div style="font-weight:600;font-size:.85rem">${r.depart||'—'}</div><div class="td-sub">→ ${r.arrivee||'—'}</div></td><td>${r.distance_km?r.distance_km+' km':'—'}</td><td>${r.duree_min?r.duree_min+' min':'—'}</td><td>${r.note_client?'★'.repeat(r.note_client):'—'}</td><td style="font-weight:700;color:var(--green)">+${formatPrice(r.prix||0)}</td></tr>`).join('')
+}
+
+_init()
+</script></body></html>

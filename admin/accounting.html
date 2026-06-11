@@ -1,0 +1,118 @@
+<!DOCTYPE html><html lang="fr"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Comptabilité | LOC'RÉATION SAS</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="../assets/css/main.css">
+</head><body>
+<div id="global-loader" class="global-loader"><div class="spinner"></div><div class="loader-text">Chargement…</div></div>
+<nav class="navbar">
+  <div style="display:flex;align-items:center;gap:14px">
+    <a href="../index.html" class="nav-logo"><div class="nav-logo-icon"><i class="fas fa-bolt"></i></div>Loc'<span>Réation</span></a>
+    <span class="nav-title">Comptabilité</span>
+  </div>
+  <div class="nav-right">
+    <div class="nav-user"><div class="nav-avatar" id="nav-av">?</div><div><div class="nav-name" id="nav-nm">…</div><div class="nav-role" id="nav-rl">…</div></div></div>
+    <button class="nav-icon-btn" id="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
+  </div>
+</nav>
+<div class="dashboard-wrap">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-profile"><div class="sidebar-avatar" id="sb-av">?</div><div class="sidebar-name" id="sb-nm">…</div><div class="sidebar-role" id="sb-rl">…</div><div class="sidebar-stats" id="sb-st"></div></div>
+    <div class="sidebar-section"><div class="sidebar-label">Navigation</div><ul class="sidebar-menu"><li><a href="../admin/dashboard.html" class=""><i class="fas fa-chart-pie"></i>Vue d'ensemble</a></li>
+<li><a href="../admin/users.html" class=""><i class="fas fa-users"></i>Utilisateurs</a></li>
+<li><a href="../admin/rides.html" class=""><i class="fas fa-route"></i>Courses</a></li>
+<li><a href="../admin/tariffs.html" class=""><i class="fas fa-tags"></i>Tarifs</a></li>
+<li><a href="../admin/accounting.html" class="active"><i class="fas fa-calculator"></i>Comptabilité</a></li>
+<li><a href="../admin/payroll.html" class=""><i class="fas fa-file-invoice-dollar"></i>Fiches de Paie</a></li></ul></div>
+    <div class="sidebar-section"><ul class="sidebar-menu"><li><a href="#" id="logout-link"><i class="fas fa-sign-out-alt"></i>Déconnexion</a></li></ul></div>
+  </aside>
+  <main class="main-content">
+<div class="stats-grid">
+  <div class="stat-card"><div class="stat-icon green"><i class="fas fa-chart-line"></i></div><div><div class="stat-value" id="acc-ca">0€</div><div class="stat-label">CA du mois</div></div></div>
+  <div class="stat-card"><div class="stat-icon red"><i class="fas fa-money-bill-wave"></i></div><div><div class="stat-value" id="acc-chg">0€</div><div class="stat-label">Charges du mois</div></div></div>
+  <div class="stat-card"><div class="stat-icon gold"><i class="fas fa-hand-holding-usd"></i></div><div><div class="stat-value" id="acc-sal">0€</div><div class="stat-label">Salaires du mois</div></div></div>
+  <div class="stat-card"><div class="stat-icon navy"><i class="fas fa-piggy-bank"></i></div><div><div class="stat-value" id="acc-ben">0€</div><div class="stat-label">Bénéfice net</div></div></div>
+</div>
+<div class="card"><div class="card-header"><div class="card-title">CA vs Charges (3 mois)</div></div><canvas id="accChart" height="80"></canvas></div>
+<div class="card">
+  <div class="card-header"><div class="card-title">Écritures comptables</div><div style="display:flex;gap:8px"><button class="btn btn-primary btn-sm" onclick="openAdd()"><i class="fas fa-plus"></i>Ajouter</button><button class="btn btn-outline btn-sm" onclick="exportEntries()"><i class="fas fa-download"></i>CSV</button></div></div>
+  <div class="table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Catégorie</th><th>Description</th><th>Montant</th></tr></thead><tbody id="entries-table"></tbody></table></div>
+  <div class="empty-state" id="e-empty" style="display:none"><i class="fas fa-file-invoice"></i><h3>Aucune écriture</h3></div>
+</div>
+<div class="modal-overlay" id="entry-modal">
+  <div class="modal"><div class="modal-header"><div class="modal-title">Ajouter une écriture</div><button class="modal-close" onclick="document.getElementById('entry-modal').classList.remove('open')"><i class="fas fa-times"></i></button></div>
+  <div class="modal-body">
+    <div class="form-group"><label class="form-label">Date</label><input type="date" id="e-date" class="form-control"></div>
+    <div class="form-group"><label class="form-label">Type</label><select id="e-type" class="form-select"><option value="recette">Recette</option><option value="depense">Dépense</option><option value="investissement">Investissement</option><option value="salaire">Salaire</option></select></div>
+    <div class="form-group"><label class="form-label">Catégorie</label><input type="text" id="e-cat" class="form-control" placeholder="Carburant, Assurance…"></div>
+    <div class="form-group"><label class="form-label">Montant (€)</label><div class="form-icon-wrap"><i class="fas fa-euro-sign"></i><input type="number" id="e-montant" class="form-control" step="0.01" style="padding-left:44px"></div></div>
+    <div class="form-group"><label class="form-label">Description</label><input type="text" id="e-desc" class="form-control"></div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-outline-gray" onclick="document.getElementById('entry-modal').classList.remove('open')">Annuler</button><button class="btn btn-primary" onclick="saveEntry()"><i class="fas fa-save"></i>Enregistrer</button></div>
+  </div>
+</div>
+</main>
+</div>
+<div id="toast-container"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script type="module">
+import {supabase,getCurrentUser,requireAuth,logout,formatPrice,formatDate,formatDateTime,formatInitials,showToast,hideLoader,getWallet,creditWallet,debitWallet,searchAddress,calculateRidePrice} from '../assets/js/supabase.js'
+async function _init(){
+  const user=await requireAuth()
+  if(!user)return
+  document.getElementById('nav-av').textContent=formatInitials(user.prenom,user.nom)
+  document.getElementById('nav-nm').textContent=user.prenom+' '+user.nom
+  document.getElementById('nav-rl').textContent=user.role
+  document.getElementById('sb-av').textContent=formatInitials(user.prenom,user.nom)
+  document.getElementById('sb-nm').textContent=user.prenom+' '+user.nom
+  document.getElementById('sb-rl').textContent=user.role
+  document.getElementById('logout-btn').onclick=()=>logout()
+  document.getElementById('logout-link').onclick=(e)=>{e.preventDefault();logout()}
+  hideLoader()
+  if(typeof pageInit==='function') await pageInit(user)
+}
+
+let allEntries=[]
+async function pageInit(user){
+  const month=new Date().toISOString().slice(0,7)
+  const [{data:rides},{data:payslips},{data:entries}]=await Promise.all([
+    supabase.from('rides').select('prix').eq('statut','termine').gte('created_at',month+'-01'),
+    supabase.from('payslips').select('cout_employeur').gte('mois',month+'-01').lte('mois',month+'-28'),
+    supabase.from('accounting_entries').select('*').order('date',{ascending:false})
+  ])
+  allEntries=entries||[]
+  const ca=(rides||[]).reduce((s,r)=>s+(r.prix||0),0)
+  const sal=(payslips||[]).reduce((s,p)=>s+(p.cout_employeur||0),0)
+  const chg=allEntries.filter(e=>e.type==='depense'&&e.date?.startsWith(month)).reduce((s,e)=>s+(e.montant||0),0)
+  document.getElementById('acc-ca').textContent=formatPrice(ca)
+  document.getElementById('acc-chg').textContent=formatPrice(chg)
+  document.getElementById('acc-sal').textContent=formatPrice(sal)
+  document.getElementById('acc-ben').textContent=formatPrice(ca-chg-sal)
+  const months=[-2,-1,0].map(m=>{const d=new Date();d.setMonth(d.getMonth()+m);return d.toISOString().slice(0,7)})
+  const labels=months.map(m=>new Date(m+'-01').toLocaleDateString('fr-FR',{month:'short',year:'2-digit'}))
+  const caData=await Promise.all(months.map(async m=>{const {data}=await supabase.from('rides').select('prix').eq('statut','termine').gte('created_at',m+'-01').lte('created_at',m+'-31');return (data||[]).reduce((s,r)=>s+(r.prix||0),0)}))
+  const chgData=months.map(m=>allEntries.filter(e=>e.type==='depense'&&e.date?.startsWith(m)).reduce((s,e)=>s+(e.montant||0),0))
+  new Chart(document.getElementById('accChart'),{type:'bar',data:{labels,datasets:[{label:'CA',data:caData,backgroundColor:'rgba(10,26,56,.8)',borderRadius:6},{label:'Charges',data:chgData,backgroundColor:'rgba(192,57,43,.7)',borderRadius:6},{label:'Bénéfice',data:caData.map((c,i)=>Math.max(0,c-chgData[i])),backgroundColor:'rgba(39,174,96,.7)',borderRadius:6}]},options:{plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true}}}})
+  renderEntries()
+}
+function renderEntries(){
+  const tb=document.getElementById('entries-table'),em=document.getElementById('e-empty')
+  if(!allEntries.length){em.style.display='block';return}
+  tb.innerHTML=allEntries.map(e=>`<tr><td>${formatDate(e.date)}</td><td><span class="badge ${e.type==='recette'?'badge-success':e.type==='depense'?'badge-danger':'badge-warning'}">${e.type}</span></td><td>${e.categorie}</td><td>${e.description||'—'}</td><td style="font-weight:700;color:${e.type==='recette'?'var(--green)':'var(--red)'}">${e.type==='recette'?'+':'-'}${formatPrice(e.montant||0)}</td></tr>`).join('')
+}
+function openAdd(){document.getElementById('e-date').value=new Date().toISOString().slice(0,10);document.getElementById('entry-modal').classList.add('open')}
+async function saveEntry(){
+  const {error}=await supabase.from('accounting_entries').insert({date:document.getElementById('e-date').value,type:document.getElementById('e-type').value,categorie:document.getElementById('e-cat').value,montant:+document.getElementById('e-montant').value,description:document.getElementById('e-desc').value})
+  if(error){showToast('Erreur.','error');return}
+  showToast('Écriture ajoutée !','success');document.getElementById('entry-modal').classList.remove('open')
+  const user=await getCurrentUser();await pageInit(user)
+}
+function exportEntries(){const rows=[['Date','Type','Catégorie','Description','Montant']];allEntries.forEach(e=>rows.push([e.date,e.type,e.categorie,e.description||'',e.montant]));const csv=rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('
+');const b=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});const l=document.createElement('a');l.href=URL.createObjectURL(b);l.download='comptabilite.csv';l.click()}
+window.openAdd=openAdd;window.saveEntry=saveEntry;window.exportEntries=exportEntries
+
+_init()
+</script></body></html>

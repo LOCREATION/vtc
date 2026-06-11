@@ -1,0 +1,7 @@
+@media print {
+  body > *:not(#bon-commande) { display: none !important; }
+  #bon-commande { display: block !important; position: absolute; top: 0; left: 0; width: 100%; }
+  .navbar, .sidebar, .btn, #toast-container, .modal-overlay, #global-loader { display: none !important; }
+  @page { margin: 10mm; size: A4 portrait; }
+}
+@media screen { #bon-commande { display: none; } }
