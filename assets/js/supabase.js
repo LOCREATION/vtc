@@ -1,5 +1,5 @@
 // assets/js/supabase.js
-// LOC'RÉATION SAS - Version production v1.0
+// LOC'RÉATION SAS - Version production complète
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 
@@ -44,9 +44,55 @@ export async function requireAuth(role = null) {
   return user
 }
 
+export async function redirectToDashboard(role) {
+  const map = {
+    client: '/client/dashboard.html',
+    chauffeur: '/driver/dashboard.html',
+    admin: '/admin/dashboard.html'
+  }
+  const url = map[role] || '/index.html'
+  window.location.href = url
+}
+
 export async function logout() {
   await supabase.auth.signOut()
   window.location.href = '/'
+}
+
+// ---------- TOAST ----------
+let toastContainer = null
+
+function getToastContainer() {
+  if (!toastContainer) {
+    toastContainer = document.createElement('div')
+    toastContainer.style.position = 'fixed'
+    toastContainer.style.bottom = '20px'
+    toastContainer.style.left = '50%'
+    toastContainer.style.transform = 'translateX(-50%)'
+    toastContainer.style.zIndex = '9999'
+    toastContainer.style.display = 'flex'
+    toastContainer.style.flexDirection = 'column'
+    toastContainer.style.gap = '10px'
+    document.body.appendChild(toastContainer)
+  }
+  return toastContainer
+}
+
+export function showToast(message, type = 'info') {
+  const container = getToastContainer()
+  const toast = document.createElement('div')
+  toast.textContent = message
+  toast.style.background = type === 'error' ? '#C0392B' : (type === 'success' ? '#27AE60' : '#0A1A38')
+  toast.style.color = '#fff'
+  toast.style.padding = '12px 24px'
+  toast.style.borderRadius = '12px'
+  toast.style.fontSize = '0.9rem'
+  toast.style.fontWeight = '500'
+  toast.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)'
+  toast.style.maxWidth = '90vw'
+  toast.style.textAlign = 'center'
+  container.appendChild(toast)
+  setTimeout(() => toast.remove(), 4000)
 }
 
 // ---------- PRICE CALCULATION (OSRM + tariffs) ----------
@@ -67,12 +113,9 @@ async function getRoute(originLat, originLng, destLat, destLng) {
 }
 
 export async function calculateRidePrice(departAddress, arriveeAddress) {
-  // 1. Obtenir coordonnées
   const depart = await getCoordinates(departAddress)
   const arrivee = await getCoordinates(arriveeAddress)
-  // 2. Obtenir distance/durée
   const { distanceKm, durationMin } = await getRoute(depart.lat, depart.lng, arrivee.lat, arrivee.lng)
-  // 3. Récupérer tarif actif depuis Supabase
   const { data: tariff, error } = await supabase
     .from('tariffs')
     .select('prix_km, prix_base, surcharge_nuit, surcharge_pointe')
@@ -81,7 +124,6 @@ export async function calculateRidePrice(departAddress, arriveeAddress) {
     .single()
   if (error) {
     console.error('Erreur chargement tarif', error)
-    // fallback
     var prixKm = 1.70
     var prixBase = 3.50
     var surchargeNuit = 1.0
@@ -92,7 +134,6 @@ export async function calculateRidePrice(departAddress, arriveeAddress) {
     surchargeNuit = tariff.surcharge_nuit || 1.0
     surchargePointe = tariff.surcharge_pointe || 1.0
   }
-  // 4. Appliquer surcharges horaires
   const now = new Date()
   const heures = now.getHours()
   let multiplier = 1.0
@@ -121,11 +162,6 @@ export function formatDate(date) {
 
 export function formatDateTime(date) {
   return new Date(date).toLocaleString('fr-FR')
-}
-
-export function showToast(message, type = 'info') {
-  // À implémenter selon ton design (toast simple)
-  alert(message) // temporaire, à remplacer par un vrai toast
 }
 
 export function hideLoader() {
