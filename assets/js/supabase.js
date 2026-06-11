@@ -1,18 +1,17 @@
-// ============================================================
-// LOC'RÉATION SAS — assets/js/supabase.js
-// Client Supabase + Auth + Helpers — v1.0
-// Supabase: https://cgbafvewynahaiqpnejk.supabase.co
-// ============================================================
+// assets/js/supabase.js
+// LOC'RÉATION SAS - Version production v1.0
+
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 
 const SUPABASE_URL = 'https://cgbafvewynahaiqpnejk.supabase.co'
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNnYmFmdmV3eW5haGFpcXBuZWprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4NzIxMDcsImV4cCI6MjA5NjQ0ODEwN30.vfxwAU-JYfEpVPUTfe3HPMOTaKyM25rHXQH-Jb0VObY'
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNnYmFmdmV3eW5haGFpcXBuZWprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4NzIxMDcsImV4cCI6MjA5NjQ0ODEwN30.vfxwAU-JYfEpVPUTfe3HPMOTaKyM25rHXQH-JbV0ObY'
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
-// ─── AUTH HELPERS ────────────────────────────────────────────
+// ---------- AUTH ----------
 export async function getSession() {
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { session }, error } = await supabase.auth.getSession()
+  if (error) console.error('getSession error', error)
   return session
 }
 
@@ -24,20 +23,22 @@ export async function getCurrentUser() {
     .select('*')
     .eq('id', session.user.id)
     .single()
-  if (error) return null
-  return { ...profile, email: session.user.email }
-}
-
-export async function requireAuth(requiredRole = null) {
-  const user = await getCurrentUser()
-  if (!user) {
-    const depth = window.location.pathname.split('/').length - 2
-    const prefix = depth > 1 ? '../'.repeat(depth - 1) : ''
-    window.location.href = prefix + 'auth/login.html'
+  if (error) {
+    console.error('getCurrentUser profile error', error)
     return null
   }
-  if (requiredRole && user.role !== requiredRole && user.role !== 'admin') {
-    redirectToDashboard(user.role)
+  return { ...session.user, profile }
+}
+
+export async function requireAuth(role = null) {
+  const user = await getCurrentUser()
+  if (!user) {
+    window.location.href = '/auth/login.html'
+    return null
+  }
+  if (role && user.profile.role !== role && user.profile.role !== 'admin') {
+    alert('Accès non autorisé. Vous n\'avez pas le rôle requis.')
+    window.location.href = '/'
     return null
   }
   return user
@@ -45,142 +46,93 @@ export async function requireAuth(requiredRole = null) {
 
 export async function logout() {
   await supabase.auth.signOut()
-  window.location.href = '/auth/login.html'
+  window.location.href = '/'
 }
 
-export function redirectToDashboard(role) {
-  const base = 'https://locreation.github.io/vtc'
-  const map = {
-    client:   '/client/dashboard.html',
-    chauffeur:'/driver/dashboard.html',
-    admin:    '/admin/dashboard.html',
+// ---------- PRICE CALCULATION (OSRM + tariffs) ----------
+async function getCoordinates(address) {
+  const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`)
+  const data = await res.json()
+  if (!data.length) throw new Error('Adresse introuvable')
+  return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }
+}
+
+async function getRoute(originLat, originLng, destLat, destLng) {
+  const url = `https://router.project-osrm.org/route/v1/driving/${originLng},${originLat};${destLng},${destLat}?overview=false`
+  const res = await fetch(url)
+  const data = await res.json()
+  if (!data.routes.length) throw new Error('Itinéraire non trouvé')
+  const route = data.routes[0]
+  return { distanceKm: route.distance / 1000, durationMin: Math.round(route.duration / 60) }
+}
+
+export async function calculateRidePrice(departAddress, arriveeAddress) {
+  // 1. Obtenir coordonnées
+  const depart = await getCoordinates(departAddress)
+  const arrivee = await getCoordinates(arriveeAddress)
+  // 2. Obtenir distance/durée
+  const { distanceKm, durationMin } = await getRoute(depart.lat, depart.lng, arrivee.lat, arrivee.lng)
+  // 3. Récupérer tarif actif depuis Supabase
+  const { data: tariff, error } = await supabase
+    .from('tariffs')
+    .select('prix_km, prix_base, surcharge_nuit, surcharge_pointe')
+    .eq('actif', true)
+    .limit(1)
+    .single()
+  if (error) {
+    console.error('Erreur chargement tarif', error)
+    // fallback
+    var prixKm = 1.70
+    var prixBase = 3.50
+    var surchargeNuit = 1.0
+    var surchargePointe = 1.0
+  } else {
+    prixKm = tariff.prix_km
+    prixBase = tariff.prix_base
+    surchargeNuit = tariff.surcharge_nuit || 1.0
+    surchargePointe = tariff.surcharge_pointe || 1.0
   }
-  window.location.href = (map[role] || '/index.html')
-}
-
-// ─── PRIX VTC ────────────────────────────────────────────────
-export async function calculateRidePrice(dLat, dLng, aLat, aLng) {
-  try {
-    // Distance via OSRM (gratuit, OpenStreetMap)
-    const url = `https://router.project-osrm.org/route/v1/driving/${dLng},${dLat};${aLng},${aLat}?overview=false`
-    const res  = await fetch(url)
-    const data = await res.json()
-    const distanceKm = +(data.routes[0].distance / 1000).toFixed(1)
-    const dureeMin   = Math.round(data.routes[0].duration / 60)
-
-    // Tarif depuis Supabase
-    const { data: tariff } = await supabase
-      .from('tariffs')
-      .select('*')
-      .eq('actif', true)
-      .limit(1)
-      .single()
-
-    const prixKm  = tariff?.prix_km  || 1.70
-    const prixBase = tariff?.prix_base || 3.50
-    const prixMin  = tariff?.prix_min  || 0.45
-
-    const h = new Date().getHours()
-    const isNuit   = h < 6 || h >= 22
-    const isPointe = (h >= 7 && h <= 9) || (h >= 17 && h <= 19)
-
-    let prix = prixBase + (distanceKm * prixKm) + (dureeMin * prixMin)
-    if (isNuit)   prix *= (tariff?.surcharge_nuit   || 1.30)
-    if (isPointe) prix *= (tariff?.surcharge_pointe || 1.50)
-    prix = Math.max(8, prix)
-
-    return { prix: +prix.toFixed(2), distanceKm, dureeMin }
-  } catch (e) {
-    // Estimation simple si OSRM indisponible
-    const d = Math.sqrt(Math.pow(dLat-aLat,2)+Math.pow(dLng-aLng,2)) * 111
-    const dist = +(d || 10).toFixed(1)
-    return { prix: +(3.50 + dist * 1.70).toFixed(2), distanceKm: dist, dureeMin: Math.round(dist * 3) }
+  // 4. Appliquer surcharges horaires
+  const now = new Date()
+  const heures = now.getHours()
+  let multiplier = 1.0
+  if (heures >= 22 || heures < 6) multiplier = surchargeNuit
+  else if ((heures >= 7 && heures < 9) || (heures >= 17 && heures < 19)) multiplier = surchargePointe
+  let prix = (prixBase + distanceKm * prixKm) * multiplier
+  const minCourse = 8.0
+  if (prix < minCourse) prix = minCourse
+  return {
+    prix: Math.round(prix * 100) / 100,
+    distanceKm: Math.round(distanceKm * 100) / 100,
+    durationMin,
+    depart,
+    arrivee
   }
 }
 
-// ─── WALLET HELPERS ──────────────────────────────────────────
-export async function getWallet(userId) {
-  const { data } = await supabase
-    .from('wallets').select('*').eq('user_id', userId).single()
-  return data
+// ---------- HELPERS ----------
+export function formatPrice(amount) {
+  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount)
 }
 
-export async function debitWallet(userId, amount, description, rideId = null) {
-  const wallet = await getWallet(userId)
-  if (!wallet || wallet.balance < amount) return { ok: false, error: 'Solde insuffisant' }
-  const newBalance = +(wallet.balance - amount).toFixed(2)
-  await supabase.from('wallets').update({ balance: newBalance, updated_at: new Date().toISOString() }).eq('user_id', userId)
-  await supabase.from('transactions').insert({ wallet_id: wallet.id, type: 'debit', amount, description, ride_id: rideId })
-  return { ok: true, newBalance }
+export function formatDate(date) {
+  return new Date(date).toLocaleDateString('fr-FR')
 }
 
-export async function creditWallet(userId, amount, description, rideId = null) {
-  const wallet = await getWallet(userId)
-  if (!wallet) return { ok: false }
-  const newBalance = +(wallet.balance + amount).toFixed(2)
-  await supabase.from('wallets').update({ balance: newBalance, updated_at: new Date().toISOString() }).eq('user_id', userId)
-  await supabase.from('transactions').insert({ wallet_id: wallet.id, type: 'credit', amount, description, ride_id: rideId })
-  return { ok: true, newBalance }
+export function formatDateTime(date) {
+  return new Date(date).toLocaleString('fr-FR')
 }
 
-// ─── ADRESSES NOMINATIM (OpenStreetMap) ──────────────────────
-export async function searchAddress(query) {
-  if (!query || query.length < 3) return []
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=fr&limit=5&addressdetails=1`,
-      { headers: { 'Accept-Language': 'fr' } }
-    )
-    const data = await res.json()
-    return data.map(d => ({
-      label: d.display_name,
-      lat: +d.lat,
-      lng: +d.lon,
-    }))
-  } catch { return [] }
-}
-
-// ─── FORMAT HELPERS ──────────────────────────────────────────
-export function formatPrice(n) {
-  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n || 0)
-}
-export function formatDate(d) {
-  if (!d) return '—'
-  return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
-}
-export function formatDateTime(d) {
-  if (!d) return '—'
-  return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
-}
-export function formatInitials(prenom = '', nom = '') {
-  return ((prenom[0] || '') + (nom[0] || '')).toUpperCase()
-}
-
-// ─── UI HELPERS ──────────────────────────────────────────────
-export function showToast(msg, type = 'info', duration = 3500) {
-  let container = document.getElementById('toast-container')
-  if (!container) {
-    container = document.createElement('div')
-    container.id = 'toast-container'
-    container.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:10px;'
-    document.body.appendChild(container)
-  }
-  const icons = { success: 'fa-check-circle', error: 'fa-times-circle', warning: 'fa-exclamation-triangle', info: 'fa-info-circle' }
-  const colors = { success: '#27ae60', error: '#c0392b', warning: '#f39c12', info: '#1B3A6B' }
-  const toast = document.createElement('div')
-  toast.style.cssText = `display:flex;align-items:center;gap:12px;padding:14px 20px;border-radius:12px;background:${colors[type]||colors.info};color:#fff;box-shadow:0 8px 32px rgba(0,0,0,.2);min-width:280px;font-family:Poppins,sans-serif;font-size:.87rem;font-weight:500;animation:toastIn .4s ease;`
-  toast.innerHTML = `<i class="fas ${icons[type]||icons.info}"></i><span style="flex:1">${msg}</span><button onclick="this.parentElement.remove()" style="background:none;border:none;color:rgba(255,255,255,.8);cursor:pointer;font-size:1rem;">✕</button>`
-  if (!document.getElementById('toast-css')) {
-    const s = document.createElement('style')
-    s.id = 'toast-css'
-    s.textContent = '@keyframes toastIn{from{opacity:0;transform:translateX(60px)}to{opacity:1;transform:translateX(0)}}'
-    document.head.appendChild(s)
-  }
-  container.appendChild(toast)
-  setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity .3s'; setTimeout(() => toast.remove(), 300) }, duration)
+export function showToast(message, type = 'info') {
+  // À implémenter selon ton design (toast simple)
+  alert(message) // temporaire, à remplacer par un vrai toast
 }
 
 export function hideLoader() {
-  const l = document.getElementById('global-loader')
-  if (l) { l.style.opacity = '0'; l.style.transition = 'opacity .4s'; setTimeout(() => l.remove(), 400) }
+  const loader = document.getElementById('global-loader')
+  if (loader) loader.style.display = 'none'
+}
+
+export function formatInitials(prenom, nom) {
+  return `${prenom.charAt(0)}${nom.charAt(0)}`.toUpperCase()
 }
