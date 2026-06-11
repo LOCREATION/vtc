@@ -8,7 +8,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
-/* ---------- VARIABLES & RESET ---------- */
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
   --primary:#0A1A38;
@@ -33,7 +32,6 @@ body{
   grid-template-columns:1fr 1fr;
   background:var(--white);
 }
-/* ---------- PANEL LEFT (BRANDING) ---------- */
 .auth-left{
   background:linear-gradient(145deg,#0A1A38,#1B3A6B 60%,#0A1A38);
   display:flex;
@@ -61,7 +59,6 @@ body{
   font-size:clamp(1.1rem, 3vw, 1.3rem);
   color:var(--white);
   z-index:1;
-  position:relative;
 }
 .logo-icon{
   width:clamp(38px, 5vw, 44px);
@@ -78,7 +75,6 @@ body{
 .logo span{color:var(--gold);}
 .auth-tagline{
   z-index:1;
-  position:relative;
   margin:clamp(2rem, 10vh, 4rem) 0;
 }
 .auth-tagline h2{
@@ -96,7 +92,6 @@ body{
 }
 .auth-features{
   z-index:1;
-  position:relative;
   display:flex;
   flex-direction:column;
   gap:clamp(10px, 2vh, 14px);
@@ -117,10 +112,8 @@ body{
   align-items:center;
   justify-content:center;
   color:var(--gold);
-  font-size:clamp(0.75rem, 2vw, 0.85rem);
   flex-shrink:0;
 }
-/* ---------- PANEL RIGHT (FORM) ---------- */
 .auth-right{
   display:flex;
   align-items:center;
@@ -143,7 +136,6 @@ body{
   color:var(--gray);
   margin-bottom:clamp(20px, 4vh, 28px);
 }
-/* TABS */
 .role-tabs{
   display:flex;
   gap:6px;
@@ -175,7 +167,6 @@ body{
   color:var(--primary);
   box-shadow:var(--shadow-md);
 }
-/* FORM */
 .form-group{margin-bottom:18px;}
 .form-label{
   display:block;
@@ -261,7 +252,6 @@ body{
 }
 .btn-submit:disabled{
   opacity:.6;
-  transform:none;
   cursor:not-allowed;
 }
 .divider{
@@ -300,7 +290,6 @@ body{
   margin-bottom:18px;
   cursor:pointer;
 }
-/* LEGAL NOTICE (ajout conformité RGPD) */
 .legal-footer{
   margin-top:24px;
   font-size:clamp(0.65rem, 2vw, 0.7rem);
@@ -314,7 +303,6 @@ body{
   text-decoration:underline;
   margin:0 4px;
 }
-/* RESPONSIVE COMPLET */
 @media (max-width: 768px){
   body{grid-template-columns:1fr;}
   .auth-left{display:none;}
@@ -324,25 +312,16 @@ body{
   .role-tabs{flex-direction:column; gap:4px;}
   .role-tab{padding:8px;}
   .demo-row{flex-wrap:wrap; gap:6px;}
-  .auth-box{padding:0;}
 }
 @media (min-width: 1920px){
   .auth-box{max-width:520px;}
   .auth-left .auth-tagline h2{font-size:2.4rem;}
 }
-@media (orientation: landscape) and (max-height: 500px){
-  .auth-left .auth-tagline{margin:1rem 0;}
-  .auth-features{display:none;}
-  .auth-left{padding:1rem;}
-}
 </style>
 </head>
 <body>
 <div class="auth-left">
-  <div class="logo">
-    <div class="logo-icon"><i class="fas fa-bolt"></i></div>
-    Loc'<span>Réation</span>
-  </div>
+  <div class="logo"><div class="logo-icon"><i class="fas fa-bolt"></i></div>Loc'<span>Réation</span></div>
   <div class="auth-tagline">
     <h2>Bienvenue sur votre<br>espace <span>personnel</span></h2>
     <p>Connectez-vous pour accéder à votre tableau de bord et gérer vos courses, revenus ou votre administration.</p>
@@ -357,16 +336,16 @@ body{
   <div class="auth-box">
     <h1>Connexion</h1>
     <p>Entrez vos identifiants pour accéder à votre espace.</p>
-    <div class="role-tabs" role="tablist" aria-label="Choix du profil">
-      <button class="role-tab active" data-role="client" onclick="setRole(this)" aria-selected="true"><i class="fas fa-user"></i>Client</button>
-      <button class="role-tab" data-role="chauffeur" onclick="setRole(this)" aria-selected="false"><i class="fas fa-car"></i>Chauffeur</button>
-      <button class="role-tab" data-role="admin" onclick="setRole(this)" aria-selected="false"><i class="fas fa-shield-alt"></i>Admin</button>
+    <div class="role-tabs" id="roleTabs">
+      <button class="role-tab active" data-role="client"><i class="fas fa-user"></i>Client</button>
+      <button class="role-tab" data-role="chauffeur"><i class="fas fa-car"></i>Chauffeur</button>
+      <button class="role-tab" data-role="admin"><i class="fas fa-shield-alt"></i>Admin</button>
     </div>
     <div class="demo-box">
       <strong>Comptes de démonstration (MDP : demo123456)</strong>
-      <div class="demo-row"><span>Client :</span><span>client@locreation.fr</span><span class="use-btn" onclick="useDemo('client')">Utiliser</span></div>
-      <div class="demo-row"><span>Chauffeur :</span><span>chauffeur@locreation.fr</span><span class="use-btn" onclick="useDemo('chauffeur')">Utiliser</span></div>
-      <div class="demo-row"><span>Admin :</span><span>admin@locreation.fr</span><span class="use-btn" onclick="useDemo('admin')">Utiliser</span></div>
+      <div class="demo-row"><span>Client :</span><span>client@locreation.fr</span><span class="use-btn" id="demoClientBtn">Utiliser</span></div>
+      <div class="demo-row"><span>Chauffeur :</span><span>chauffeur@locreation.fr</span><span class="use-btn" id="demoChauffeurBtn">Utiliser</span></div>
+      <div class="demo-row"><span>Admin :</span><span>admin@locreation.fr</span><span class="use-btn" id="demoAdminBtn">Utiliser</span></div>
     </div>
     <div class="form-group">
       <label class="form-label">Adresse email</label>
@@ -379,18 +358,14 @@ body{
       <label class="form-label">Mot de passe</label>
       <div class="form-wrap">
         <i class="fas fa-lock"></i>
-        <input type="password" id="password" autocomplete="current-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
-        <i class="fas fa-eye eye" id="eye-ic" onclick="togglePwd()" aria-label="Afficher/masquer le mot de passe"></i>
+        <input type="password" id="password" autocomplete="current-password" placeholder="••••••••">
+        <i class="fas fa-eye eye" id="eyeIcon" style="left:auto;right:14px;cursor:pointer"></i>
       </div>
     </div>
-    <a class="forgot" onclick="resetPassword()">Mot de passe oublié ?</a>
-    <button class="btn-submit" id="btn-login" onclick="doLogin()">
-      <i class="fas fa-sign-in-alt"></i> Se connecter
-    </button>
+    <a class="forgot" id="forgotLink">Mot de passe oublié ?</a>
+    <button class="btn-submit" id="loginBtn"><i class="fas fa-sign-in-alt"></i> Se connecter</button>
     <div class="divider"><span>ou</span></div>
-    <div class="register-link">
-      Pas encore de compte ? <a href="register.html">Créer un compte</a>
-    </div>
+    <div class="register-link">Pas encore de compte ? <a href="register.html">Créer un compte</a></div>
     <div class="legal-footer">
       En vous connectant, vous acceptez nos 
       <a href="../legal/legal-notice.html">Mentions légales</a>, 
@@ -403,86 +378,67 @@ body{
 <script type="module">
 import { supabase, getCurrentUser, redirectToDashboard, showToast } from '../assets/js/supabase.js'
 
+// Éléments DOM
+const emailInput = document.getElementById('email')
+const passwordInput = document.getElementById('password')
+const loginBtn = document.getElementById('loginBtn')
+const forgotLink = document.getElementById('forgotLink')
+const eyeIcon = document.getElementById('eyeIcon')
+
 let currentRole = 'client'
-const demos = {
-  client: ['client@locreation.fr', 'demo123456'],
-  chauffeur: ['chauffeur@locreation.fr', 'demo123456'],
-  admin: ['admin@locreation.fr', 'demo123456']
-}
 
-// Sélection du rôle via onglet
-window.setRole = (el) => {
-  currentRole = el.dataset.role
-  document.querySelectorAll('.role-tab').forEach(tab => {
-    tab.classList.remove('active')
-    tab.setAttribute('aria-selected', 'false')
+// Gestion des onglets
+document.querySelectorAll('.role-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.role-tab').forEach(t => t.classList.remove('active'))
+    tab.classList.add('active')
+    currentRole = tab.dataset.role
   })
-  el.classList.add('active')
-  el.setAttribute('aria-selected', 'true')
-}
+})
 
-// Utiliser un compte démo
-window.useDemo = (role) => {
-  const tab = document.querySelector(`.role-tab[data-role="${role}"]`)
-  if (tab) setRole(tab)
-  document.getElementById('email').value = demos[role][0]
-  document.getElementById('password').value = demos[role][1]
-}
+// Affichage/masquage mot de passe
+eyeIcon.addEventListener('click', () => {
+  const type = passwordInput.type === 'password' ? 'text' : 'password'
+  passwordInput.type = type
+  eyeIcon.classList.toggle('fa-eye-slash')
+})
 
-// Afficher/masquer mot de passe
-window.togglePwd = () => {
-  const pwdInput = document.getElementById('password')
-  const eyeIcon = document.getElementById('eye-ic')
-  if (pwdInput.type === 'password') {
-    pwdInput.type = 'text'
-    eyeIcon.classList.remove('fa-eye')
-    eyeIcon.classList.add('fa-eye-slash')
-  } else {
-    pwdInput.type = 'password'
-    eyeIcon.classList.remove('fa-eye-slash')
-    eyeIcon.classList.add('fa-eye')
-  }
-}
-
-// Mot de passe oublié
-window.resetPassword = async () => {
-  const email = document.getElementById('email').value.trim()
-  if (!email) {
-    showToast('Veuillez saisir votre adresse email.', 'warning')
-    return
-  }
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + '/auth/reset-password.html'
-  })
-  if (error) {
-    showToast('Erreur : ' + error.message, 'error')
-  } else {
-    showToast('Un email de réinitialisation vous a été envoyé.', 'success')
-  }
-}
+// Comptes démo
+document.getElementById('demoClientBtn').addEventListener('click', () => {
+  emailInput.value = 'client@locreation.fr'
+  passwordInput.value = 'demo123456'
+  // Activer l'onglet client
+  document.querySelector('.role-tab[data-role="client"]').click()
+})
+document.getElementById('demoChauffeurBtn').addEventListener('click', () => {
+  emailInput.value = 'chauffeur@locreation.fr'
+  passwordInput.value = 'demo123456'
+  document.querySelector('.role-tab[data-role="chauffeur"]').click()
+})
+document.getElementById('demoAdminBtn').addEventListener('click', () => {
+  emailInput.value = 'admin@locreation.fr'
+  passwordInput.value = 'demo123456'
+  document.querySelector('.role-tab[data-role="admin"]').click()
+})
 
 // Connexion
-window.doLogin = async () => {
-  const email = document.getElementById('email').value.trim()
-  const password = document.getElementById('password').value
+async function doLogin() {
+  const email = emailInput.value.trim()
+  const password = passwordInput.value
   if (!email || !password) {
     showToast('Remplissez tous les champs.', 'error')
     return
   }
-  const btn = document.getElementById('btn-login')
-  const originalText = btn.innerHTML
-  btn.disabled = true
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connexion…'
+  loginBtn.disabled = true
+  loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connexion…'
 
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) {
     let msg = 'Email ou mot de passe incorrect.'
-    if (error.message.includes('Email not confirmed')) {
-      msg = 'Veuillez confirmer votre email avant de vous connecter.'
-    }
+    if (error.message.includes('Email not confirmed')) msg = 'Veuillez confirmer votre email.'
     showToast(msg, 'error')
-    btn.disabled = false
-    btn.innerHTML = originalText
+    loginBtn.disabled = false
+    loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Se connecter'
     return
   }
   showToast('Connexion réussie ! Redirection…', 'success')
@@ -492,29 +448,35 @@ window.doLogin = async () => {
     .eq('id', data.user.id)
     .single()
   const role = profile?.role || 'client'
-  const map = {
-    client: '../client/dashboard.html',
-    chauffeur: '../driver/dashboard.html',
-    admin: '../admin/dashboard.html'
-  }
-  setTimeout(() => {
-    window.location.href = map[role] || '../index.html'
-  }, 800)
+  redirectToDashboard(role)
 }
+loginBtn.addEventListener('click', doLogin)
+passwordInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') doLogin() })
 
-// Vérifier si déjà connecté
-getCurrentUser().then(user => {
-  if (user) redirectToDashboard(user.role)
+// Mot de passe oublié
+forgotLink.addEventListener('click', async () => {
+  const email = emailInput.value.trim()
+  if (!email) {
+    showToast('Veuillez saisir votre adresse email.', 'warning')
+    return
+  }
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + '/auth/reset-password.html'
+  })
+  if (error) showToast('Erreur : ' + error.message, 'error')
+  else showToast('Un email de réinitialisation vous a été envoyé.', 'success')
 })
 
-// Pré-remplir email depuis paramètre URL et pré-sélectionner onglet
+// Vérifier session existante
+const user = await getCurrentUser()
+if (user) redirectToDashboard(user.role)
+
+// Paramètre ?role= dans l'URL
 const params = new URLSearchParams(window.location.search)
-if (params.has('email')) {
-  document.getElementById('email').value = params.get('email')
-}
+if (params.has('email')) emailInput.value = params.get('email')
 if (params.has('role')) {
   const tab = document.querySelector(`.role-tab[data-role="${params.get('role')}"]`)
-  if (tab) setRole(tab)
+  if (tab) tab.click()
 }
 </script>
 </body>
