@@ -1,0 +1,109 @@
+<!DOCTYPE html><html lang="fr"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Chauffeurs Favoris | LOC'RÉATION SAS</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="../assets/css/main.css">
+</head><body>
+<div id="global-loader" class="global-loader"><div class="spinner"></div><div class="loader-text">Chargement…</div></div>
+<nav class="navbar">
+  <div style="display:flex;align-items:center;gap:14px">
+    <a href="../index.html" class="nav-logo"><div class="nav-logo-icon"><i class="fas fa-bolt"></i></div>Loc'<span>Réation</span></a>
+    <span class="nav-title">Chauffeurs Favoris</span>
+  </div>
+  <div class="nav-right">
+    <div class="nav-user"><div class="nav-avatar" id="nav-av">?</div><div><div class="nav-name" id="nav-nm">…</div><div class="nav-role" id="nav-rl">…</div></div></div>
+    <button class="nav-icon-btn" id="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
+  </div>
+</nav>
+<div class="dashboard-wrap">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-profile">
+      <div class="sidebar-avatar" id="sb-av">?</div>
+      <div class="sidebar-name" id="sb-nm">…</div>
+      <div class="sidebar-role" id="sb-rl">…</div>
+      <div class="sidebar-stats" id="sb-st"></div>
+    </div>
+    <div class="sidebar-section"><div class="sidebar-label">Navigation</div>
+      <ul class="sidebar-menu"><li><a href="../client/dashboard.html" class=""><i class="fas fa-home"></i>Réserver</a></li>
+<li><a href="../client/tracking.html" class=""><i class="fas fa-map-marker-alt"></i>Suivi GPS</a></li>
+<li><a href="../client/wallet.html" class=""><i class="fas fa-wallet"></i>Portefeuille</a></li>
+<li><a href="../client/history.html" class=""><i class="fas fa-history"></i>Historique</a></li>
+<li><a href="../client/profile.html" class=""><i class="fas fa-user-cog"></i>Profil</a></li>
+<li><a href="../client/favorites.html" class="active"><i class="fas fa-heart"></i>Favoris</a></li>
+<li><a href="../client/preferences.html" class=""><i class="fas fa-sliders-h"></i>Préférences</a></li></ul></div>
+    <div class="sidebar-section"><ul class="sidebar-menu">
+      <li><a href="../index.html"><i class="fas fa-home"></i>Accueil</a></li>
+      <li><a href="#" id="logout-link"><i class="fas fa-sign-out-alt"></i>Déconnexion</a></li>
+    </ul></div>
+  </aside>
+  <main class="main-content">
+<div class="stats-grid">
+  <div class="stat-card"><div class="stat-icon red"><i class="fas fa-heart"></i></div><div><div class="stat-value" id="f-nb">0</div><div class="stat-label">Favoris</div></div></div>
+  <div class="stat-card"><div class="stat-icon green"><i class="fas fa-circle"></i></div><div><div class="stat-value" id="f-online">0</div><div class="stat-label">En ligne maintenant</div></div></div>
+</div>
+<div class="card">
+  <div class="card-title" style="margin-bottom:16px">Chauffeurs disponibles</div>
+  <div id="drivers-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px"></div>
+  <div class="empty-state" id="drivers-empty" style="display:none"><i class="fas fa-users"></i><h3>Aucun chauffeur disponible</h3></div>
+</div>
+</main>
+</div>
+<div id="toast-container"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script type="module">
+import {supabase,getCurrentUser,requireAuth,logout,formatPrice,formatDate,formatDateTime,formatInitials,showToast,hideLoader,getWallet,debitWallet,creditWallet,searchAddress,calculateRidePrice} from '../assets/js/supabase.js'
+async function _init(){
+  const user=await requireAuth()
+  if(!user)return
+  document.getElementById('nav-av').textContent=formatInitials(user.prenom,user.nom)
+  document.getElementById('nav-nm').textContent=user.prenom+' '+user.nom
+  document.getElementById('nav-rl').textContent=user.role
+  document.getElementById('sb-av').textContent=formatInitials(user.prenom,user.nom)
+  document.getElementById('sb-nm').textContent=user.prenom+' '+user.nom
+  document.getElementById('sb-rl').textContent=user.role
+  document.getElementById('logout-btn').onclick=()=>logout()
+  document.getElementById('logout-link').onclick=(e)=>{e.preventDefault();logout()}
+  hideLoader()
+  if(typeof pageInit==='function') await pageInit(user)
+}
+
+async function pageInit(user){
+  const [{data:favs},{data:drivers},{data:locs}]=await Promise.all([
+    supabase.from('favorite_drivers').select('driver_id').eq('client_id',user.id),
+    supabase.from('profiles').select('*').eq('role','chauffeur').eq('actif',true),
+    supabase.from('driver_locations').select('chauffeur_id').eq('is_online',true)
+  ])
+  const favIds=favs?.map(f=>f.driver_id)||[]
+  const onlineIds=locs?.map(l=>l.chauffeur_id)||[]
+  document.getElementById('f-nb').textContent=favIds.length
+  document.getElementById('f-online').textContent=onlineIds.length
+  const grid=document.getElementById('drivers-grid'),em=document.getElementById('drivers-empty')
+  if(!drivers?.length){em.style.display='block';return}
+  grid.innerHTML=drivers.map(d=>`<div style="background:#fff;border:1.5px solid ${favIds.includes(d.id)?'var(--gold)':'var(--gray-light)'};border-radius:var(--radius-xl);padding:18px;box-shadow:var(--shadow-sm)">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+      <div style="width:48px;height:48px;border-radius:50%;background:var(--primary-xlight);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:700;border:2px solid var(--gold)">${formatInitials(d.prenom,d.nom)}</div>
+      <div><div style="font-weight:700">${d.prenom} ${d.nom}</div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:.75rem">
+          <span class="status-dot ${onlineIds.includes(d.id)?'status-online':'status-offline'}"></span>
+          <span style="color:var(--gray)">${onlineIds.includes(d.id)?'En ligne':'Hors ligne'}</span>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary btn-sm" style="flex:1" onclick="window.location.href='dashboard.html?driver=${d.id}'"><i class="fas fa-bolt"></i>Commander</button>
+      <button class="btn ${favIds.includes(d.id)?'btn-danger':'btn-outline'} btn-sm" onclick="toggleFav('${d.id}','${user.id}',${favIds.includes(d.id)},this)"><i class="fas fa-heart"></i></button>
+    </div>
+  </div>`).join('')
+}
+async function toggleFav(dId,uId,isFav,btn){
+  if(isFav){await supabase.from('favorite_drivers').delete().eq('client_id',uId).eq('driver_id',dId);showToast('Retiré des favoris','warning')}
+  else{await supabase.from('favorite_drivers').insert({client_id:uId,driver_id:dId});showToast('Ajouté aux favoris ❤️','success')}
+  const user=await getCurrentUser();await pageInit(user)
+}
+window.toggleFav=toggleFav
+
+_init()
+</script></body></html>

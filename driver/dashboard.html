@@ -1,0 +1,172 @@
+<!DOCTYPE html><html lang="fr"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Tableau de bord Chauffeur | LOC'RÉATION SAS</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="../assets/css/main.css">
+</head><body>
+<div id="global-loader" class="global-loader"><div class="spinner"></div><div class="loader-text">Chargement…</div></div>
+<nav class="navbar">
+  <div style="display:flex;align-items:center;gap:14px">
+    <a href="../index.html" class="nav-logo"><div class="nav-logo-icon"><i class="fas fa-bolt"></i></div>Loc'<span>Réation</span></a>
+    <span class="nav-title">Tableau de bord Chauffeur</span>
+  </div>
+  <div class="nav-right">
+    <div class="nav-user"><div class="nav-avatar" id="nav-av">?</div><div><div class="nav-name" id="nav-nm">…</div><div class="nav-role" id="nav-rl">…</div></div></div>
+    <button class="nav-icon-btn" id="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
+  </div>
+</nav>
+<div class="dashboard-wrap">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-profile"><div class="sidebar-avatar" id="sb-av">?</div><div class="sidebar-name" id="sb-nm">…</div><div class="sidebar-role" id="sb-rl">…</div><div class="sidebar-stats" id="sb-st"></div></div>
+    <div class="sidebar-section"><div class="sidebar-label">Navigation</div><ul class="sidebar-menu"><li><a href="../driver/dashboard.html" class="active"><i class="fas fa-tachometer-alt"></i>Tableau de bord</a></li>
+<li><a href="../driver/earnings.html" class=""><i class="fas fa-chart-line"></i>Mes Revenus</a></li>
+<li><a href="../driver/profile.html" class=""><i class="fas fa-user-cog"></i>Mon Profil</a></li></ul></div>
+    <div class="sidebar-section"><ul class="sidebar-menu"><li><a href="#" id="logout-link"><i class="fas fa-sign-out-alt"></i>Déconnexion</a></li></ul></div>
+  </aside>
+  <main class="main-content">
+<div id="status-card" style="background:#fff;border:2px solid var(--gray-light);border-radius:var(--radius-xl);padding:22px;margin-bottom:22px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+    <div style="display:flex;align-items:center;gap:10px;font-size:1rem;font-weight:700"><div class="status-dot status-offline" id="status-dot"></div><span id="status-label">Hors ligne</span></div>
+    <div class="toggle-wrap">
+      <label class="toggle-switch"><input type="checkbox" id="avail-toggle" onchange="toggleAvail()"><span class="toggle-slider"></span></label>
+      <span style="font-weight:600" id="toggle-lbl">Me rendre disponible</span>
+    </div>
+  </div>
+  <p style="font-size:.82rem;color:var(--gray)" id="status-desc">Activez pour recevoir des courses.</p>
+  <div id="online-info" style="display:none;margin-top:10px;background:var(--green-light);border-radius:var(--radius);padding:10px;font-size:.82rem;color:var(--green);font-weight:600"><i class="fas fa-satellite-dish"></i> En ligne — GPS transmis toutes les 3 secondes</div>
+</div>
+<div class="stats-grid">
+  <div class="stat-card"><div class="stat-icon navy"><i class="fas fa-route"></i></div><div><div class="stat-value" id="d-total">0</div><div class="stat-label">Courses totales</div></div></div>
+  <div class="stat-card"><div class="stat-icon gold"><i class="fas fa-euro-sign"></i></div><div><div class="stat-value" id="d-today">0€</div><div class="stat-label">Gains aujourd'hui</div></div></div>
+  <div class="stat-card"><div class="stat-icon green"><i class="fas fa-star"></i></div><div><div class="stat-value" id="d-note">—</div><div class="stat-label">Ma note</div></div></div>
+  <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-road"></i></div><div><div class="stat-value" id="d-km">0 km</div><div class="stat-label">KM du mois</div></div></div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:22px">
+  <div>
+    <div class="card-title" style="margin-bottom:12px"><i class="fas fa-bell" style="color:var(--primary);margin-right:8px"></i>Invitation en cours</div>
+    <div id="invite-area">
+      <div class="card" style="text-align:center;padding:28px"><i class="fas fa-bell-slash" style="font-size:2.2rem;color:var(--gray-light);display:block;margin-bottom:10px"></i><p style="color:var(--gray);font-size:.85rem">Aucune invitation.<br>Activez votre disponibilité.</p></div>
+    </div>
+  </div>
+  <div>
+    <div class="card-title" style="margin-bottom:12px"><i class="fas fa-map" style="color:var(--primary);margin-right:8px"></i>Ma position GPS</div>
+    <div class="card" style="padding:0;overflow:hidden"><div id="driver-map" style="height:240px"></div></div>
+  </div>
+</div>
+<div class="modal-overlay" id="invite-modal">
+  <div class="modal"><div class="modal-header"><div class="modal-title"><i class="fas fa-bell" style="color:var(--gold-dark);margin-right:8px"></i>Nouvelle course !</div></div>
+  <div class="modal-body">
+    <div style="background:linear-gradient(135deg,var(--primary),var(--primary-light));border-radius:var(--radius-lg);padding:18px;color:#fff">
+      <div style="display:flex;justify-content:space-between;margin-bottom:10px"><span style="background:var(--gold);color:var(--primary);padding:3px 12px;border-radius:9999px;font-size:.75rem;font-weight:800">NOUVEAU</span><span style="color:var(--gold);font-size:1.4rem;font-weight:800" id="m-countdown">30s</span></div>
+      <div style="font-size:.87rem;margin-bottom:10px"><div style="margin-bottom:6px"><i class="fas fa-circle" style="color:#2ecc71;font-size:.6rem;margin-right:8px"></i><span id="m-dep">—</span></div><div><i class="fas fa-map-marker-alt" style="color:var(--gold);margin-right:8px"></i><span id="m-arr">—</span></div></div>
+      <div style="display:flex;gap:16px"><div><div style="font-size:1.2rem;font-weight:800;color:var(--gold)" id="m-prix">—</div><div style="font-size:.7rem;opacity:.75">Prix net</div></div><div><div style="font-size:1.2rem;font-weight:800" id="m-dist">—</div><div style="font-size:.7rem;opacity:.75">Distance</div></div><div><div style="font-size:1.2rem;font-weight:800" id="m-dur">—</div><div style="font-size:.7rem;opacity:.75">Durée</div></div></div>
+      <div class="timer-bar"><div class="timer-bar-fill" id="timer-fill" style="width:100%"></div></div>
+    </div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-danger" onclick="declineRide()"><i class="fas fa-times"></i>Refuser</button><button class="btn btn-success" onclick="acceptRide()"><i class="fas fa-check"></i>Accepter</button></div>
+  </div>
+</div>
+</main>
+</div>
+<div id="toast-container"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script type="module">
+import {supabase,getCurrentUser,requireAuth,logout,formatPrice,formatDate,formatDateTime,formatInitials,showToast,hideLoader,getWallet,creditWallet,debitWallet,searchAddress,calculateRidePrice} from '../assets/js/supabase.js'
+async function _init(){
+  const user=await requireAuth()
+  if(!user)return
+  document.getElementById('nav-av').textContent=formatInitials(user.prenom,user.nom)
+  document.getElementById('nav-nm').textContent=user.prenom+' '+user.nom
+  document.getElementById('nav-rl').textContent=user.role
+  document.getElementById('sb-av').textContent=formatInitials(user.prenom,user.nom)
+  document.getElementById('sb-nm').textContent=user.prenom+' '+user.nom
+  document.getElementById('sb-rl').textContent=user.role
+  document.getElementById('logout-btn').onclick=()=>logout()
+  document.getElementById('logout-link').onclick=(e)=>{e.preventDefault();logout()}
+  hideLoader()
+  if(typeof pageInit==='function') await pageInit(user)
+}
+
+let map,myMarker,isOnline=false,geoWatcher=null,currentInvite=null,countdownInterval=null
+async function pageInit(user){
+  const {data:rides}=await supabase.from('rides').select('prix,distance_km,created_at,note_client').eq('chauffeur_id',user.id).eq('statut','termine')
+  const total=rides?.length||0,today=new Date().toISOString().slice(0,10)
+  const todayGain=rides?.filter(r=>r.created_at?.startsWith(today)).reduce((s,r)=>s+(r.prix||0),0)||0
+  const km=rides?.reduce((s,r)=>s+(r.distance_km||0),0)||0
+  const notes=rides?.filter(r=>r.note_client).map(r=>r.note_client)||[]
+  document.getElementById('d-total').textContent=total
+  document.getElementById('d-today').textContent=formatPrice(todayGain)
+  document.getElementById('d-note').textContent=notes.length?(notes.reduce((a,b)=>a+b,0)/notes.length).toFixed(1)+' ★':'—'
+  document.getElementById('d-km').textContent=km.toFixed(1)+' km'
+  document.getElementById('sb-st').innerHTML=`<div class="sidebar-stat"><div class="val">${total}</div><div class="lbl">Courses</div></div><div class="sidebar-stat"><div class="val">${formatPrice(todayGain)}</div><div class="lbl">Aujourd'hui</div></div>`
+  map=L.map('driver-map').setView([48.656,2.572],13)
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(map)
+  listenInvites(user.id)
+}
+function listenInvites(userId){
+  supabase.channel('invites-'+userId)
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'driver_invitations',filter:'chauffeur_id=eq.'+userId},async(p)=>{
+      if(p.new.statut!=='pending')return
+      const {data:ride}=await supabase.from('rides').select('*').eq('id',p.new.ride_id).single()
+      if(!ride)return
+      currentInvite={...ride,inviteId:p.new.id}
+      document.getElementById('m-dep').textContent=ride.depart
+      document.getElementById('m-arr').textContent=ride.arrivee
+      document.getElementById('m-prix').textContent=formatPrice(ride.prix||0)
+      document.getElementById('m-dist').textContent=(ride.distance_km||0)+' km'
+      document.getElementById('m-dur').textContent=(ride.duree_min||0)+' min'
+      document.getElementById('invite-modal').classList.add('open')
+      let cnt=30
+      clearInterval(countdownInterval)
+      countdownInterval=setInterval(()=>{cnt--;document.getElementById('m-countdown').textContent=cnt+'s';document.getElementById('timer-fill').style.width=(cnt/30*100)+'%';if(cnt<=0){clearInterval(countdownInterval);declineRide()}},1000)
+    }).subscribe()
+}
+async function acceptRide(){
+  clearInterval(countdownInterval);document.getElementById('invite-modal').classList.remove('open')
+  if(!currentInvite)return
+  const user=await getCurrentUser()
+  await supabase.from('rides').update({statut:'accepte',chauffeur_id:user.id}).eq('id',currentInvite.id)
+  await supabase.from('driver_invitations').update({statut:'accepted',responded_at:new Date().toISOString()}).eq('id',currentInvite.inviteId)
+  showToast('Course acceptée ! En route 🚗','success')
+  document.getElementById('invite-area').innerHTML=`<div style="background:linear-gradient(135deg,var(--green),#1e8449);border-radius:var(--radius-xl);padding:18px;color:#fff"><div style="font-size:.8rem;opacity:.8">Course acceptée</div><div style="font-weight:700;margin:4px 0">${currentInvite.depart}</div><div style="font-size:.82rem;opacity:.8">→ ${currentInvite.arrivee}</div><div style="font-size:1.3rem;font-weight:800;color:var(--gold);margin-top:10px">${formatPrice(currentInvite.prix||0)}</div><button class="btn btn-gold" style="margin-top:12px;width:100%" onclick="finishRide()"><i class="fas fa-flag-checkered"></i>Terminer la course</button></div>`
+}
+async function finishRide(){
+  if(!currentInvite)return
+  const user=await getCurrentUser()
+  await supabase.from('rides').update({statut:'termine',updated_at:new Date().toISOString()}).eq('id',currentInvite.id)
+  await supabase.from('accounting_entries').insert({date:new Date().toISOString().slice(0,10),type:'recette',categorie:'VTC',montant:currentInvite.prix||0,description:'Course VTC terminée',ride_id:currentInvite.id})
+  await creditWallet(user.id,currentInvite.prix||0,'Revenu course VTC',currentInvite.id)
+  showToast('✅ Course terminée ! Paiement reçu.','success')
+  setTimeout(()=>window.location.reload(),2000)
+}
+async function declineRide(){
+  clearInterval(countdownInterval);document.getElementById('invite-modal').classList.remove('open')
+  if(currentInvite?.inviteId)await supabase.from('driver_invitations').update({statut:'declined',responded_at:new Date().toISOString()}).eq('id',currentInvite.inviteId)
+}
+function toggleAvail(){
+  isOnline=document.getElementById('avail-toggle').checked
+  const dot=document.getElementById('status-dot'),lbl=document.getElementById('status-label'),info=document.getElementById('online-info'),card=document.getElementById('status-card')
+  if(isOnline){dot.className='status-dot status-online';lbl.textContent='En ligne';info.style.display='block';card.style.borderColor='var(--green)';document.getElementById('toggle-lbl').textContent='Je suis disponible';startGPS();showToast('Vous êtes en ligne !','success')}
+  else{dot.className='status-dot status-offline';lbl.textContent='Hors ligne';info.style.display='none';card.style.borderColor='var(--gray-light)';document.getElementById('toggle-lbl').textContent='Me rendre disponible';stopGPS()}
+}
+async function startGPS(){
+  const user=await getCurrentUser()
+  if(!navigator.geolocation){showToast('GPS non disponible','error');return}
+  geoWatcher=navigator.geolocation.watchPosition(async pos=>{
+    const lat=pos.coords.latitude,lng=pos.coords.longitude
+    await supabase.from('driver_locations').upsert({chauffeur_id:user.id,latitude:lat,longitude:lng,is_online:true,updated_at:new Date().toISOString()})
+    if(!myMarker){const ic=L.divIcon({html:'<div style="width:38px;height:38px;background:#0A1A38;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#C8A84B;border:3px solid #fff;box-shadow:0 2px 10px rgba(10,26,56,.5)"><i class="fas fa-car" style="font-size:12px"></i></div>',iconSize:[38,38],iconAnchor:[19,19],className:''});myMarker=L.marker([lat,lng],{icon:ic}).addTo(map).bindPopup('Ma position');map.setView([lat,lng],14)}else myMarker.setLatLng([lat,lng])
+  },{enableHighAccuracy:true,maximumAge:3000,timeout:10000})
+}
+async function stopGPS(){
+  if(geoWatcher)navigator.geolocation.clearWatch(geoWatcher)
+  const user=await getCurrentUser()
+  await supabase.from('driver_locations').update({is_online:false}).eq('chauffeur_id',user.id)
+}
+window.toggleAvail=toggleAvail;window.acceptRide=acceptRide;window.declineRide=declineRide;window.finishRide=finishRide
+
+_init()
+</script></body></html>

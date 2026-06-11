@@ -1,0 +1,101 @@
+<!DOCTYPE html><html lang="fr"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Historique des courses | LOC'RÉATION SAS</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="../assets/css/main.css">
+</head><body>
+<div id="global-loader" class="global-loader"><div class="spinner"></div><div class="loader-text">Chargement…</div></div>
+<nav class="navbar">
+  <div style="display:flex;align-items:center;gap:14px">
+    <a href="../index.html" class="nav-logo"><div class="nav-logo-icon"><i class="fas fa-bolt"></i></div>Loc'<span>Réation</span></a>
+    <span class="nav-title">Historique des courses</span>
+  </div>
+  <div class="nav-right">
+    <div class="nav-user"><div class="nav-avatar" id="nav-av">?</div><div><div class="nav-name" id="nav-nm">…</div><div class="nav-role" id="nav-rl">…</div></div></div>
+    <button class="nav-icon-btn" id="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
+  </div>
+</nav>
+<div class="dashboard-wrap">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-profile">
+      <div class="sidebar-avatar" id="sb-av">?</div>
+      <div class="sidebar-name" id="sb-nm">…</div>
+      <div class="sidebar-role" id="sb-rl">…</div>
+      <div class="sidebar-stats" id="sb-st"></div>
+    </div>
+    <div class="sidebar-section"><div class="sidebar-label">Navigation</div>
+      <ul class="sidebar-menu"><li><a href="../client/dashboard.html" class=""><i class="fas fa-home"></i>Réserver</a></li>
+<li><a href="../client/tracking.html" class=""><i class="fas fa-map-marker-alt"></i>Suivi GPS</a></li>
+<li><a href="../client/wallet.html" class=""><i class="fas fa-wallet"></i>Portefeuille</a></li>
+<li><a href="../client/history.html" class="active"><i class="fas fa-history"></i>Historique</a></li>
+<li><a href="../client/profile.html" class=""><i class="fas fa-user-cog"></i>Profil</a></li>
+<li><a href="../client/favorites.html" class=""><i class="fas fa-heart"></i>Favoris</a></li>
+<li><a href="../client/preferences.html" class=""><i class="fas fa-sliders-h"></i>Préférences</a></li></ul></div>
+    <div class="sidebar-section"><ul class="sidebar-menu">
+      <li><a href="../index.html"><i class="fas fa-home"></i>Accueil</a></li>
+      <li><a href="#" id="logout-link"><i class="fas fa-sign-out-alt"></i>Déconnexion</a></li>
+    </ul></div>
+  </aside>
+  <main class="main-content">
+<div class="stats-grid">
+  <div class="stat-card"><div class="stat-icon navy"><i class="fas fa-route"></i></div><div><div class="stat-value" id="h-total">0</div><div class="stat-label">Courses totales</div></div></div>
+  <div class="stat-card"><div class="stat-icon gold"><i class="fas fa-euro-sign"></i></div><div><div class="stat-value" id="h-dep">0€</div><div class="stat-label">Total dépensé</div></div></div>
+  <div class="stat-card"><div class="stat-icon green"><i class="fas fa-road"></i></div><div><div class="stat-value" id="h-km">0 km</div><div class="stat-label">Distance totale</div></div></div>
+  <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-star"></i></div><div><div class="stat-value" id="h-note">—</div><div class="stat-label">Note moyenne</div></div></div>
+</div>
+<div class="card">
+  <div class="card-header"><div class="card-title">Toutes mes courses</div>
+    <div class="tabs" style="margin:0"><button class="tab-btn active" onclick="filterR('tous',this)">Toutes</button><button class="tab-btn" onclick="filterR('termine',this)">Terminées</button><button class="tab-btn" onclick="filterR('annule',this)">Annulées</button></div></div>
+  <div class="table-wrap"><table><thead><tr><th>Date</th><th>Trajet</th><th>Distance</th><th>Prix</th><th>Note</th><th>Statut</th></tr></thead><tbody id="rides-table"></tbody></table></div>
+  <div class="empty-state" id="rides-empty" style="display:none"><i class="fas fa-route"></i><h3>Aucune course</h3></div>
+</div>
+</main>
+</div>
+<div id="toast-container"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script type="module">
+import {supabase,getCurrentUser,requireAuth,logout,formatPrice,formatDate,formatDateTime,formatInitials,showToast,hideLoader,getWallet,debitWallet,creditWallet,searchAddress,calculateRidePrice} from '../assets/js/supabase.js'
+async function _init(){
+  const user=await requireAuth()
+  if(!user)return
+  document.getElementById('nav-av').textContent=formatInitials(user.prenom,user.nom)
+  document.getElementById('nav-nm').textContent=user.prenom+' '+user.nom
+  document.getElementById('nav-rl').textContent=user.role
+  document.getElementById('sb-av').textContent=formatInitials(user.prenom,user.nom)
+  document.getElementById('sb-nm').textContent=user.prenom+' '+user.nom
+  document.getElementById('sb-rl').textContent=user.role
+  document.getElementById('logout-btn').onclick=()=>logout()
+  document.getElementById('logout-link').onclick=(e)=>{e.preventDefault();logout()}
+  hideLoader()
+  if(typeof pageInit==='function') await pageInit(user)
+}
+
+let allRides=[]
+const statC={termine:'badge-success',annule:'badge-danger',en_attente:'badge-warning',accepte:'badge-primary',en_cours:'badge-primary'}
+const statL={termine:'Terminée',annule:'Annulée',en_attente:'En attente',accepte:'Acceptée',en_cours:'En cours'}
+async function pageInit(user){
+  const {data}=await supabase.from('rides').select('*').eq('client_id',user.id).order('created_at',{ascending:false})
+  allRides=data||[]
+  const done=allRides.filter(r=>r.statut==='termine')
+  const dep=done.reduce((s,r)=>s+(r.prix||0),0),km=done.reduce((s,r)=>s+(r.distance_km||0),0)
+  const notes=done.filter(r=>r.note_chauffeur).map(r=>r.note_chauffeur)
+  document.getElementById('h-total').textContent=allRides.length
+  document.getElementById('h-dep').textContent=formatPrice(dep)
+  document.getElementById('h-km').textContent=km.toFixed(1)+' km'
+  document.getElementById('h-note').textContent=notes.length?(notes.reduce((a,b)=>a+b,0)/notes.length).toFixed(1)+' ★':'—'
+  renderRides(allRides)
+}
+function renderRides(rides){
+  const tb=document.getElementById('rides-table'),em=document.getElementById('rides-empty')
+  if(!rides.length){tb.innerHTML='';em.style.display='block';return}
+  em.style.display='none'
+  tb.innerHTML=rides.map(r=>`<tr><td>${formatDate(r.created_at)}</td><td><div style="font-weight:600;font-size:.85rem">${r.depart||'—'}</div><div class="td-sub">→ ${r.arrivee||'—'}</div></td><td>${r.distance_km?r.distance_km+' km':'—'}</td><td style="font-weight:700;color:var(--primary)">${r.prix?formatPrice(r.prix):'—'}</td><td>${r.note_chauffeur?'★'.repeat(r.note_chauffeur):'—'}</td><td><span class="badge ${statC[r.statut]||'badge-gray'}">${statL[r.statut]||r.statut}</span></td></tr>`).join('')
+}
+function filterR(f,el){document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderRides(f==='tous'?allRides:allRides.filter(r=>r.statut===f))}
+window.filterR=filterR
+
+_init()
+</script></body></html>

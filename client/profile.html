@@ -1,0 +1,118 @@
+<!DOCTYPE html><html lang="fr"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Mon Profil | LOC'RÉATION SAS</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="../assets/css/main.css">
+</head><body>
+<div id="global-loader" class="global-loader"><div class="spinner"></div><div class="loader-text">Chargement…</div></div>
+<nav class="navbar">
+  <div style="display:flex;align-items:center;gap:14px">
+    <a href="../index.html" class="nav-logo"><div class="nav-logo-icon"><i class="fas fa-bolt"></i></div>Loc'<span>Réation</span></a>
+    <span class="nav-title">Mon Profil</span>
+  </div>
+  <div class="nav-right">
+    <div class="nav-user"><div class="nav-avatar" id="nav-av">?</div><div><div class="nav-name" id="nav-nm">…</div><div class="nav-role" id="nav-rl">…</div></div></div>
+    <button class="nav-icon-btn" id="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
+  </div>
+</nav>
+<div class="dashboard-wrap">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-profile">
+      <div class="sidebar-avatar" id="sb-av">?</div>
+      <div class="sidebar-name" id="sb-nm">…</div>
+      <div class="sidebar-role" id="sb-rl">…</div>
+      <div class="sidebar-stats" id="sb-st"></div>
+    </div>
+    <div class="sidebar-section"><div class="sidebar-label">Navigation</div>
+      <ul class="sidebar-menu"><li><a href="../client/dashboard.html" class=""><i class="fas fa-home"></i>Réserver</a></li>
+<li><a href="../client/tracking.html" class=""><i class="fas fa-map-marker-alt"></i>Suivi GPS</a></li>
+<li><a href="../client/wallet.html" class=""><i class="fas fa-wallet"></i>Portefeuille</a></li>
+<li><a href="../client/history.html" class=""><i class="fas fa-history"></i>Historique</a></li>
+<li><a href="../client/profile.html" class="active"><i class="fas fa-user-cog"></i>Profil</a></li>
+<li><a href="../client/favorites.html" class=""><i class="fas fa-heart"></i>Favoris</a></li>
+<li><a href="../client/preferences.html" class=""><i class="fas fa-sliders-h"></i>Préférences</a></li></ul></div>
+    <div class="sidebar-section"><ul class="sidebar-menu">
+      <li><a href="../index.html"><i class="fas fa-home"></i>Accueil</a></li>
+      <li><a href="#" id="logout-link"><i class="fas fa-sign-out-alt"></i>Déconnexion</a></li>
+    </ul></div>
+  </aside>
+  <main class="main-content">
+<div style="background:linear-gradient(135deg,var(--primary),var(--primary-light));border-radius:var(--radius-xl);padding:28px;margin-bottom:24px;display:flex;align-items:center;gap:24px;color:#fff">
+  <div style="width:80px;height:80px;border-radius:50%;background:rgba(200,168,75,.2);border:4px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:800;color:var(--gold)" id="p-av">?</div>
+  <div style="flex:1"><div style="font-size:1.4rem;font-weight:800" id="p-name">…</div><div style="font-size:.85rem;opacity:.75" id="p-email">…</div></div>
+  <button class="btn btn-gold btn-sm" onclick="toggleEdit()"><i class="fas fa-edit"></i>Modifier</button>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+  <div class="card">
+    <div class="card-title" style="margin-bottom:16px">Informations personnelles</div>
+    <div id="view-mode">
+      <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--gray-xlight);font-size:.87rem"><span style="color:var(--gray)">Prénom</span><span style="font-weight:600" id="v-prenom">—</span></div>
+      <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--gray-xlight);font-size:.87rem"><span style="color:var(--gray)">Nom</span><span style="font-weight:600" id="v-nom">—</span></div>
+      <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--gray-xlight);font-size:.87rem"><span style="color:var(--gray)">Email</span><span style="font-weight:600" id="v-email">—</span></div>
+      <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--gray-xlight);font-size:.87rem"><span style="color:var(--gray)">Téléphone</span><span style="font-weight:600" id="v-tel">—</span></div>
+      <div style="display:flex;justify-content:space-between;padding:11px 0;font-size:.87rem"><span style="color:var(--gray)">Ville</span><span style="font-weight:600" id="v-ville">—</span></div>
+    </div>
+    <div id="edit-mode" style="display:none">
+      <div class="form-row"><div class="form-group"><label class="form-label">Prénom</label><div class="form-icon-wrap"><i class="fas fa-user"></i><input type="text" id="e-prenom" class="form-control"></div></div>
+      <div class="form-group"><label class="form-label">Nom</label><div class="form-icon-wrap"><i class="fas fa-user"></i><input type="text" id="e-nom" class="form-control"></div></div></div>
+      <div class="form-group"><label class="form-label">Téléphone</label><div class="form-icon-wrap"><i class="fas fa-phone"></i><input type="tel" id="e-tel" class="form-control"></div></div>
+      <div class="form-group"><label class="form-label">Ville</label><div class="form-icon-wrap"><i class="fas fa-city"></i><input type="text" id="e-ville" class="form-control"></div></div>
+      <div style="display:flex;gap:10px"><button class="btn btn-primary" onclick="saveProfile()"><i class="fas fa-save"></i>Sauvegarder</button><button class="btn btn-outline-gray" onclick="toggleEdit()">Annuler</button></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title" style="margin-bottom:16px">Mes statistiques</div>
+    <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--gray-xlight);font-size:.87rem"><span style="color:var(--gray)">Courses totales</span><span style="font-weight:600" id="ps-courses">0</span></div>
+    <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--gray-xlight);font-size:.87rem"><span style="color:var(--gray)">KM parcourus</span><span style="font-weight:600" id="ps-km">0 km</span></div>
+    <div style="display:flex;justify-content:space-between;padding:11px 0;font-size:.87rem"><span style="color:var(--gray)">Total dépensé</span><span style="font-weight:600" id="ps-dep">0 €</span></div>
+  </div>
+</div>
+</main>
+</div>
+<div id="toast-container"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script type="module">
+import {supabase,getCurrentUser,requireAuth,logout,formatPrice,formatDate,formatDateTime,formatInitials,showToast,hideLoader,getWallet,debitWallet,creditWallet,searchAddress,calculateRidePrice} from '../assets/js/supabase.js'
+async function _init(){
+  const user=await requireAuth()
+  if(!user)return
+  document.getElementById('nav-av').textContent=formatInitials(user.prenom,user.nom)
+  document.getElementById('nav-nm').textContent=user.prenom+' '+user.nom
+  document.getElementById('nav-rl').textContent=user.role
+  document.getElementById('sb-av').textContent=formatInitials(user.prenom,user.nom)
+  document.getElementById('sb-nm').textContent=user.prenom+' '+user.nom
+  document.getElementById('sb-rl').textContent=user.role
+  document.getElementById('logout-btn').onclick=()=>logout()
+  document.getElementById('logout-link').onclick=(e)=>{e.preventDefault();logout()}
+  hideLoader()
+  if(typeof pageInit==='function') await pageInit(user)
+}
+
+let currentUser=null
+async function pageInit(user){
+  currentUser=user
+  document.getElementById('p-av').textContent=formatInitials(user.prenom,user.nom)
+  document.getElementById('p-name').textContent=user.prenom+' '+user.nom
+  document.getElementById('p-email').textContent=user.email||''
+  ;['prenom','nom','email','tel','ville'].forEach(k=>document.getElementById('v-'+k).textContent=user[k]||'—')
+  ;['prenom','nom','tel','ville'].forEach(k=>{const el=document.getElementById('e-'+k);if(el)el.value=user[k]||''})
+  const {data:rides}=await supabase.from('rides').select('prix,distance_km').eq('client_id',user.id).eq('statut','termine')
+  document.getElementById('ps-courses').textContent=rides?.length||0
+  document.getElementById('ps-km').textContent=(rides?.reduce((s,r)=>s+(r.distance_km||0),0)||0).toFixed(1)+' km'
+  document.getElementById('ps-dep').textContent=formatPrice(rides?.reduce((s,r)=>s+(r.prix||0),0)||0)
+}
+let editing=false
+function toggleEdit(){editing=!editing;document.getElementById('view-mode').style.display=editing?'none':'block';document.getElementById('edit-mode').style.display=editing?'block':'none'}
+async function saveProfile(){
+  const prenom=document.getElementById('e-prenom').value.trim(),nom=document.getElementById('e-nom').value.trim()
+  if(!prenom||!nom){showToast('Champs obligatoires.','warning');return}
+  await supabase.from('profiles').update({prenom,nom,tel:document.getElementById('e-tel').value,ville:document.getElementById('e-ville').value}).eq('id',currentUser.id)
+  showToast('Profil mis à jour !','success');document.getElementById('p-name').textContent=prenom+' '+nom;toggleEdit()
+}
+window.toggleEdit=toggleEdit;window.saveProfile=saveProfile
+
+_init()
+</script></body></html>

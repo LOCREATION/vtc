@@ -1,0 +1,171 @@
+<!DOCTYPE html><html lang="fr"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Suivi GPS en direct | LOC'RÉATION SAS</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="../assets/css/main.css">
+</head><body>
+<div id="global-loader" class="global-loader"><div class="spinner"></div><div class="loader-text">Chargement…</div></div>
+<nav class="navbar">
+  <div style="display:flex;align-items:center;gap:14px">
+    <a href="../index.html" class="nav-logo"><div class="nav-logo-icon"><i class="fas fa-bolt"></i></div>Loc'<span>Réation</span></a>
+    <span class="nav-title">Suivi GPS en direct</span>
+  </div>
+  <div class="nav-right">
+    <div class="nav-user"><div class="nav-avatar" id="nav-av">?</div><div><div class="nav-name" id="nav-nm">…</div><div class="nav-role" id="nav-rl">…</div></div></div>
+    <button class="nav-icon-btn" id="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
+  </div>
+</nav>
+<div class="dashboard-wrap">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-profile">
+      <div class="sidebar-avatar" id="sb-av">?</div>
+      <div class="sidebar-name" id="sb-nm">…</div>
+      <div class="sidebar-role" id="sb-rl">…</div>
+      <div class="sidebar-stats" id="sb-st"></div>
+    </div>
+    <div class="sidebar-section"><div class="sidebar-label">Navigation</div>
+      <ul class="sidebar-menu"><li><a href="../client/dashboard.html" class=""><i class="fas fa-home"></i>Réserver</a></li>
+<li><a href="../client/tracking.html" class="active"><i class="fas fa-map-marker-alt"></i>Suivi GPS</a></li>
+<li><a href="../client/wallet.html" class=""><i class="fas fa-wallet"></i>Portefeuille</a></li>
+<li><a href="../client/history.html" class=""><i class="fas fa-history"></i>Historique</a></li>
+<li><a href="../client/profile.html" class=""><i class="fas fa-user-cog"></i>Profil</a></li>
+<li><a href="../client/favorites.html" class=""><i class="fas fa-heart"></i>Favoris</a></li>
+<li><a href="../client/preferences.html" class=""><i class="fas fa-sliders-h"></i>Préférences</a></li></ul></div>
+    <div class="sidebar-section"><ul class="sidebar-menu">
+      <li><a href="../index.html"><i class="fas fa-home"></i>Accueil</a></li>
+      <li><a href="#" id="logout-link"><i class="fas fa-sign-out-alt"></i>Déconnexion</a></li>
+    </ul></div>
+  </aside>
+  <main class="main-content">
+<div style="display:grid;grid-template-columns:360px 1fr;height:calc(100vh - 66px);gap:0;margin:-28px -32px -60px">
+  <div style="padding:20px;overflow-y:auto;border-right:1px solid var(--gray-light)">
+    <div style="background:linear-gradient(135deg,var(--primary),var(--primary-light));border-radius:var(--radius-xl);padding:20px;margin-bottom:16px;color:#fff">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <div style="width:56px;height:56px;border-radius:50%;background:rgba(200,168,75,.2);border:3px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:800;color:var(--gold)" id="drv-av">?</div>
+        <div><div style="font-size:.95rem;font-weight:800" id="drv-name">Recherche chauffeur…</div>
+        <div style="font-size:.75rem;opacity:.75" id="drv-car">—</div></div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <div style="flex:1;background:rgba(255,255,255,.1);border-radius:var(--radius);padding:10px;text-align:center">
+          <div style="font-size:2rem;font-weight:900;color:var(--gold)" id="eta-min">…</div>
+          <div style="font-size:.7rem;opacity:.7">minutes</div>
+        </div>
+        <div style="flex:1;background:rgba(255,255,255,.1);border-radius:var(--radius);padding:10px;text-align:center">
+          <div style="font-size:.95rem;font-weight:800" id="ride-statut">En attente</div>
+          <div style="font-size:.7rem;opacity:.7">Statut</div>
+        </div>
+      </div>
+    </div>
+    <div style="background:var(--gray-xlight);border-radius:var(--radius-lg);padding:14px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="width:10px;height:10px;border-radius:50%;background:var(--green);flex-shrink:0"></div>
+        <div style="font-size:.85rem;font-weight:600" id="t-depart">Chargement…</div>
+      </div>
+      <div style="width:2px;height:14px;background:var(--gray-light);margin-left:4px;margin-bottom:8px"></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:10px;height:10px;border-radius:50%;background:var(--red);flex-shrink:0"></div>
+        <div style="font-size:.85rem;font-weight:600" id="t-arrivee">Chargement…</div>
+      </div>
+    </div>
+    <div id="step-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:12px;padding:10px;border-radius:var(--radius);background:var(--green-light)"><div style="width:32px;height:32px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center"><i class="fas fa-check"></i></div><div style="font-size:.85rem;font-weight:600">Course commandée</div></div>
+      <div id="s2" style="display:flex;align-items:center;gap:12px;padding:10px;border-radius:var(--radius);opacity:.5"><div style="width:32px;height:32px;border-radius:50%;background:var(--gray-light);color:var(--gray);display:flex;align-items:center;justify-content:center"><i class="fas fa-user-check"></i></div><div style="font-size:.85rem;font-weight:600">Chauffeur assigné</div></div>
+      <div id="s3" style="display:flex;align-items:center;gap:12px;padding:10px;border-radius:var(--radius);opacity:.5"><div style="width:32px;height:32px;border-radius:50%;background:var(--gray-light);color:var(--gray);display:flex;align-items:center;justify-content:center"><i class="fas fa-car"></i></div><div style="font-size:.85rem;font-weight:600">En route</div></div>
+      <div id="s4" style="display:flex;align-items:center;gap:12px;padding:10px;border-radius:var(--radius);opacity:.5"><div style="width:32px;height:32px;border-radius:50%;background:var(--gray-light);color:var(--gray);display:flex;align-items:center;justify-content:center"><i class="fas fa-flag-checkered"></i></div><div style="font-size:.85rem;font-weight:600">Terminée</div></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-danger btn-full" id="btn-cancel" onclick="cancelRide()"><i class="fas fa-times"></i>Annuler</button>
+      <button class="btn btn-outline btn-full" id="btn-bon" style="display:none" onclick="printBon()"><i class="fas fa-print"></i>Bon</button>
+    </div>
+  </div>
+  <div id="tracking-map" style="height:calc(100vh - 66px)"></div>
+</div>
+<div class="modal-overlay" id="rating-modal">
+  <div class="modal"><div class="modal-header"><div class="modal-title">🎉 Course terminée !</div></div>
+  <div class="modal-body" style="text-align:center">
+    <p style="color:var(--gray);margin-bottom:16px">Notez votre chauffeur</p>
+    <div style="display:flex;justify-content:center;gap:10px;font-size:2.5rem" id="stars-row">
+      <span style="cursor:pointer" onclick="setNote(1)">☆</span><span style="cursor:pointer" onclick="setNote(2)">☆</span>
+      <span style="cursor:pointer" onclick="setNote(3)">☆</span><span style="cursor:pointer" onclick="setNote(4)">☆</span>
+      <span style="cursor:pointer" onclick="setNote(5)">☆</span>
+    </div>
+    <div style="background:var(--primary-xlight);border-radius:var(--radius);padding:14px;margin-top:14px">
+      <div style="font-size:.8rem;color:var(--gray)">Montant</div>
+      <div style="font-size:1.5rem;font-weight:800;color:var(--primary)" id="r-prix">—</div>
+    </div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-primary btn-full" onclick="submitRating()"><i class="fas fa-paper-plane"></i>Envoyer</button></div>
+  </div>
+</div>
+</main>
+</div>
+<div id="toast-container"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script type="module">
+import {supabase,getCurrentUser,requireAuth,logout,formatPrice,formatDate,formatDateTime,formatInitials,showToast,hideLoader,getWallet,debitWallet,creditWallet,searchAddress,calculateRidePrice} from '../assets/js/supabase.js'
+async function _init(){
+  const user=await requireAuth()
+  if(!user)return
+  document.getElementById('nav-av').textContent=formatInitials(user.prenom,user.nom)
+  document.getElementById('nav-nm').textContent=user.prenom+' '+user.nom
+  document.getElementById('nav-rl').textContent=user.role
+  document.getElementById('sb-av').textContent=formatInitials(user.prenom,user.nom)
+  document.getElementById('sb-nm').textContent=user.prenom+' '+user.nom
+  document.getElementById('sb-rl').textContent=user.role
+  document.getElementById('logout-btn').onclick=()=>logout()
+  document.getElementById('logout-link').onclick=(e)=>{e.preventDefault();logout()}
+  hideLoader()
+  if(typeof pageInit==='function') await pageInit(user)
+}
+
+let map,carMarker,userMarker,rideId,chauffeurId,selNote=5
+async function pageInit(user){
+  const params=new URLSearchParams(location.search)
+  rideId=params.get('ride')
+  if(!rideId){window.location.href='dashboard.html';return}
+  const {data:ride}=await supabase.from('rides').select('*').eq('id',rideId).single()
+  if(!ride){window.location.href='dashboard.html';return}
+  document.getElementById('t-depart').textContent=ride.depart
+  document.getElementById('t-arrivee').textContent=ride.arrivee
+  document.getElementById('r-prix').textContent=formatPrice(ride.prix||0)
+  map=L.map('tracking-map').setView([ride.depart_lat||48.856,ride.depart_lng||2.352],14)
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(map)
+  userMarker=L.marker([ride.depart_lat||48.856,ride.depart_lng||2.352]).addTo(map).bindPopup('Vous')
+  L.marker([ride.arrivee_lat||48.84,ride.arrivee_lng||2.38]).addTo(map).bindPopup('Destination')
+  updateStatut(ride.statut)
+  if(ride.chauffeur_id){chauffeurId=ride.chauffeur_id;loadDriver(chauffeurId)}
+  supabase.channel('ride-'+rideId)
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'rides',filter:'id=eq.'+rideId},(p)=>{updateStatut(p.new.statut);if(p.new.chauffeur_id&&!chauffeurId){chauffeurId=p.new.chauffeur_id;loadDriver(chauffeurId)}})
+    .subscribe()
+}
+function updateStatut(s){
+  document.getElementById('ride-statut').textContent={en_attente:'En attente',accepte:'Accepté ✓',en_cours:'En cours 🚗',termine:'Terminé ✓',annule:'Annulé'}[s]||s
+  if(s==='accepte'||s==='en_cours'){document.getElementById('s2').style.opacity='1';document.getElementById('s2').style.background='var(--primary-xlight)';document.getElementById('btn-bon').style.display='flex'}
+  if(s==='en_cours'){document.getElementById('s3').style.opacity='1';document.getElementById('s3').style.background='var(--primary-xlight)'}
+  if(s==='termine'){document.getElementById('s4').style.opacity='1';document.getElementById('s4').style.background='var(--green-light)';document.getElementById('btn-cancel').style.display='none';setTimeout(()=>document.getElementById('rating-modal').classList.add('open'),1000)}
+  if(s==='annule'){showToast('Course annulée.','warning');setTimeout(()=>window.location.href='dashboard.html',2000)}
+}
+async function loadDriver(dId){
+  const {data:drv}=await supabase.from('profiles').select('*').eq('id',dId).single()
+  if(drv){document.getElementById('drv-av').textContent=formatInitials(drv.prenom,drv.nom);document.getElementById('drv-name').textContent=drv.prenom+' '+drv.nom;document.getElementById('drv-car').textContent='Chauffeur VTC'}
+  const {data:loc}=await supabase.from('driver_locations').select('*').eq('chauffeur_id',dId).single()
+  if(loc){const ic=L.divIcon({html:'<div style="width:38px;height:38px;background:#0A1A38;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#C8A84B;border:3px solid #fff;box-shadow:0 2px 10px rgba(10,26,56,.5)"><i class="fas fa-car" style="font-size:12px"></i></div>',iconSize:[38,38],iconAnchor:[19,19],className:''});carMarker=L.marker([loc.latitude,loc.longitude],{icon:ic}).addTo(map).bindPopup('Votre chauffeur')}
+  supabase.channel('gps-'+dId).on('postgres_changes',{event:'UPDATE',schema:'public',table:'driver_locations',filter:'chauffeur_id=eq.'+dId},(p)=>{if(carMarker)carMarker.setLatLng([p.new.latitude,p.new.longitude])}).subscribe()
+}
+async function cancelRide(){if(!confirm('Annuler la course ?'))return;await supabase.from('rides').update({statut:'annule'}).eq('id',rideId);showToast('Course annulée.','warning');setTimeout(()=>window.location.href='dashboard.html',1500)}
+function printBon(){import('../assets/js/bon-commande.js').then(m=>m.generateBonCommande(rideId))}
+function setNote(n){selNote=n;const s=document.getElementById('stars-row').children;for(let i=0;i<5;i++)s[i].textContent=i<n?'★':'☆'}
+async function submitRating(){
+  const user=await getCurrentUser()
+  if(chauffeurId){await supabase.from('ratings').insert({ride_id:rideId,from_user_id:user.id,to_user_id:chauffeurId,note:selNote});await supabase.from('rides').update({note_chauffeur:selNote}).eq('id',rideId)}
+  const {data:ride}=await supabase.from('rides').select('prix').eq('id',rideId).single()
+  if(ride?.prix)await debitWallet(user.id,ride.prix,'Course VTC',rideId)
+  showToast('Merci !','success');document.getElementById('rating-modal').classList.remove('open');setTimeout(()=>window.location.href='history.html',1500)
+}
+window.cancelRide=cancelRide;window.printBon=printBon;window.setNote=setNote;window.submitRating=submitRating
+
+_init()
+</script></body></html>

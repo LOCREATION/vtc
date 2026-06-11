@@ -1,0 +1,103 @@
+<!DOCTYPE html><html lang="fr"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Fiches de Paie | LOC'RÉATION SAS</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="../assets/css/main.css">
+</head><body>
+<div id="global-loader" class="global-loader"><div class="spinner"></div><div class="loader-text">Chargement…</div></div>
+<nav class="navbar">
+  <div style="display:flex;align-items:center;gap:14px">
+    <a href="../index.html" class="nav-logo"><div class="nav-logo-icon"><i class="fas fa-bolt"></i></div>Loc'<span>Réation</span></a>
+    <span class="nav-title">Fiches de Paie</span>
+  </div>
+  <div class="nav-right">
+    <div class="nav-user"><div class="nav-avatar" id="nav-av">?</div><div><div class="nav-name" id="nav-nm">…</div><div class="nav-role" id="nav-rl">…</div></div></div>
+    <button class="nav-icon-btn" id="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
+  </div>
+</nav>
+<div class="dashboard-wrap">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-profile"><div class="sidebar-avatar" id="sb-av">?</div><div class="sidebar-name" id="sb-nm">…</div><div class="sidebar-role" id="sb-rl">…</div><div class="sidebar-stats" id="sb-st"></div></div>
+    <div class="sidebar-section"><div class="sidebar-label">Navigation</div><ul class="sidebar-menu"><li><a href="../admin/dashboard.html" class=""><i class="fas fa-chart-pie"></i>Vue d'ensemble</a></li>
+<li><a href="../admin/users.html" class=""><i class="fas fa-users"></i>Utilisateurs</a></li>
+<li><a href="../admin/rides.html" class=""><i class="fas fa-route"></i>Courses</a></li>
+<li><a href="../admin/tariffs.html" class=""><i class="fas fa-tags"></i>Tarifs</a></li>
+<li><a href="../admin/accounting.html" class=""><i class="fas fa-calculator"></i>Comptabilité</a></li>
+<li><a href="../admin/payroll.html" class="active"><i class="fas fa-file-invoice-dollar"></i>Fiches de Paie</a></li></ul></div>
+    <div class="sidebar-section"><ul class="sidebar-menu"><li><a href="#" id="logout-link"><i class="fas fa-sign-out-alt"></i>Déconnexion</a></li></ul></div>
+  </aside>
+  <main class="main-content">
+<div class="card">
+  <div class="card-header">
+    <div><div class="card-title"><i class="fas fa-file-invoice-dollar" style="color:var(--primary);margin-right:8px"></i>Gestion des fiches de paie</div>
+    <div class="card-subtitle">Double bulletin pour Mme Régine Gatibelza (VTC + Gérance)</div></div>
+    <div style="display:flex;gap:10px;align-items:center"><input type="month" id="payroll-month" class="form-control" style="width:180px"><button class="btn btn-primary" onclick="generatePayslips()"><i class="fas fa-calculator"></i>Générer</button></div>
+  </div>
+  <div class="table-wrap"><table><thead><tr><th>Employé</th><th>Mois</th><th>Type</th><th>Brut</th><th>Net</th><th>Coût total</th><th>Statut</th><th>Actions</th></tr></thead><tbody id="payslips-table"></tbody></table></div>
+  <div class="empty-state" id="payslips-empty"><i class="fas fa-file-invoice"></i><h3>Aucune fiche générée</h3><p>Sélectionnez un mois et cliquez sur Générer.</p></div>
+</div>
+<div class="modal-overlay" id="payslip-modal">
+  <div class="modal" style="max-width:580px"><div class="modal-header"><div class="modal-title">Aperçu fiche de paie</div><button class="modal-close" onclick="document.getElementById('payslip-modal').classList.remove('open')"><i class="fas fa-times"></i></button></div>
+  <div class="modal-body" id="payslip-preview"></div>
+  <div class="modal-footer"><button class="btn btn-outline-gray" onclick="document.getElementById('payslip-modal').classList.remove('open')">Fermer</button><button class="btn btn-primary" onclick="window.print()"><i class="fas fa-print"></i>Imprimer</button></div>
+  </div>
+</div>
+</main>
+</div>
+<div id="toast-container"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script type="module">
+import {supabase,getCurrentUser,requireAuth,logout,formatPrice,formatDate,formatDateTime,formatInitials,showToast,hideLoader,getWallet,creditWallet,debitWallet,searchAddress,calculateRidePrice} from '../assets/js/supabase.js'
+async function _init(){
+  const user=await requireAuth()
+  if(!user)return
+  document.getElementById('nav-av').textContent=formatInitials(user.prenom,user.nom)
+  document.getElementById('nav-nm').textContent=user.prenom+' '+user.nom
+  document.getElementById('nav-rl').textContent=user.role
+  document.getElementById('sb-av').textContent=formatInitials(user.prenom,user.nom)
+  document.getElementById('sb-nm').textContent=user.prenom+' '+user.nom
+  document.getElementById('sb-rl').textContent=user.role
+  document.getElementById('logout-btn').onclick=()=>logout()
+  document.getElementById('logout-link').onclick=(e)=>{e.preventDefault();logout()}
+  hideLoader()
+  if(typeof pageInit==='function') await pageInit(user)
+}
+
+async function pageInit(user){
+  document.getElementById('payroll-month').value=new Date().toISOString().slice(0,7)
+  await loadPayslips()
+}
+async function loadPayslips(){
+  const {data}=await supabase.from('payslips').select('*,employee:employee_id(prenom,nom)').order('created_at',{ascending:false})
+  const ps=data||[],em=document.getElementById('payslips-empty'),tb=document.getElementById('payslips-table')
+  if(!ps.length){em.style.display='block';tb.innerHTML='';return}
+  em.style.display='none'
+  tb.innerHTML=ps.map(p=>`<tr><td><span style="font-weight:600">${p.employee?.prenom||'—'} ${p.employee?.nom||''}</span></td><td>${p.mois?new Date(p.mois).toLocaleDateString('fr-FR',{month:'long',year:'numeric'}):'—'}</td><td><span class="badge ${p.type==='vtc'?'badge-primary':'badge-gold'}">${p.type==='vtc'?'VTC':'Gérance'}</span></td><td>${formatPrice(p.salaire_brut)}</td><td style="font-weight:700;color:var(--green)">${formatPrice(p.salaire_net)}</td><td style="font-weight:700">${formatPrice(p.cout_employeur)}</td><td><span class="badge ${p.paid_at?'badge-success':p.sent_at?'badge-warning':'badge-gray'}">${p.paid_at?'Payé':p.sent_at?'Envoyé':'En attente'}</span></td><td style="display:flex;gap:6px"><button class="btn btn-outline btn-sm" onclick="previewPayslip('${p.id}')"><i class="fas fa-eye"></i></button>${!p.paid_at?`<button class="btn btn-success btn-sm" onclick="markPaid('${p.id}')"><i class="fas fa-check"></i></button>`:''}</td></tr>`).join('')
+}
+async function generatePayslips(){
+  const month=document.getElementById('payroll-month').value
+  if(!month){showToast('Sélectionnez un mois.','warning');return}
+  const {data:employees}=await supabase.from('employees').select('*,profile:profile_id(prenom,nom)').eq('actif',true)
+  if(!employees?.length){showToast('Aucun employé trouvé. Vérifiez la table employees.','warning');return}
+  for(const emp of employees){
+    const net=emp.salaire_net_base,brut=+(net/0.77).toFixed(2),cotSal=+(brut-net).toFixed(2),chargesPat=+(net*0.45).toFixed(2),coutTotal=+(net+chargesPat).toFixed(2)
+    await supabase.from('payslips').insert({employee_id:emp.profile_id,mois:month+'-01',type:'vtc',salaire_brut:brut,cotisations_salariales:cotSal,salaire_net:net,charges_patronales:chargesPat,cout_employeur:coutTotal})
+    if(emp.statut_gerance){const netG=1500,brutG=+(netG/0.77).toFixed(2);await supabase.from('payslips').insert({employee_id:emp.profile_id,mois:month+'-01',type:'gerance',salaire_brut:brutG,cotisations_salariales:+(brutG-netG).toFixed(2),salaire_net:netG,charges_patronales:+(netG*0.30).toFixed(2),cout_employeur:+(netG+netG*0.30).toFixed(2)})}
+  }
+  showToast('Fiches générées !','success');await loadPayslips()
+}
+async function previewPayslip(id){
+  const {data:p}=await supabase.from('payslips').select('*,employee:employee_id(prenom,nom,tel)').eq('id',id).single()
+  if(!p)return
+  const moisLabel=new Date(p.mois).toLocaleDateString('fr-FR',{month:'long',year:'numeric'})
+  document.getElementById('payslip-preview').innerHTML=`<div style="font-size:.84rem;border:1px solid var(--gray-light);border-radius:var(--radius);padding:20px"><div style="text-align:center;padding-bottom:14px;border-bottom:2px solid var(--primary);margin-bottom:14px"><div style="font-size:1.1rem;font-weight:800;color:var(--primary)">LOC'RÉATION SAS</div><div style="font-size:.75rem;color:var(--gray)">5 Allée de la Prairie — 77127 Lieusaint</div><div style="font-weight:700;margin-top:8px">BULLETIN DE PAIE — ${moisLabel.toUpperCase()}</div><div style="font-size:.8rem">Type : ${p.type.toUpperCase()}</div></div><div style="margin-bottom:14px"><strong>Salarié :</strong> ${p.employee?.prenom||''} ${p.employee?.nom||''} | <strong>Tél :</strong> ${p.employee?.tel||'—'}</div><table style="width:100%;border-collapse:collapse;font-size:.82rem"><tr style="background:var(--primary);color:#fff"><th style="padding:7px">Élément</th><th style="padding:7px">Montant</th></tr><tr style="background:var(--gray-xlight)"><td style="padding:7px">Salaire brut</td><td style="padding:7px;font-weight:700">${formatPrice(p.salaire_brut)}</td></tr><tr><td style="padding:7px">Cotisations salariales (~23%)</td><td style="padding:7px;color:var(--red)">-${formatPrice(p.cotisations_salariales)}</td></tr><tr style="background:var(--green-light)"><td style="padding:7px;font-weight:700">NET À PAYER</td><td style="padding:7px;font-weight:700;color:var(--green)">${formatPrice(p.salaire_net)}</td></tr><tr style="background:var(--gray-xlight)"><td style="padding:7px">Charges patronales (${p.type==='vtc'?'45%':'30%'})</td><td style="padding:7px;color:var(--red)">${formatPrice(p.charges_patronales)}</td></tr><tr style="background:rgba(255,224,178,.4)"><td style="padding:7px;font-weight:700">COÛT TOTAL EMPLOYEUR</td><td style="padding:7px;font-weight:700">${formatPrice(p.cout_employeur)}</td></tr></table><div style="margin-top:12px;font-size:.72rem;color:var(--gray);text-align:center">Document généré par LOC'RÉATION SAS — ${new Date().toLocaleDateString('fr-FR')}</div></div>`
+  document.getElementById('payslip-modal').classList.add('open')
+}
+async function markPaid(id){await supabase.from('payslips').update({paid_at:new Date().toISOString(),sent_at:new Date().toISOString()}).eq('id',id);showToast('Fiche marquée payée !','success');await loadPayslips()}
+window.generatePayslips=generatePayslips;window.previewPayslip=previewPayslip;window.markPaid=markPaid
+
+_init()
+</script></body></html>

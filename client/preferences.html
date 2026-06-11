@@ -1,0 +1,111 @@
+<!DOCTYPE html><html lang="fr"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Préférences | LOC'RÉATION SAS</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="../assets/css/main.css">
+</head><body>
+<div id="global-loader" class="global-loader"><div class="spinner"></div><div class="loader-text">Chargement…</div></div>
+<nav class="navbar">
+  <div style="display:flex;align-items:center;gap:14px">
+    <a href="../index.html" class="nav-logo"><div class="nav-logo-icon"><i class="fas fa-bolt"></i></div>Loc'<span>Réation</span></a>
+    <span class="nav-title">Préférences</span>
+  </div>
+  <div class="nav-right">
+    <div class="nav-user"><div class="nav-avatar" id="nav-av">?</div><div><div class="nav-name" id="nav-nm">…</div><div class="nav-role" id="nav-rl">…</div></div></div>
+    <button class="nav-icon-btn" id="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
+  </div>
+</nav>
+<div class="dashboard-wrap">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-profile">
+      <div class="sidebar-avatar" id="sb-av">?</div>
+      <div class="sidebar-name" id="sb-nm">…</div>
+      <div class="sidebar-role" id="sb-rl">…</div>
+      <div class="sidebar-stats" id="sb-st"></div>
+    </div>
+    <div class="sidebar-section"><div class="sidebar-label">Navigation</div>
+      <ul class="sidebar-menu"><li><a href="../client/dashboard.html" class=""><i class="fas fa-home"></i>Réserver</a></li>
+<li><a href="../client/tracking.html" class=""><i class="fas fa-map-marker-alt"></i>Suivi GPS</a></li>
+<li><a href="../client/wallet.html" class=""><i class="fas fa-wallet"></i>Portefeuille</a></li>
+<li><a href="../client/history.html" class=""><i class="fas fa-history"></i>Historique</a></li>
+<li><a href="../client/profile.html" class=""><i class="fas fa-user-cog"></i>Profil</a></li>
+<li><a href="../client/favorites.html" class=""><i class="fas fa-heart"></i>Favoris</a></li>
+<li><a href="../client/preferences.html" class="active"><i class="fas fa-sliders-h"></i>Préférences</a></li></ul></div>
+    <div class="sidebar-section"><ul class="sidebar-menu">
+      <li><a href="../index.html"><i class="fas fa-home"></i>Accueil</a></li>
+      <li><a href="#" id="logout-link"><i class="fas fa-sign-out-alt"></i>Déconnexion</a></li>
+    </ul></div>
+  </aside>
+  <main class="main-content">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+  <div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:16px"><i class="fas fa-thermometer-half" style="color:var(--primary);margin-right:8px"></i>Confort habitacle</div>
+      <div class="form-group"><label class="form-label">Température : <span id="tv" style="color:var(--primary);font-weight:700">22°C</span></label>
+        <input type="range" min="16" max="28" value="22" id="pref-temp" style="width:100%;accent-color:var(--primary)" oninput="document.getElementById('tv').textContent=this.value+'°C'"></div>
+      <div class="form-group"><label class="form-label">Volume : <span id="vv" style="color:var(--primary);font-weight:700">30%</span></label>
+        <input type="range" min="0" max="100" value="30" id="pref-vol" style="width:100%;accent-color:var(--primary)" oninput="document.getElementById('vv').textContent=this.value+'%'"></div>
+      <div class="form-group"><label class="form-label">Ambiance musicale</label>
+        <select id="pref-music" class="form-select"><option value="silence">🔇 Silence</option><option value="jazz">🎷 Jazz</option><option value="pop">🎵 Pop</option><option value="classique">🎻 Classique</option><option value="lofi">🎧 Lo-Fi</option></select></div>
+    </div>
+  </div>
+  <div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title" style="margin-bottom:16px"><i class="fas fa-user-friends" style="color:var(--primary);margin-right:8px"></i>Options voyage</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--gray-xlight)"><div><div style="font-size:.87rem;font-weight:500">Animaux acceptés</div></div><label class="toggle-switch"><input type="checkbox" id="pref-pets"><span class="toggle-slider"></span></label></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--gray-xlight)"><div><div style="font-size:.87rem;font-weight:500">Siège bébé</div></div><label class="toggle-switch"><input type="checkbox" id="pref-baby"><span class="toggle-slider"></span></label></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0"><div><div style="font-size:.87rem;font-weight:500">PMR</div></div><label class="toggle-switch"><input type="checkbox" id="pref-pmr"><span class="toggle-slider"></span></label></div>
+    </div>
+    <div class="card"><div class="card-title" style="margin-bottom:10px">Note pour les chauffeurs</div>
+      <textarea id="pref-note" rows="3" class="form-control" placeholder="Message transmis au chauffeur…"></textarea></div>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="btn btn-outline-gray" onclick="loadPrefs()"><i class="fas fa-undo"></i>Réinitialiser</button>
+      <button class="btn btn-primary btn-full" onclick="savePrefs()"><i class="fas fa-save"></i>Enregistrer</button>
+    </div>
+  </div>
+</div>
+</main>
+</div>
+<div id="toast-container"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script type="module">
+import {supabase,getCurrentUser,requireAuth,logout,formatPrice,formatDate,formatDateTime,formatInitials,showToast,hideLoader,getWallet,debitWallet,creditWallet,searchAddress,calculateRidePrice} from '../assets/js/supabase.js'
+async function _init(){
+  const user=await requireAuth()
+  if(!user)return
+  document.getElementById('nav-av').textContent=formatInitials(user.prenom,user.nom)
+  document.getElementById('nav-nm').textContent=user.prenom+' '+user.nom
+  document.getElementById('nav-rl').textContent=user.role
+  document.getElementById('sb-av').textContent=formatInitials(user.prenom,user.nom)
+  document.getElementById('sb-nm').textContent=user.prenom+' '+user.nom
+  document.getElementById('sb-rl').textContent=user.role
+  document.getElementById('logout-btn').onclick=()=>logout()
+  document.getElementById('logout-link').onclick=(e)=>{e.preventDefault();logout()}
+  hideLoader()
+  if(typeof pageInit==='function') await pageInit(user)
+}
+
+async function pageInit(user){
+  const {data}=await supabase.from('client_preferences').select('*').eq('client_id',user.id).single()
+  if(data){
+    if(data.temperature){document.getElementById('pref-temp').value=data.temperature;document.getElementById('tv').textContent=data.temperature+'°C'}
+    if(data.volume!==null){document.getElementById('pref-vol').value=data.volume;document.getElementById('vv').textContent=data.volume+'%'}
+    if(data.music_genre)document.getElementById('pref-music').value=data.music_genre
+    if(data.pets_allowed)document.getElementById('pref-pets').checked=data.pets_allowed
+    if(data.baby_seat)document.getElementById('pref-baby').checked=data.baby_seat
+    if(data.note_chauffeur)document.getElementById('pref-note').value=data.note_chauffeur
+  }
+}
+async function savePrefs(){
+  const user=await getCurrentUser()
+  await supabase.from('client_preferences').upsert({client_id:user.id,temperature:parseInt(document.getElementById('pref-temp').value),volume:parseInt(document.getElementById('pref-vol').value),music_genre:document.getElementById('pref-music').value,pets_allowed:document.getElementById('pref-pets').checked,baby_seat:document.getElementById('pref-baby').checked,note_chauffeur:document.getElementById('pref-note').value})
+  showToast('Préférences sauvegardées !','success')
+}
+async function loadPrefs(){const user=await getCurrentUser();await pageInit(user);showToast('Réinitialisé.','info')}
+window.savePrefs=savePrefs;window.loadPrefs=loadPrefs
+
+_init()
+</script></body></html>
