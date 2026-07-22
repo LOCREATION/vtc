@@ -1,0 +1,23 @@
+{
+  "nav_services": "Services",
+  "nav_about": "À propos",
+  "nav_contact": "Contact",
+  "footer_devis": "Devis",
+  "footer_legal_link": "Mentions légales",
+  "footer_legal": "Société par Actions Simplifiée — Tous droits réservés",
+  "meta_title": "Réinitialiser le mot de passe — LOC RÉACTION S.A.S",
+  "title": "Nouveau mot de passe",
+  "subtitle": "Choisissez un nouveau mot de passe pour votre compte.",
+  "f_password": "Nouveau mot de passe",
+  "f_password_confirm": "Confirmez le mot de passe",
+  "submit": "Réinitialiser",
+  "submitting": "Enregistrement…",
+  "success": "Mot de passe mis à jour ! Redirection vers la connexion…",
+  "err_required": "Merci de remplir les deux champs.",
+  "err_mismatch": "Les mots de passe ne correspondent pas.",
+  "err_short": "Le mot de passe doit contenir au moins 8 caractères.",
+  "invalid_title": "Lien invalide ou expiré",
+  "invalid_text": "Ce lien de réinitialisation n'est plus valable. Demandez-en un nouveau.",
+  "request_new_link": "Demander un nouveau lien",
+  "go_to_login": "Retour à la connexion"
+}

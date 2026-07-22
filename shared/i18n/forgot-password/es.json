@@ -1,0 +1,18 @@
+{
+  "nav_services": "Servicios",
+  "nav_about": "Nosotros",
+  "nav_contact": "Contacto",
+  "footer_devis": "Presupuesto",
+  "footer_legal_link": "Aviso legal",
+  "footer_legal": "Sociedad por Acciones Simplificada — Todos los derechos reservados",
+  "meta_title": "Contraseña Olvidada — LOC RÉACTION S.A.S",
+  "title": "Contraseña olvidada",
+  "subtitle": "Indique su correo electrónico, le enviaremos un enlace de restablecimiento.",
+  "f_email": "Correo electrónico",
+  "submit": "Enviar enlace",
+  "submitting": "Enviando…",
+  "success": "¡Correo enviado! Revise su bandeja de entrada para restablecer su contraseña.",
+  "err_required": "Por favor indique su correo electrónico.",
+  "err_generic": "Ha ocurrido un error. Verifique la dirección e inténtelo de nuevo.",
+  "back_to_login": "Volver a iniciar sesión"
+}

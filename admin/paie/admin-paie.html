@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fiches de Paie | LOC RÉACTION S.A.S</title>
+<link rel="icon" type="image/svg+xml" href="../../shared/img/logo-icon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="../../shared/main.css">
+<link rel="stylesheet" href="admin-paie.css">
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+</head>
+<body>
+<div id="global-loader" class="global-loader"><div class="spinner"></div><div class="loader-text">Chargement…</div></div>
+
+<nav class="navbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="app-hamburger" id="app-hamburger-btn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <a href="../../index.html" class="nav-logo"><div class="nav-logo-icon"><i class="fas fa-bolt"></i></div>Loc'<span>Réaction</span></a>
+    <span class="nav-title">Fiches de Paie</span>
+  </div>
+  <div class="nav-right">
+    <div class="nav-user"><div class="nav-avatar" id="nav-av">?</div><div><div class="nav-name" id="nav-nm">…</div><div class="nav-role" id="nav-rl">…</div></div></div>
+    <button class="nav-icon-btn" id="logout-btn" title="Déconnexion"><i class="fas fa-sign-out-alt"></i></button>
+  </div>
+</nav>
+
+<div class="dashboard-wrap">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-profile"><div class="sidebar-avatar" id="sb-av">?</div><div class="sidebar-name" id="sb-nm">…</div><div class="sidebar-role">Administrateur</div><div class="sidebar-stats" id="sb-st"></div></div>
+    <div class="sidebar-section"><div class="sidebar-label">Administration</div>
+      <ul class="sidebar-menu">
+        <li><a href="../dashboard/admin-dash.html"><i class="fas fa-chart-pie"></i>Vue d'ensemble</a></li>
+        <li><a href="../messagerie/admin-messagerie.html"><i class="fas fa-comments"></i>Messagerie</a></li>
+        <li><a href="../utilisateurs/admin-utilisateurs.html"><i class="fas fa-users"></i>Utilisateurs</a></li>
+        <li><a href="../courses/admin-courses.html"><i class="fas fa-route"></i>Courses</a></li>
+        <li><a href="../tarifs/admin-tarifs.html"><i class="fas fa-euro-sign"></i>Tarifs</a></li>
+        <li><a href="../comptabilite/admin-comptabilite.html"><i class="fas fa-calculator"></i>Comptabilité</a></li>
+        <li><a href="../paie/admin-paie.html" class="active"><i class="fas fa-file-invoice-dollar"></i>Fiches de Paie</a></li>
+        <li><a href="../employes/admin-employes.html"><i class="fas fa-id-badge"></i>Employés</a></li>
+        <li><a href="../devis-recus/admin-devis-recus.html"><i class="fas fa-file-alt"></i>Devis Reçus</a></li>
+        <li><a href="../verification-chauffeurs/admin-verif-chauffeurs.html"><i class="fas fa-user-check"></i>Vérif. Chauffeurs</a></li>
+        <li><a href="../rapports/admin-rapports.html"><i class="fas fa-chart-bar"></i>Rapports</a></li>
+        <li><a href="../reglages/admin-reglages.html"><i class="fas fa-cog"></i>Réglages</a></li>
+      </ul>
+    </div>
+    <div class="sidebar-section"><ul class="sidebar-menu"><li><a href="#" id="logout-link"><i class="fas fa-sign-out-alt"></i>Déconnexion</a></li></ul></div>
+  </aside>
+
+  <main class="main-content">
+
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">Génération des fiches de paie</div><div class="card-subtitle">Double bulletin automatique (VTC + Gérance)</div></div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input type="month" id="payroll-month" class="form-control" style="width:180px">
+          <button class="btn btn-primary" id="btn-generate" onclick="generatePayslips()"><i class="fas fa-calculator"></i>Générer</button>
+        </div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Employé</th><th>Mois</th><th>Type</th><th>Brut</th><th>Net</th><th>Charges Patr.</th><th>Coût total</th><th>Statut</th><th></th></tr></thead>
+        <tbody id="payslips-table"></tbody>
+      </table></div>
+      <div class="empty-state" id="payslips-empty"><i class="fas fa-file-invoice"></i><h3>Aucune fiche générée</h3></div>
+    </div>
+
+    <div class="modal-overlay" id="payslip-modal">
+      <div class="modal" style="max-width:600px">
+        <div class="modal-header"><div class="modal-title">Aperçu de la fiche</div><button class="modal-close" onclick="document.getElementById('payslip-modal').classList.remove('open')"><i class="fas fa-times"></i></button></div>
+        <div class="modal-body" id="payslip-preview"></div>
+        <div class="modal-footer"><button class="btn btn-outline-gray" onclick="document.getElementById('payslip-modal').classList.remove('open')">Fermer</button><button class="btn btn-primary" onclick="downloadPdf()"><i class="fas fa-file-pdf"></i>PDF</button></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast-container"></div>
+<script type="module" src="admin-paie.js"></script>
+</body>
+</html>

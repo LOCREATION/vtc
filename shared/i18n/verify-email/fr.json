@@ -1,0 +1,17 @@
+{
+  "nav_services": "Services",
+  "nav_about": "À propos",
+  "nav_contact": "Contact",
+  "footer_devis": "Devis",
+  "footer_legal_link": "Mentions légales",
+  "footer_legal": "Société par Actions Simplifiée — Tous droits réservés",
+  "meta_title": "Vérifiez votre email — LOC RÉACTION S.A.S",
+  "title": "Vérifiez votre boîte mail",
+  "text": "Nous avons envoyé un lien de confirmation à l'adresse indiquée. Cliquez sur ce lien pour activer votre compte.",
+  "check_spam": "Vous ne trouvez pas l'email ? Vérifiez vos courriers indésirables.",
+  "resend_btn": "Renvoyer l'email",
+  "resend_sending": "Envoi en cours…",
+  "resend_success": "Email renvoyé !",
+  "resend_error": "Erreur lors de l'envoi. Réessayez dans un instant.",
+  "back_to_login": "Retour à la connexion"
+}

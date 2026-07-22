@@ -1,0 +1,17 @@
+{
+  "nav_services": "Serviços",
+  "nav_about": "Sobre nós",
+  "nav_contact": "Contacto",
+  "footer_devis": "Orçamento",
+  "footer_legal_link": "Aviso legal",
+  "footer_legal": "Sociedade por Ações Simplificada — Todos os direitos reservados",
+  "meta_title": "Verifique o seu Email — LOC RÉACTION S.A.S",
+  "title": "Verifique a sua caixa de entrada",
+  "text": "Enviámos um link de confirmação para o endereço indicado. Clique nele para ativar a sua conta.",
+  "check_spam": "Não encontra o email? Verifique a pasta de spam.",
+  "resend_btn": "Reenviar email",
+  "resend_sending": "A enviar…",
+  "resend_success": "Email reenviado!",
+  "resend_error": "Erro ao enviar. Tente novamente dentro de instantes.",
+  "back_to_login": "Voltar ao início de sessão"
+}

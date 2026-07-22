@@ -1,0 +1,23 @@
+{
+  "nav_services": "Servicios",
+  "nav_about": "Nosotros",
+  "nav_contact": "Contacto",
+  "footer_devis": "Presupuesto",
+  "footer_legal_link": "Aviso legal",
+  "footer_legal": "Sociedad por Acciones Simplificada — Todos los derechos reservados",
+  "meta_title": "Restablecer Contraseña — LOC RÉACTION S.A.S",
+  "title": "Nueva contraseña",
+  "subtitle": "Elija una nueva contraseña para su cuenta.",
+  "f_password": "Nueva contraseña",
+  "f_password_confirm": "Confirme la contraseña",
+  "submit": "Restablecer",
+  "submitting": "Guardando…",
+  "success": "¡Contraseña actualizada! Redirigiendo al inicio de sesión…",
+  "err_required": "Por favor complete ambos campos.",
+  "err_mismatch": "Las contraseñas no coinciden.",
+  "err_short": "La contraseña debe tener al menos 8 caracteres.",
+  "invalid_title": "Enlace inválido o caducado",
+  "invalid_text": "Este enlace de restablecimiento ya no es válido. Solicite uno nuevo.",
+  "request_new_link": "Solicitar nuevo enlace",
+  "go_to_login": "Volver a iniciar sesión"
+}

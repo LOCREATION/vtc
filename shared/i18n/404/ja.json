@@ -1,0 +1,19 @@
+{
+  "nav_services": "サービス",
+  "nav_about": "会社概要",
+  "nav_contact": "お問い合わせ",
+  "nav_login": "ログイン",
+  "nav_register": "新規登録",
+  "nav_my_space": "マイページ",
+  "footer_login": "ログイン",
+  "footer_register": "新規登録",
+  "footer_devis": "見積もり",
+  "footer_legal_link": "法的通知",
+  "footer_legal": "簡易株式会社（S.A.S.）— 無断複写・転載を禁じます",
+  "meta_title": "ページが見つかりません — LOC RÉACTION S.A.S",
+  "code": "404",
+  "title": "ページが見つかりません",
+  "text": "お探しのページは存在しないか、移動された可能性があります。",
+  "btn_home": "ホームに戻る",
+  "btn_contact": "お問い合わせ"
+}

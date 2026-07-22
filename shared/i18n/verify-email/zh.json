@@ -1,0 +1,17 @@
+{
+  "nav_services": "服务项目",
+  "nav_about": "关于我们",
+  "nav_contact": "联系我们",
+  "footer_devis": "报价",
+  "footer_legal_link": "法律声明",
+  "footer_legal": "简化股份公司 — 保留所有权利",
+  "meta_title": "验证您的邮箱 — LOC RÉACTION S.A.S",
+  "title": "请查收您的邮箱",
+  "text": "我们已向您提供的邮箱地址发送了确认链接，请点击该链接以激活您的账户。",
+  "check_spam": "没有收到邮件？请检查垃圾邮件文件夹。",
+  "resend_btn": "重新发送邮件",
+  "resend_sending": "发送中…",
+  "resend_success": "邮件已重新发送！",
+  "resend_error": "发送失败，请稍后重试。",
+  "back_to_login": "返回登录"
+}

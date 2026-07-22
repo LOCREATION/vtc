@@ -1,0 +1,23 @@
+{
+  "nav_services": "サービス",
+  "nav_about": "会社概要",
+  "nav_contact": "お問い合わせ",
+  "footer_devis": "見積もり",
+  "footer_legal_link": "法的通知",
+  "footer_legal": "簡易株式会社（S.A.S.）— 無断複写・転載を禁じます",
+  "meta_title": "パスワード再設定 — LOC RÉACTION S.A.S",
+  "title": "新しいパスワード",
+  "subtitle": "アカウントの新しいパスワードを設定してください。",
+  "f_password": "新しいパスワード",
+  "f_password_confirm": "パスワードの確認",
+  "submit": "再設定する",
+  "submitting": "保存中…",
+  "success": "パスワードを更新しました！ログインページへ移動します…",
+  "err_required": "両方の項目を入力してください。",
+  "err_mismatch": "パスワードが一致しません。",
+  "err_short": "パスワードは8文字以上で入力してください。",
+  "invalid_title": "リンクが無効または期限切れです",
+  "invalid_text": "この再設定リンクは無効です。新しいリンクをご請求ください。",
+  "request_new_link": "新しいリンクを請求",
+  "go_to_login": "ログインに戻る"
+}

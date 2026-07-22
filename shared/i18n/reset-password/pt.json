@@ -1,0 +1,23 @@
+{
+  "nav_services": "Serviços",
+  "nav_about": "Sobre nós",
+  "nav_contact": "Contacto",
+  "footer_devis": "Orçamento",
+  "footer_legal_link": "Aviso legal",
+  "footer_legal": "Sociedade por Ações Simplificada — Todos os direitos reservados",
+  "meta_title": "Repor Palavra-passe — LOC RÉACTION S.A.S",
+  "title": "Nova palavra-passe",
+  "subtitle": "Escolha uma nova palavra-passe para a sua conta.",
+  "f_password": "Nova palavra-passe",
+  "f_password_confirm": "Confirme a palavra-passe",
+  "submit": "Repor",
+  "submitting": "A guardar…",
+  "success": "Palavra-passe atualizada! A redirecionar para o início de sessão…",
+  "err_required": "Preencha ambos os campos.",
+  "err_mismatch": "As palavras-passe não coincidem.",
+  "err_short": "A palavra-passe deve ter pelo menos 8 caracteres.",
+  "invalid_title": "Link inválido ou expirado",
+  "invalid_text": "Este link de reposição já não é válido. Peça um novo.",
+  "request_new_link": "Pedir novo link",
+  "go_to_login": "Voltar ao início de sessão"
+}

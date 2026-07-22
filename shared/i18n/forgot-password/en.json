@@ -1,0 +1,18 @@
+{
+  "nav_services": "Services",
+  "nav_about": "About",
+  "nav_contact": "Contact",
+  "footer_devis": "Quote",
+  "footer_legal_link": "Legal notice",
+  "footer_legal": "Simplified Joint-Stock Company — All rights reserved",
+  "meta_title": "Forgot Password — LOC RÉACTION S.A.S",
+  "title": "Forgot password",
+  "subtitle": "Enter your email address, we'll send you a reset link.",
+  "f_email": "Email address",
+  "submit": "Send reset link",
+  "submitting": "Sending…",
+  "success": "Email sent! Check your inbox to reset your password.",
+  "err_required": "Please enter your email address.",
+  "err_generic": "Something went wrong. Check the address and try again.",
+  "back_to_login": "Back to log in"
+}

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profil | LOC RÉACTION S.A.S</title>
+<link rel="icon" type="image/svg+xml" href="../../shared/img/logo-icon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="../../shared/main.css">
+<link rel="stylesheet" href="client-profile.css">
+
+</head>
+<body>
+<div id="global-loader" class="global-loader"><div class="spinner"></div><div class="loader-text">Chargement…</div></div>
+
+<nav class="navbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="app-hamburger" id="app-hamburger-btn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <a href="../../index.html" class="nav-logo"><div class="nav-logo-icon"><i class="fas fa-bolt"></i></div>Loc'<span>Réaction</span></a>
+    <span class="nav-title">Profil</span>
+  </div>
+  <div class="nav-right">
+    <div class="nav-user"><div class="nav-avatar" id="nav-av">?</div><div><div class="nav-name" id="nav-nm">…</div><div class="nav-role" id="nav-rl">…</div></div></div>
+    <button class="nav-icon-btn" id="logout-btn" title="Déconnexion"><i class="fas fa-sign-out-alt"></i></button>
+  </div>
+</nav>
+
+<div class="dashboard-wrap">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-profile"><div class="sidebar-avatar" id="sb-av">?</div><div class="sidebar-name" id="sb-nm">…</div><div class="sidebar-role">Client</div><div class="sidebar-stats" id="sb-st"></div></div>
+    <div class="sidebar-section"><div class="sidebar-label">Mon espace</div>
+      <ul class="sidebar-menu">
+        <li><a href="../dashboard/client-dash.html"><i class="fas fa-bolt"></i>Réserver</a></li>
+        <li><a href="../tracking/client-tracking.html"><i class="fas fa-map-marker-alt"></i>Suivi GPS</a></li>
+        <li><a href="../wallet/client-wallet.html"><i class="fas fa-wallet"></i>Portefeuille</a></li>
+        <li><a href="../history/client-history.html"><i class="fas fa-history"></i>Historique</a></li>
+        <li><a href="../receipts/client-receipts.html"><i class="fas fa-receipt"></i>Mes reçus</a></li>
+        <li><a href="../service-requests/client-service-requests.html"><i class="fas fa-file-invoice"></i>Mes devis</a></li>
+        <li><a href="../favorites/client-favorites.html"><i class="fas fa-heart"></i>Favoris</a></li>
+        <li><a href="../notifications/client-notifications.html"><i class="fas fa-bell"></i>Notifications</a></li>
+        <li><a href="../preferences/client-preferences.html"><i class="fas fa-sliders-h"></i>Préférences</a></li>
+        <li><a href="../profile/client-profile.html" class="active"><i class="fas fa-user-cog"></i>Profil</a></li>
+        <li><a href="../support/client-support.html"><i class="fas fa-life-ring"></i>Assistance</a></li>
+      </ul>
+    </div>
+    <div class="sidebar-section"><ul class="sidebar-menu"><li><a href="#" id="logout-link"><i class="fas fa-sign-out-alt"></i>Déconnexion</a></li></ul></div>
+  </aside>
+
+  <main class="main-content">
+
+    <div style="background:linear-gradient(135deg,var(--primary),var(--primary-light));border-radius:var(--radius-xl);padding:28px;margin-bottom:22px;display:flex;align-items:center;gap:22px;color:#fff;flex-wrap:wrap">
+      <div style="width:80px;height:80px;border-radius:50%;background:rgba(200,168,75,.2);border:4px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:800;color:var(--gold)" id="p-av">?</div>
+      <div style="flex:1;min-width:200px">
+        <div style="font-size:1.4rem;font-weight:800" id="p-name">…</div>
+        <div style="font-size:.85rem;opacity:.75">Client LOC RÉACTION S.A.S</div>
+      </div>
+      <button class="btn btn-gold btn-sm" onclick="toggleEdit()"><i class="fas fa-edit"></i>Modifier</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:22px">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:16px">Informations personnelles</div>
+        <div id="view-mode">
+          <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--gray-xlight);font-size:.87rem"><span style="color:var(--gray)">Nom complet</span><span style="font-weight:600" id="v-fullname">—</span></div>
+          <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--gray-xlight);font-size:.87rem"><span style="color:var(--gray)">Email</span><span style="font-weight:600" id="v-email">—</span></div>
+          <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--gray-xlight);font-size:.87rem"><span style="color:var(--gray)">Téléphone</span><span style="font-weight:600" id="v-tel">—</span></div>
+          <div style="display:flex;justify-content:space-between;padding:11px 0;font-size:.87rem"><span style="color:var(--gray)">Ville</span><span style="font-weight:600" id="v-ville">—</span></div>
+        </div>
+        <div id="edit-mode" style="display:none">
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Prénom</label><input type="text" id="e-prenom" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Nom</label><input type="text" id="e-nom" class="form-control"></div>
+          </div>
+          <div class="form-group"><label class="form-label">Téléphone</label><input type="tel" id="e-tel" class="form-control"></div>
+          <div class="form-group"><label class="form-label">Ville</label><input type="text" id="e-ville" class="form-control"></div>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-primary" onclick="saveProfile()"><i class="fas fa-save"></i>Sauvegarder</button>
+            <button class="btn btn-outline-gray" onclick="toggleEdit()">Annuler</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:16px">Mes statistiques</div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-xlight);font-size:.87rem"><span style="color:var(--gray)">Courses effectuées</span><span style="font-weight:600" id="p-courses">0</span></div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-xlight);font-size:.87rem"><span style="color:var(--gray)">Total dépensé</span><span style="font-weight:600" id="p-spent">0 €</span></div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;font-size:.87rem"><span style="color:var(--gray)">Membre depuis</span><span style="font-weight:600" id="p-since">—</span></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast-container"></div>
+<script type="module" src="client-profile.js"></script>
+</body>
+</html>

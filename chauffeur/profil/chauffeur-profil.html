@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mon Profil | LOC RÉACTION S.A.S</title>
+<link rel="icon" type="image/svg+xml" href="../../shared/img/logo-icon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="../../shared/main.css">
+<link rel="stylesheet" href="chauffeur-profil.css">
+
+</head>
+<body>
+<div id="global-loader" class="global-loader"><div class="spinner"></div><div class="loader-text">Chargement…</div></div>
+
+<nav class="navbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="app-hamburger" id="app-hamburger-btn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <a href="../../index.html" class="nav-logo"><div class="nav-logo-icon"><i class="fas fa-bolt"></i></div>Loc'<span>Réaction</span></a>
+    <span class="nav-title">Mon Profil</span>
+  </div>
+  <div class="nav-right">
+    <div class="nav-user"><div class="nav-avatar" id="nav-av">?</div><div><div class="nav-name" id="nav-nm">…</div><div class="nav-role" id="nav-rl">…</div></div></div>
+    <button class="nav-icon-btn" id="logout-btn" title="Déconnexion"><i class="fas fa-sign-out-alt"></i></button>
+  </div>
+</nav>
+
+<div class="dashboard-wrap">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-profile"><div class="sidebar-avatar" id="sb-av">?</div><div class="sidebar-name" id="sb-nm">…</div><div class="sidebar-role">Chauffeur VTC</div><div class="sidebar-stats" id="sb-st"></div></div>
+    <div class="sidebar-section"><div class="sidebar-label">Mon espace</div>
+      <ul class="sidebar-menu">
+        <li><a href="../dashboard/chauffeur-dash.html"><i class="fas fa-tachometer-alt"></i>Tableau de bord</a></li>
+        <li><a href="../revenus/chauffeur-revenus.html"><i class="fas fa-chart-line"></i>Mes Revenus</a></li>
+        <li><a href="../planning/chauffeur-planning.html"><i class="fas fa-calendar-alt"></i>Planning</a></li>
+        <li><a href="../documents/chauffeur-documents.html"><i class="fas fa-id-card"></i>Mes Documents</a></li>
+        <li><a href="../profil/chauffeur-profil.html" class="active"><i class="fas fa-user-cog"></i>Mon Profil</a></li>
+        <li><a href="../support/chauffeur-support.html"><i class="fas fa-life-ring"></i>Assistance</a></li>
+      </ul>
+    </div>
+    <div class="sidebar-section"><ul class="sidebar-menu"><li><a href="#" id="logout-link"><i class="fas fa-sign-out-alt"></i>Déconnexion</a></li></ul></div>
+  </aside>
+
+  <main class="main-content">
+
+    <div style="background:linear-gradient(135deg,#1a1a2e,#2d2d4e);border-radius:var(--radius-xl);padding:28px;margin-bottom:22px;display:flex;align-items:center;gap:22px;color:#fff;flex-wrap:wrap">
+      <div style="width:80px;height:80px;border-radius:50%;background:rgba(200,168,75,.2);border:4px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:800;color:var(--gold)" id="dp-av">?</div>
+      <div style="flex:1;min-width:200px">
+        <div style="font-size:1.4rem;font-weight:800" id="dp-name">…</div>
+        <div style="font-size:.85rem;opacity:.75">Chauffeur VTC — LOC RÉACTION S.A.S</div>
+        <div style="display:flex;gap:10px;margin-top:10px"><span class="badge" style="background:rgba(200,168,75,.2);color:var(--gold)">★ <span id="dp-note">—</span></span><span class="badge" style="background:rgba(255,255,255,.1);color:#fff" id="dp-badge">0 courses</span></div>
+      </div>
+      <button class="btn btn-gold btn-sm" onclick="toggleEdit()"><i class="fas fa-edit"></i>Modifier</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:22px">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:16px">Informations & véhicule</div>
+        <div id="view-mode">
+          <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--gray-xlight);font-size:.87rem"><span style="color:var(--gray)">Nom complet</span><span style="font-weight:600" id="v-fullname">—</span></div>
+          <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--gray-xlight);font-size:.87rem"><span style="color:var(--gray)">Téléphone</span><span style="font-weight:600" id="v-tel">—</span></div>
+          <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--gray-xlight);font-size:.87rem"><span style="color:var(--gray)">Véhicule</span><span style="font-weight:600" id="v-vehicule">—</span></div>
+          <div style="display:flex;justify-content:space-between;padding:11px 0;font-size:.87rem"><span style="color:var(--gray)">Plaque</span><span style="font-weight:600" id="v-plaque">—</span></div>
+        </div>
+        <div id="edit-mode" style="display:none">
+          <div class="form-row"><div class="form-group"><label class="form-label">Prénom</label><input type="text" id="e-prenom" class="form-control"></div><div class="form-group"><label class="form-label">Nom</label><input type="text" id="e-nom" class="form-control"></div></div>
+          <div class="form-group"><label class="form-label">Téléphone</label><input type="tel" id="e-tel" class="form-control"></div>
+          <div class="form-row"><div class="form-group"><label class="form-label">Marque véhicule</label><input type="text" id="e-marque" class="form-control"></div><div class="form-group"><label class="form-label">Modèle</label><input type="text" id="e-modele" class="form-control"></div></div>
+          <div class="form-group"><label class="form-label">Plaque</label><input type="text" id="e-plaque" class="form-control"></div>
+          <div style="display:flex;gap:10px"><button class="btn btn-primary" onclick="saveProfile()"><i class="fas fa-save"></i>Sauvegarder</button><button class="btn btn-outline-gray" onclick="toggleEdit()">Annuler</button></div>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="margin-bottom:18px">
+          <div class="card-title" style="margin-bottom:14px">Mes avis clients</div>
+          <div style="text-align:center;padding:14px;background:var(--primary-xlight);border-radius:var(--radius-lg);margin-bottom:14px">
+            <div style="font-size:2.8rem;font-weight:900;color:var(--primary)" id="dp-avg">—</div>
+            <div style="color:var(--gold);font-size:1.1rem;letter-spacing:4px" id="dp-stars">—</div>
+            <div style="font-size:.82rem;color:var(--gray)" id="dp-nb-avis">Aucun avis</div>
+          </div>
+          <div id="dp-reviews"></div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="margin-bottom:14px">Statistiques</div>
+          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-xlight);font-size:.87rem"><span style="color:var(--gray)">Courses totales</span><span style="font-weight:600" id="dp-courses">0</span></div>
+          <div style="display:flex;justify-content:space-between;padding:10px 0;font-size:.87rem"><span style="color:var(--gray)">Revenus totaux</span><span style="font-weight:600;color:var(--green)" id="dp-rev">0 €</span></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast-container"></div>
+<script type="module" src="chauffeur-profil.js"></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+/* admin-messagerie.css — structuré via main.css */
+.msg-layout{display:grid;grid-template-columns:300px 1fr;height:640px}
+.msg-sidebar{display:flex;flex-direction:column;border-right:1px solid var(--gray-light);overflow:hidden}
+.msg-sidebar-header{padding:14px 16px;border-bottom:1px solid var(--gray-light)}
+.msg-sidebar-header .tabs{display:flex;gap:6px}
+.msg-sidebar-header .tab-btn{flex:1;font-size:.76rem;padding:8px 6px}
+.chat-conv-list{flex:1;overflow-y:auto}
+.msg-main{display:flex;flex-direction:column;position:relative}
+.msg-main .chat-panel{height:100%}
+.msg-main .chat-empty{position:absolute;inset:0}
+.chat-conv-item.unread .chat-conv-name{font-weight:800}
+.chat-conv-item.unread{background:rgba(200,168,75,.06)}
+@media(max-width:900px){
+  .msg-layout{grid-template-columns:1fr;height:auto}
+  .msg-sidebar{border-right:none;border-bottom:1px solid var(--gray-light);max-height:280px}
+  .msg-main{height:520px}
+}

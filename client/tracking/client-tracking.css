@@ -1,0 +1,3 @@
+/* structuré via main.css */
+#rating-stars i{margin:0 4px;transition:color .15s}
+#rating-stars i.active{color:var(--gold)}

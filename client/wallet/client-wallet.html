@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portefeuille | LOC RÉACTION S.A.S</title>
+<link rel="icon" type="image/svg+xml" href="../../shared/img/logo-icon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="../../shared/main.css">
+<link rel="stylesheet" href="client-wallet.css">
+
+</head>
+<body>
+<div id="global-loader" class="global-loader"><div class="spinner"></div><div class="loader-text">Chargement…</div></div>
+
+<nav class="navbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="app-hamburger" id="app-hamburger-btn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <a href="../../index.html" class="nav-logo"><div class="nav-logo-icon"><i class="fas fa-bolt"></i></div>Loc'<span>Réaction</span></a>
+    <span class="nav-title">Portefeuille</span>
+  </div>
+  <div class="nav-right">
+    <div class="nav-user"><div class="nav-avatar" id="nav-av">?</div><div><div class="nav-name" id="nav-nm">…</div><div class="nav-role" id="nav-rl">…</div></div></div>
+    <button class="nav-icon-btn" id="logout-btn" title="Déconnexion"><i class="fas fa-sign-out-alt"></i></button>
+  </div>
+</nav>
+
+<div class="dashboard-wrap">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-profile"><div class="sidebar-avatar" id="sb-av">?</div><div class="sidebar-name" id="sb-nm">…</div><div class="sidebar-role">Client</div><div class="sidebar-stats" id="sb-st"></div></div>
+    <div class="sidebar-section"><div class="sidebar-label">Mon espace</div>
+      <ul class="sidebar-menu">
+        <li><a href="../dashboard/client-dash.html"><i class="fas fa-bolt"></i>Réserver</a></li>
+        <li><a href="../tracking/client-tracking.html"><i class="fas fa-map-marker-alt"></i>Suivi GPS</a></li>
+        <li><a href="../wallet/client-wallet.html" class="active"><i class="fas fa-wallet"></i>Portefeuille</a></li>
+        <li><a href="../history/client-history.html"><i class="fas fa-history"></i>Historique</a></li>
+        <li><a href="../receipts/client-receipts.html"><i class="fas fa-receipt"></i>Mes reçus</a></li>
+        <li><a href="../service-requests/client-service-requests.html"><i class="fas fa-file-invoice"></i>Mes devis</a></li>
+        <li><a href="../favorites/client-favorites.html"><i class="fas fa-heart"></i>Favoris</a></li>
+        <li><a href="../notifications/client-notifications.html"><i class="fas fa-bell"></i>Notifications</a></li>
+        <li><a href="../preferences/client-preferences.html"><i class="fas fa-sliders-h"></i>Préférences</a></li>
+        <li><a href="../profile/client-profile.html"><i class="fas fa-user-cog"></i>Profil</a></li>
+        <li><a href="../support/client-support.html"><i class="fas fa-life-ring"></i>Assistance</a></li>
+      </ul>
+    </div>
+    <div class="sidebar-section"><ul class="sidebar-menu"><li><a href="#" id="logout-link"><i class="fas fa-sign-out-alt"></i>Déconnexion</a></li></ul></div>
+  </aside>
+
+  <main class="main-content">
+
+    <div class="wallet-card">
+      <div class="wallet-label">Solde disponible</div>
+      <div class="wallet-balance" id="w-balance">0,00 €</div>
+      <div class="wallet-actions">
+        <button class="btn btn-gold" onclick="openRecharge()"><i class="fas fa-plus"></i> Recharger</button>
+      </div>
+    </div>
+
+    <div class="card" style="background:rgba(243,156,18,.08);border-color:rgba(243,156,18,.3)">
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <i class="fas fa-info-circle" style="color:var(--warning);margin-top:2px"></i>
+        <p style="font-size:.85rem;color:var(--gray-dark)">La recharge est actuellement <strong>simulée</strong> : le solde est crédité instantanément sans paiement réel, en attendant l'intégration d'un compte Stripe actif. Ce n'est pas caché — c'est indiqué ici explicitement.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-title">Historique des transactions</div></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Montant</th></tr></thead>
+        <tbody id="tx-table"></tbody>
+      </table></div>
+      <div class="empty-state" id="tx-empty" style="display:none"><i class="fas fa-receipt"></i><h3>Aucune transaction pour l'instant</h3></div>
+    </div>
+
+    <div class="modal-overlay" id="recharge-modal">
+      <div class="modal">
+        <div class="modal-header"><div class="modal-title">Recharger le portefeuille</div><button class="modal-close" onclick="document.getElementById('recharge-modal').classList.remove('open')"><i class="fas fa-times"></i></button></div>
+        <div class="modal-body">
+          <div class="form-group"><label class="form-label">Montant à recharger</label>
+            <div style="display:flex;gap:8px;margin-bottom:12px">
+              <button class="btn btn-outline-gray btn-sm" onclick="setAmount(10)">10 €</button>
+              <button class="btn btn-outline-gray btn-sm" onclick="setAmount(20)">20 €</button>
+              <button class="btn btn-outline-gray btn-sm" onclick="setAmount(50)">50 €</button>
+              <button class="btn btn-outline-gray btn-sm" onclick="setAmount(100)">100 €</button>
+            </div>
+            <div class="form-icon-wrap"><i class="fas fa-euro-sign"></i><input type="number" id="recharge-amount" class="form-control" min="5" step="5"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-gray" onclick="document.getElementById('recharge-modal').classList.remove('open')">Annuler</button>
+          <button class="btn btn-primary" onclick="doRecharge()"><i class="fas fa-check"></i> Confirmer</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast-container"></div>
+<script type="module" src="client-wallet.js"></script>
+</body>
+</html>

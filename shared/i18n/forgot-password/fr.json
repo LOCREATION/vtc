@@ -1,0 +1,18 @@
+{
+  "nav_services": "Services",
+  "nav_about": "À propos",
+  "nav_contact": "Contact",
+  "footer_devis": "Devis",
+  "footer_legal_link": "Mentions légales",
+  "footer_legal": "Société par Actions Simplifiée — Tous droits réservés",
+  "meta_title": "Mot de passe oublié — LOC RÉACTION S.A.S",
+  "title": "Mot de passe oublié",
+  "subtitle": "Indiquez votre adresse email, nous vous enverrons un lien de réinitialisation.",
+  "f_email": "Adresse email",
+  "submit": "Envoyer le lien",
+  "submitting": "Envoi en cours…",
+  "success": "Email envoyé ! Consultez votre boîte de réception pour réinitialiser votre mot de passe.",
+  "err_required": "Merci de saisir votre adresse email.",
+  "err_generic": "Une erreur est survenue. Vérifiez l'adresse saisie et réessayez.",
+  "back_to_login": "Retour à la connexion"
+}

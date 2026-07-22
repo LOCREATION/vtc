@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n-title="meta_title">LOC RÉACTION S.A.S</title>
+<link rel="icon" type="image/svg+xml" href="../../shared/img/logo-icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="../../shared/site-shared.css">
+<link rel="stylesheet" href="../../shared/auth-shared.css">
+<link rel="stylesheet" href="register.css">
+</head>
+<body>
+
+<nav class="site-nav">
+  <a href="../../index.html" class="brand">
+    <img src="../../shared/img/logo-icon.svg" alt="LOC RÉACTION S.A.S" class="brand-icon">
+    <span class="brand-text">
+      <span class="brand-name">LOC <span>RÉACTION</span></span>
+      <span class="brand-sub">TRANSPORT DE PASSAGERS | SERVICE VTC</span>
+    </span>
+  </a>
+  <div class="nav-links">
+    <a href="../../index.html#services" data-i18n="nav_services"></a>
+    <a href="../../a-propos.html" data-i18n="nav_about"></a>
+    <a href="../../contact.html" data-i18n="nav_contact"></a>
+  </div>
+  <div class="nav-right">
+    <select id="lang-select-desktop" class="lang-select" aria-label="Langue"></select>
+    <button class="hamburger" id="hamburger-btn" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
+  </div>
+</nav>
+
+<div class="mobile-menu" id="mobile-menu">
+  <a href="../../index.html">Accueil</a>
+  <a href="../../index.html#services" data-i18n="nav_services"></a>
+  <a href="../../a-propos.html" data-i18n="nav_about"></a>
+  <a href="../../contact.html" data-i18n="nav_contact"></a>
+  <select id="lang-select-mobile" class="lang-select" aria-label="Langue"></select>
+</div>
+<div class="menu-backdrop"></div>
+
+
+<div class="auth-wrap">
+  <div class="auth-card wide">
+    <h1 class="auth-title" data-i18n="title"></h1>
+    <p class="auth-subtitle" data-i18n="subtitle"></p>
+
+    <div class="role-tabs two-tabs" id="role-tabs">
+      <button class="role-tab active" data-role="client" onclick="selectRole('client', this)"><i class="fas fa-user"></i><span data-i18n="tab_client"></span></button>
+      <button class="role-tab" data-role="chauffeur" onclick="selectRole('chauffeur', this)"><i class="fas fa-car"></i><span data-i18n="tab_chauffeur"></span></button>
+    </div>
+
+    <div id="register-alert" class="auth-alert"></div>
+
+    <div class="auth-row2">
+      <div class="auth-form-group"><label data-i18n="f_prenom"></label><div class="auth-input-wrap"><i class="fas fa-user left-icon"></i><input type="text" id="r-prenom" class="auth-input"></div></div>
+      <div class="auth-form-group"><label data-i18n="f_nom"></label><div class="auth-input-wrap"><i class="fas fa-user left-icon"></i><input type="text" id="r-nom" class="auth-input"></div></div>
+    </div>
+    <div class="auth-form-group"><label data-i18n="f_email"></label><div class="auth-input-wrap"><i class="fas fa-envelope left-icon"></i><input type="email" id="r-email" class="auth-input"></div></div>
+    <div class="auth-form-group">
+      <label data-i18n="f_password"></label>
+      <div class="auth-input-wrap">
+        <i class="fas fa-lock left-icon"></i>
+        <input type="password" id="r-password" class="auth-input" style="padding-right:42px" oninput="checkPwStrength(this.value)">
+        <button type="button" class="auth-toggle-pw" onclick="togglePw('r-password', this)"><i class="fas fa-eye"></i></button>
+      </div>
+      <div class="pw-strength"><div class="pw-strength-bar" id="pw-bar"></div></div>
+    </div>
+    <div class="auth-row2">
+      <div class="auth-form-group"><label data-i18n="f_tel"></label><div class="auth-input-wrap"><i class="fas fa-phone left-icon"></i><input type="tel" id="r-tel" class="auth-input"></div></div>
+      <div class="auth-form-group"><label data-i18n="f_ville"></label><div class="auth-input-wrap"><i class="fas fa-city left-icon"></i><input type="text" id="r-ville" class="auth-input"></div></div>
+    </div>
+
+    <div class="driver-fields" id="driver-fields">
+      <div style="font-size:.85rem;font-weight:700;color:var(--primary);margin-bottom:14px" data-i18n="driver_title"></div>
+      <div class="auth-row2">
+        <div class="auth-form-group"><label data-i18n="f_vehicule_marque"></label><div class="auth-input-wrap"><i class="fas fa-car left-icon"></i><input type="text" id="r-marque" class="auth-input"></div></div>
+        <div class="auth-form-group"><label data-i18n="f_vehicule_modele"></label><div class="auth-input-wrap"><i class="fas fa-car-side left-icon"></i><input type="text" id="r-modele" class="auth-input"></div></div>
+      </div>
+      <div class="auth-row2">
+        <div class="auth-form-group"><label data-i18n="f_plaque"></label><div class="auth-input-wrap"><i class="fas fa-id-card left-icon"></i><input type="text" id="r-plaque" class="auth-input"></div></div>
+        <div class="auth-form-group"><label data-i18n="f_carte_vtc"></label><div class="auth-input-wrap"><i class="fas fa-id-badge left-icon"></i><input type="text" id="r-carte-vtc" class="auth-input"></div></div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary auth-submit" id="register-btn" onclick="doRegister()"><i class="fas fa-user-plus"></i> <span data-i18n="submit"></span></button>
+
+    <p style="font-size:.74rem;color:var(--gray);text-align:center;margin-top:14px">
+      <span data-i18n="terms"></span> <a href="../../cgu.html" style="color:var(--primary);font-weight:600" data-i18n="terms_link"></a>
+    </p>
+
+    <div class="auth-divider">ou</div>
+    <div class="auth-switch">
+      <span data-i18n="has_account"></span> <a href="../login/login.html" data-i18n="login_link"></a>
+    </div>
+  </div>
+</div>
+
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">⚡ LOC <span>RÉACTION</span> S.A.S</div>
+      <div style="font-size:.85rem;margin-top:10px">Île-de-France</div>
+      <div style="font-size:.85rem">95270 Chaumontel</div>
+    </div>
+    <div class="footer-links">
+      <a href="../devis.html" data-i18n="footer_devis"></a>
+      <a href="../mentions-legales.html" data-i18n="footer_legal_link"></a>
+    </div>
+  </div>
+  <div class="footer-bottom">© 2026 LOC RÉACTION S.A.S — <span data-i18n="footer_legal"></span></div>
+</footer>
+
+<script type="module" src="register.js"></script>
+</body>
+</html>

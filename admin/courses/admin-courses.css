@@ -1,0 +1,7 @@
+/* structuré via main.css */
+.rd-driver-row{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--gray-light);border-radius:var(--radius);margin-bottom:6px}
+.rd-driver-row .nav-avatar{width:34px;height:34px;font-size:.72rem;flex-shrink:0}
+.rd-driver-info{flex:1;min-width:0}
+.rd-driver-name{font-weight:700;font-size:.82rem}
+.rd-driver-meta{font-size:.72rem;color:var(--gray)}
+.rd-driver-dist{font-size:.72rem;font-weight:700;color:var(--primary);flex-shrink:0}

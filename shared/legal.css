@@ -1,0 +1,11 @@
+/* Styles communs aux pages légales */
+.legal-wrap { width: min(820px, 94vw); margin: 0 auto; }
+.legal-block { background: #fff; border: 1px solid var(--gray-light); border-radius: var(--radius-lg); padding: clamp(20px, 2.4vw, 30px); margin-bottom: 18px; }
+.legal-block h2 { font-size: clamp(1rem, 1.15vw, 1.15rem); font-weight: 700; color: var(--primary); margin-bottom: 12px; padding-bottom: 10px; border-bottom: 2px solid var(--gold); }
+.legal-block p, .legal-block li { font-size: .88rem; color: var(--gray); line-height: 1.75; }
+.legal-block ul { margin-left: 20px; margin-top: 8px; }
+.legal-table { width: 100%; border-collapse: collapse; font-size: .87rem; }
+.legal-table td { padding: 9px 12px; border: 1px solid var(--gray-light); }
+.legal-table td:first-child { font-weight: 700; color: var(--primary); background: var(--gray-xlight); width: 40%; }
+.legal-links { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px; }
+.legal-links a { font-size: .85rem; font-weight: 600; color: var(--primary); }

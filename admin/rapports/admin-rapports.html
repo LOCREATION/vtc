@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rapports | LOC RÉACTION S.A.S</title>
+<link rel="icon" type="image/svg+xml" href="../../shared/img/logo-icon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="../../shared/main.css">
+<link rel="stylesheet" href="admin-rapports.css">
+
+</head>
+<body>
+<div id="global-loader" class="global-loader"><div class="spinner"></div><div class="loader-text">Chargement…</div></div>
+
+<nav class="navbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="app-hamburger" id="app-hamburger-btn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <a href="../../index.html" class="nav-logo"><div class="nav-logo-icon"><i class="fas fa-bolt"></i></div>Loc'<span>Réaction</span></a>
+    <span class="nav-title">Rapports</span>
+  </div>
+  <div class="nav-right">
+    <div class="nav-user"><div class="nav-avatar" id="nav-av">?</div><div><div class="nav-name" id="nav-nm">…</div><div class="nav-role" id="nav-rl">…</div></div></div>
+    <button class="nav-icon-btn" id="logout-btn" title="Déconnexion"><i class="fas fa-sign-out-alt"></i></button>
+  </div>
+</nav>
+
+<div class="dashboard-wrap">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-profile"><div class="sidebar-avatar" id="sb-av">?</div><div class="sidebar-name" id="sb-nm">…</div><div class="sidebar-role">Administrateur</div><div class="sidebar-stats" id="sb-st"></div></div>
+    <div class="sidebar-section"><div class="sidebar-label">Administration</div>
+      <ul class="sidebar-menu">
+        <li><a href="../dashboard/admin-dash.html"><i class="fas fa-chart-pie"></i>Vue d'ensemble</a></li>
+        <li><a href="../messagerie/admin-messagerie.html"><i class="fas fa-comments"></i>Messagerie</a></li>
+        <li><a href="../utilisateurs/admin-utilisateurs.html"><i class="fas fa-users"></i>Utilisateurs</a></li>
+        <li><a href="../courses/admin-courses.html"><i class="fas fa-route"></i>Courses</a></li>
+        <li><a href="../tarifs/admin-tarifs.html"><i class="fas fa-euro-sign"></i>Tarifs</a></li>
+        <li><a href="../comptabilite/admin-comptabilite.html"><i class="fas fa-calculator"></i>Comptabilité</a></li>
+        <li><a href="../paie/admin-paie.html"><i class="fas fa-file-invoice-dollar"></i>Fiches de Paie</a></li>
+        <li><a href="../employes/admin-employes.html"><i class="fas fa-id-badge"></i>Employés</a></li>
+        <li><a href="../devis-recus/admin-devis-recus.html"><i class="fas fa-file-alt"></i>Devis Reçus</a></li>
+        <li><a href="../verification-chauffeurs/admin-verif-chauffeurs.html"><i class="fas fa-user-check"></i>Vérif. Chauffeurs</a></li>
+        <li><a href="../rapports/admin-rapports.html" class="active"><i class="fas fa-chart-bar"></i>Rapports</a></li>
+        <li><a href="../reglages/admin-reglages.html"><i class="fas fa-cog"></i>Réglages</a></li>
+      </ul>
+    </div>
+    <div class="sidebar-section"><ul class="sidebar-menu"><li><a href="#" id="logout-link"><i class="fas fa-sign-out-alt"></i>Déconnexion</a></li></ul></div>
+  </aside>
+
+  <main class="main-content">
+
+    <div class="card">
+      <div class="card-title" style="margin-bottom:16px">Synthèse mensuelle</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Mois</th><th>Courses terminées</th><th>CA</th><th>KM parcourus</th></tr></thead>
+        <tbody id="synthese-table"></tbody>
+      </table></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="margin-bottom:16px">Exports de données</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px">
+        <button class="btn btn-outline btn-full" onclick="exportTable('rides', ['created_at','depart','arrivee','distance_km','prix','statut'])"><i class="fas fa-route"></i> Export Courses (CSV)</button>
+        <button class="btn btn-outline btn-full" onclick="exportTable('profiles', ['created_at','prenom','nom','email','role','ville'])"><i class="fas fa-users"></i> Export Utilisateurs (CSV)</button>
+        <button class="btn btn-outline btn-full" onclick="exportTable('transactions', ['created_at','type','amount','description'])"><i class="fas fa-exchange-alt"></i> Export Transactions (CSV)</button>
+        <button class="btn btn-outline btn-full" onclick="exportTable('service_requests', ['created_at','service_type','nom','email','statut','devis_montant'])"><i class="fas fa-file-alt"></i> Export Devis (CSV)</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast-container"></div>
+<script type="module" src="admin-rapports.js"></script>
+</body>
+</html>

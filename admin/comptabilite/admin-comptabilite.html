@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comptabilité | LOC RÉACTION S.A.S</title>
+<link rel="icon" type="image/svg+xml" href="../../shared/img/logo-icon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="../../shared/main.css">
+<link rel="stylesheet" href="admin-comptabilite.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div id="global-loader" class="global-loader"><div class="spinner"></div><div class="loader-text">Chargement…</div></div>
+
+<nav class="navbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="app-hamburger" id="app-hamburger-btn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <a href="../../index.html" class="nav-logo"><div class="nav-logo-icon"><i class="fas fa-bolt"></i></div>Loc'<span>Réaction</span></a>
+    <span class="nav-title">Comptabilité</span>
+  </div>
+  <div class="nav-right">
+    <div class="nav-user"><div class="nav-avatar" id="nav-av">?</div><div><div class="nav-name" id="nav-nm">…</div><div class="nav-role" id="nav-rl">…</div></div></div>
+    <button class="nav-icon-btn" id="logout-btn" title="Déconnexion"><i class="fas fa-sign-out-alt"></i></button>
+  </div>
+</nav>
+
+<div class="dashboard-wrap">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-profile"><div class="sidebar-avatar" id="sb-av">?</div><div class="sidebar-name" id="sb-nm">…</div><div class="sidebar-role">Administrateur</div><div class="sidebar-stats" id="sb-st"></div></div>
+    <div class="sidebar-section"><div class="sidebar-label">Administration</div>
+      <ul class="sidebar-menu">
+        <li><a href="../dashboard/admin-dash.html"><i class="fas fa-chart-pie"></i>Vue d'ensemble</a></li>
+        <li><a href="../messagerie/admin-messagerie.html"><i class="fas fa-comments"></i>Messagerie</a></li>
+        <li><a href="../utilisateurs/admin-utilisateurs.html"><i class="fas fa-users"></i>Utilisateurs</a></li>
+        <li><a href="../courses/admin-courses.html"><i class="fas fa-route"></i>Courses</a></li>
+        <li><a href="../tarifs/admin-tarifs.html"><i class="fas fa-euro-sign"></i>Tarifs</a></li>
+        <li><a href="../comptabilite/admin-comptabilite.html" class="active"><i class="fas fa-calculator"></i>Comptabilité</a></li>
+        <li><a href="../paie/admin-paie.html"><i class="fas fa-file-invoice-dollar"></i>Fiches de Paie</a></li>
+        <li><a href="../employes/admin-employes.html"><i class="fas fa-id-badge"></i>Employés</a></li>
+        <li><a href="../devis-recus/admin-devis-recus.html"><i class="fas fa-file-alt"></i>Devis Reçus</a></li>
+        <li><a href="../verification-chauffeurs/admin-verif-chauffeurs.html"><i class="fas fa-user-check"></i>Vérif. Chauffeurs</a></li>
+        <li><a href="../rapports/admin-rapports.html"><i class="fas fa-chart-bar"></i>Rapports</a></li>
+        <li><a href="../reglages/admin-reglages.html"><i class="fas fa-cog"></i>Réglages</a></li>
+      </ul>
+    </div>
+    <div class="sidebar-section"><ul class="sidebar-menu"><li><a href="#" id="logout-link"><i class="fas fa-sign-out-alt"></i>Déconnexion</a></li></ul></div>
+  </aside>
+
+  <main class="main-content">
+
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-icon green"><i class="fas fa-chart-line"></i></div><div><div class="stat-value" id="acc-ca">0€</div><div class="stat-label">CA du mois</div></div></div>
+      <div class="stat-card"><div class="stat-icon red"><i class="fas fa-money-bill-wave"></i></div><div><div class="stat-value" id="acc-chg">0€</div><div class="stat-label">Charges du mois</div></div></div>
+      <div class="stat-card"><div class="stat-icon gold"><i class="fas fa-hand-holding-usd"></i></div><div><div class="stat-value" id="acc-sal">0€</div><div class="stat-label">Salaires chargés</div></div></div>
+      <div class="stat-card"><div class="stat-icon navy"><i class="fas fa-piggy-bank"></i></div><div><div class="stat-value" id="acc-ben">0€</div><div class="stat-label">Bénéfice net du mois</div></div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="margin-bottom:10px">Trésorerie cumulée</div>
+      <div style="display:flex;align-items:baseline;gap:12px"><div style="font-size:2.2rem;font-weight:900;color:var(--primary)" id="acc-treso">0 €</div><div style="font-size:.82rem;color:var(--gray)">Depuis le début de l'activité</div></div>
+    </div>
+
+    <div class="card"><div class="card-header"><div class="card-title">CA vs Charges vs Bénéfice — 6 mois</div></div><canvas id="accChart" height="80"></canvas></div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Écritures comptables</div>
+        <div style="display:flex;gap:8px"><button class="btn btn-primary btn-sm" onclick="openAdd()"><i class="fas fa-plus"></i>Ajouter</button><button class="btn btn-outline btn-sm" onclick="exportEntries()"><i class="fas fa-download"></i>Export CSV</button></div>
+      </div>
+      <div class="tabs">
+        <button class="tab-btn active" onclick="filterEntries('tous', this)">Toutes</button>
+        <button class="tab-btn" onclick="filterEntries('recette', this)">Recettes</button>
+        <button class="tab-btn" onclick="filterEntries('depense', this)">Dépenses</button>
+        <button class="tab-btn" onclick="filterEntries('salaire', this)">Salaires</button>
+        <button class="tab-btn" onclick="filterEntries('investissement', this)">Investissements</button>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Catégorie</th><th>Description</th><th>Montant</th><th></th></tr></thead><tbody id="entries-table"></tbody></table></div>
+      <div class="empty-state" id="e-empty" style="display:none"><i class="fas fa-file-invoice"></i><h3>Aucune écriture</h3></div>
+    </div>
+
+    <div class="modal-overlay" id="entry-modal">
+      <div class="modal"><div class="modal-header"><div class="modal-title">Ajouter une écriture</div><button class="modal-close" onclick="document.getElementById('entry-modal').classList.remove('open')"><i class="fas fa-times"></i></button></div>
+      <div class="modal-body">
+        <div class="form-group"><label class="form-label">Date</label><input type="date" id="e-date" class="form-control"></div>
+        <div class="form-group"><label class="form-label">Type</label><select id="e-type" class="form-select"><option value="recette">Recette</option><option value="depense">Dépense</option><option value="investissement">Investissement</option><option value="salaire">Salaire</option></select></div>
+        <div class="form-group"><label class="form-label">Catégorie</label><input type="text" id="e-cat" class="form-control" placeholder="Ex : Carburant, Assurance…"></div>
+        <div class="form-group"><label class="form-label">Montant (€)</label><input type="number" id="e-montant" class="form-control" step="0.01"></div>
+        <div class="form-group"><label class="form-label">Description</label><input type="text" id="e-desc" class="form-control"></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-outline-gray" onclick="document.getElementById('entry-modal').classList.remove('open')">Annuler</button><button class="btn btn-primary" onclick="saveEntry()"><i class="fas fa-save"></i>Enregistrer</button></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast-container"></div>
+<script type="module" src="admin-comptabilite.js"></script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "nav_services": "Servicios",
+  "nav_about": "Nosotros",
+  "nav_contact": "Contacto",
+  "nav_login": "Iniciar sesión",
+  "nav_register": "Registrarse",
+  "nav_my_space": "Mi cuenta",
+  "footer_login": "Iniciar sesión",
+  "footer_register": "Registrarse",
+  "footer_devis": "Presupuesto",
+  "footer_legal_link": "Aviso legal",
+  "footer_legal": "Sociedad por Acciones Simplificada — Todos los derechos reservados",
+  "meta_title": "Página no encontrada — LOC RÉACTION S.A.S",
+  "code": "404",
+  "title": "Página no encontrada",
+  "text": "La página que busca no existe o ha sido movida.",
+  "btn_home": "Volver al inicio",
+  "btn_contact": "Contactar"
+}

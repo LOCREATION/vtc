@@ -1,0 +1,12 @@
+/* /faq.css */
+.faq-list { width: min(820px, 94vw); margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+.faq-item { background: #fff; border: 1px solid var(--gray-light); border-radius: var(--radius-lg); overflow: hidden; }
+.faq-q { width: 100%; text-align: left; padding: 18px 22px; background: none; border: none; display: flex; justify-content: space-between; align-items: center; font-size: .95rem; font-weight: 600; color: var(--primary); font-family: inherit; }
+.faq-q i { transition: transform .3s; color: var(--gray); }
+.faq-item.open .faq-q i { transform: rotate(180deg); }
+.faq-a { max-height: 0; overflow: hidden; transition: max-height .3s ease; padding: 0 22px; }
+.faq-item.open .faq-a { max-height: 240px; padding-bottom: 18px; }
+.faq-a p { font-size: .88rem; color: var(--gray); line-height: 1.7; }
+.faq-cta { width: min(600px, 94vw); margin: 0 auto; text-align: center; background: var(--gray-xlight); border-radius: var(--radius-xl); padding: clamp(30px, 4vw, 46px); }
+.faq-cta h2 { font-size: clamp(1.2rem, 1.6vw, 1.5rem); font-weight: 800; color: var(--primary); margin-bottom: 10px; }
+.faq-cta p { font-size: .9rem; color: var(--gray); margin-bottom: 22px; }

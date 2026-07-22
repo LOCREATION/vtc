@@ -1,0 +1,5 @@
+/* structuré via main.css */
+.driver-verif-card{background:#fff;border:1.5px solid var(--gray-light);border-radius:var(--radius-lg);padding:18px}
+.driver-verif-card.verified{border-color:var(--success)}
+.doc-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--gray-xlight);font-size:.82rem}
+.doc-row:last-child{border-bottom:none}

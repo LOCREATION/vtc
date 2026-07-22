@@ -1,0 +1,17 @@
+{
+  "nav_services": "Services",
+  "nav_about": "About",
+  "nav_contact": "Contact",
+  "nav_login": "Log in",
+  "nav_register": "Sign up",
+  "nav_my_space": "My account",
+  "footer_login": "Log in",
+  "footer_register": "Sign up",
+  "footer_devis": "Quote",
+  "footer_legal_link": "Legal notice",
+  "footer_legal": "Simplified Joint-Stock Company — All rights reserved",
+  "meta_title": "Offline — LOC RÉACTION S.A.S",
+  "title": "No internet connection",
+  "text": "Check your connection and try again. Some features require an active connection.",
+  "btn_retry": "Retry"
+}

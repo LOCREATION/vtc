@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n-title="meta_title">LOC RÉACTION S.A.S</title>
+<link rel="icon" type="image/svg+xml" href="../../shared/img/logo-icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="../../shared/site-shared.css">
+<link rel="stylesheet" href="../../shared/auth-shared.css">
+<link rel="stylesheet" href="verify-email.css">
+</head>
+<body>
+
+<nav class="site-nav">
+  <a href="../../index.html" class="brand">
+    <img src="../../shared/img/logo-icon.svg" alt="LOC RÉACTION S.A.S" class="brand-icon">
+    <span class="brand-text">
+      <span class="brand-name">LOC <span>RÉACTION</span></span>
+      <span class="brand-sub">TRANSPORT DE PASSAGERS | SERVICE VTC</span>
+    </span>
+  </a>
+  <div class="nav-links">
+    <a href="../../index.html#services" data-i18n="nav_services"></a>
+    <a href="../../a-propos.html" data-i18n="nav_about"></a>
+    <a href="../../contact.html" data-i18n="nav_contact"></a>
+  </div>
+  <div class="nav-right">
+    <select id="lang-select-desktop" class="lang-select" aria-label="Langue"></select>
+    <button class="hamburger" id="hamburger-btn" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
+  </div>
+</nav>
+
+<div class="mobile-menu" id="mobile-menu">
+  <a href="../../index.html">Accueil</a>
+  <a href="../../index.html#services" data-i18n="nav_services"></a>
+  <a href="../../a-propos.html" data-i18n="nav_about"></a>
+  <a href="../../contact.html" data-i18n="nav_contact"></a>
+  <select id="lang-select-mobile" class="lang-select" aria-label="Langue"></select>
+</div>
+<div class="menu-backdrop"></div>
+
+
+<div class="auth-wrap">
+  <div class="auth-card" style="text-align:center">
+    <div style="font-size:2.6rem;color:var(--gold-dark);margin-bottom:16px"><i class="fas fa-envelope-open-text"></i></div>
+    <h1 class="auth-title" data-i18n="title"></h1>
+    <p class="auth-subtitle" data-i18n="text"></p>
+    <p id="verify-email-addr" style="font-weight:700;color:var(--primary);margin:-14px 0 18px;font-size:.92rem"></p>
+    <p style="font-size:.78rem;color:var(--gray);margin-bottom:22px" data-i18n="check_spam"></p>
+
+    <div id="verify-alert" class="auth-alert"></div>
+
+    <button class="btn btn-outline auth-submit" id="resend-btn" onclick="resendEmail()"><i class="fas fa-redo"></i> <span data-i18n="resend_btn"></span></button>
+
+    <div class="auth-switch" style="margin-top:20px"><a href="../login/login.html"><i class="fas fa-arrow-left"></i> <span data-i18n="back_to_login"></span></a></div>
+  </div>
+</div>
+
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">⚡ LOC <span>RÉACTION</span> S.A.S</div>
+      <div style="font-size:.85rem;margin-top:10px">Île-de-France</div>
+      <div style="font-size:.85rem">95270 Chaumontel</div>
+    </div>
+    <div class="footer-links">
+      <a href="../devis.html" data-i18n="footer_devis"></a>
+      <a href="../mentions-legales.html" data-i18n="footer_legal_link"></a>
+    </div>
+  </div>
+  <div class="footer-bottom">© 2026 LOC RÉACTION S.A.S — <span data-i18n="footer_legal"></span></div>
+</footer>
+
+<script type="module" src="verify-email.js"></script>
+</body>
+</html>

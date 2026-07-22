@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n-title="meta_title">LOC RÉACTION S.A.S</title>
+<link rel="icon" type="image/svg+xml" href="../../shared/img/logo-icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="../../shared/site-shared.css">
+<link rel="stylesheet" href="../../shared/service-shared.css">
+<link rel="stylesheet" href="jardinage.css">
+</head>
+<body>
+
+<nav class="site-nav">
+  <a href="../../index.html" class="brand">
+    <img src="../../shared/img/logo-icon.svg" alt="LOC RÉACTION S.A.S" class="brand-icon">
+    <span class="brand-text">
+      <span class="brand-name">LOC <span>RÉACTION</span></span>
+      <span class="brand-sub">TRANSPORT DE PASSAGERS | SERVICE VTC</span>
+    </span>
+  </a>
+  <div class="nav-links">
+    <a href="../../index.html#services" class="active" data-i18n="nav_services"></a>
+    <a href="../../a-propos.html" data-i18n="nav_about"></a>
+    <a href="../../contact.html" data-i18n="nav_contact"></a>
+  </div>
+  <div class="nav-right">
+    <select id="lang-select-desktop" class="lang-select" aria-label="Langue"></select>
+    <a href="../../auth/login/login.html" class="btn btn-outline nav-cta-login" data-i18n="nav_login"></a>
+    <a href="../../auth/register/register.html" class="btn btn-primary" data-i18n="nav_register"></a>
+    <button class="hamburger" id="hamburger-btn" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
+  </div>
+</nav>
+
+<div class="mobile-menu" id="mobile-menu">
+  <a href="../../index.html">Accueil</a>
+  <a href="../../index.html#services" data-i18n="nav_services"></a>
+  <a href="../../a-propos.html" data-i18n="nav_about"></a>
+  <a href="../../contact.html" data-i18n="nav_contact"></a>
+  <a href="../../auth/login/login.html" class="nav-cta-login" data-i18n="nav_login"></a>
+  <a href="../../auth/register/register.html" data-i18n="nav_register"></a>
+  <select id="lang-select-mobile" class="lang-select" aria-label="Langue"></select>
+</div>
+<div class="menu-backdrop"></div>
+
+
+<section class="svc-hero">
+  <div>
+    <div class="svc-badge" style="background:rgba(26,107,58,.1);color:var(--green)"><i class="fas fa-leaf"></i> <span data-i18n="badge"></span></div>
+    <h1 data-i18n="title"></h1>
+    <p data-i18n="subtitle"></p>
+    <div class="svc-hero-btns">
+      <a href="../../devis.html?type=jardinage" class="btn btn-gold btn-lg"><i class="fas fa-file-invoice"></i> <span data-i18n="cta_devis"></span></a>
+      <a href="../../contact.html" class="btn btn-outline btn-lg"><i class="fas fa-envelope"></i> <span data-i18n="cta_contact"></span></a>
+    </div>
+  </div>
+  <div class="svc-icon-big" style="background:rgba(26,107,58,.1);color:var(--green)"><i class="fas fa-leaf"></i></div>
+</section>
+
+<section class="svc-section" style="background:var(--gray-xlight)">
+  <div class="svc-inner">
+    <h2 class="svc-section-title" data-i18n="steps_title"></h2>
+    <div class="svc-steps">
+      <div class="svc-step"><div class="svc-step-num" style="background:var(--green)">1</div><h3 data-i18n="s1_title"></h3><p data-i18n="s1_text"></p></div>
+      <div class="svc-step"><div class="svc-step-num" style="background:var(--green)">2</div><h3 data-i18n="s2_title"></h3><p data-i18n="s2_text"></p></div>
+      <div class="svc-step"><div class="svc-step-num" style="background:var(--green)">3</div><h3 data-i18n="s3_title"></h3><p data-i18n="s3_text"></p></div>
+    </div>
+  </div>
+</section>
+
+<section class="svc-section">
+  <div class="svc-inner">
+    <h2 class="svc-section-title" data-i18n="features_title"></h2>
+    <div class="svc-features">
+      <div class="svc-feature"><i class="fas fa-cut" style="color:var(--green)"></i><div><h4 data-i18n="f1_title"></h4><p data-i18n="f1_text"></p></div></div>
+      <div class="svc-feature"><i class="fas fa-seedling" style="color:var(--green)"></i><div><h4 data-i18n="f2_title"></h4><p data-i18n="f2_text"></p></div></div>
+      <div class="svc-feature"><i class="fas fa-tree" style="color:var(--green)"></i><div><h4 data-i18n="f3_title"></h4><p data-i18n="f3_text"></p></div></div>
+      <div class="svc-feature"><i class="fas fa-calendar-check" style="color:var(--green)"></i><div><h4 data-i18n="f4_title"></h4><p data-i18n="f4_text"></p></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="svc-section">
+  <div class="svc-cta" style="background:linear-gradient(135deg,var(--green),#0d3d1f)">
+    <h2 data-i18n="cta_title"></h2>
+    <p data-i18n="cta_text"></p>
+    <div class="svc-cta-btns"><a href="../../devis.html?type=jardinage" class="btn btn-primary btn-lg" style="background:#fff;color:var(--green)"><i class="fas fa-file-invoice"></i> <span data-i18n="cta_devis"></span></a></div>
+  </div>
+</section>
+
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">⚡ LOC <span>RÉACTION</span> S.A.S</div>
+      <div style="font-size:.85rem;margin-top:10px">Île-de-France</div>
+      <div style="font-size:.85rem">95270 Chaumontel</div>
+    </div>
+    <div class="footer-links">
+      <a href="../../auth/login/login.html" style="color:var(--gold)" data-i18n="footer_login"></a>
+      <a href="../../auth/register/register.html" data-i18n="footer_register"></a>
+      <a href="../../devis.html" data-i18n="footer_devis"></a>
+      <a href="../../mentions-legales.html" data-i18n="footer_legal_link"></a>
+    </div>
+  </div>
+  <div class="footer-bottom">© 2026 LOC RÉACTION S.A.S — <span data-i18n="footer_legal"></span></div>
+</footer>
+
+<script type="module" src="jardinage.js"></script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Historique | LOC RÉACTION S.A.S</title>
+<link rel="icon" type="image/svg+xml" href="../../shared/img/logo-icon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="../../shared/main.css">
+<link rel="stylesheet" href="client-history.css">
+
+</head>
+<body>
+<div id="global-loader" class="global-loader"><div class="spinner"></div><div class="loader-text">Chargement…</div></div>
+
+<nav class="navbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="app-hamburger" id="app-hamburger-btn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <a href="../../index.html" class="nav-logo"><div class="nav-logo-icon"><i class="fas fa-bolt"></i></div>Loc'<span>Réaction</span></a>
+    <span class="nav-title">Historique</span>
+  </div>
+  <div class="nav-right">
+    <div class="nav-user"><div class="nav-avatar" id="nav-av">?</div><div><div class="nav-name" id="nav-nm">…</div><div class="nav-role" id="nav-rl">…</div></div></div>
+    <button class="nav-icon-btn" id="logout-btn" title="Déconnexion"><i class="fas fa-sign-out-alt"></i></button>
+  </div>
+</nav>
+
+<div class="dashboard-wrap">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-profile"><div class="sidebar-avatar" id="sb-av">?</div><div class="sidebar-name" id="sb-nm">…</div><div class="sidebar-role">Client</div><div class="sidebar-stats" id="sb-st"></div></div>
+    <div class="sidebar-section"><div class="sidebar-label">Mon espace</div>
+      <ul class="sidebar-menu">
+        <li><a href="../dashboard/client-dash.html"><i class="fas fa-bolt"></i>Réserver</a></li>
+        <li><a href="../tracking/client-tracking.html"><i class="fas fa-map-marker-alt"></i>Suivi GPS</a></li>
+        <li><a href="../wallet/client-wallet.html"><i class="fas fa-wallet"></i>Portefeuille</a></li>
+        <li><a href="../history/client-history.html" class="active"><i class="fas fa-history"></i>Historique</a></li>
+        <li><a href="../receipts/client-receipts.html"><i class="fas fa-receipt"></i>Mes reçus</a></li>
+        <li><a href="../service-requests/client-service-requests.html"><i class="fas fa-file-invoice"></i>Mes devis</a></li>
+        <li><a href="../favorites/client-favorites.html"><i class="fas fa-heart"></i>Favoris</a></li>
+        <li><a href="../notifications/client-notifications.html"><i class="fas fa-bell"></i>Notifications</a></li>
+        <li><a href="../preferences/client-preferences.html"><i class="fas fa-sliders-h"></i>Préférences</a></li>
+        <li><a href="../profile/client-profile.html"><i class="fas fa-user-cog"></i>Profil</a></li>
+        <li><a href="../support/client-support.html"><i class="fas fa-life-ring"></i>Assistance</a></li>
+      </ul>
+    </div>
+    <div class="sidebar-section"><ul class="sidebar-menu"><li><a href="#" id="logout-link"><i class="fas fa-sign-out-alt"></i>Déconnexion</a></li></ul></div>
+  </aside>
+
+  <main class="main-content">
+
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-icon navy"><i class="fas fa-route"></i></div><div><div class="stat-value" id="h-total">0</div><div class="stat-label">Courses totales</div></div></div>
+      <div class="stat-card"><div class="stat-icon gold"><i class="fas fa-euro-sign"></i></div><div><div class="stat-value" id="h-spent">0€</div><div class="stat-label">Total dépensé</div></div></div>
+      <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-road"></i></div><div><div class="stat-value" id="h-km">0 km</div><div class="stat-label">Distance parcourue</div></div></div>
+      <div class="stat-card"><div class="stat-icon green"><i class="fas fa-star"></i></div><div><div class="stat-value" id="h-rating">—</div><div class="stat-label">Note moyenne donnée</div></div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Historique des courses</div>
+        <div class="tabs" style="margin-bottom:0">
+          <button class="tab-btn active" onclick="filterRides('tous', this)">Toutes</button>
+          <button class="tab-btn" onclick="filterRides('termine', this)">Terminées</button>
+          <button class="tab-btn" onclick="filterRides('annule', this)">Annulées</button>
+        </div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Date</th><th>Trajet</th><th>Distance</th><th>Prix</th><th>Statut</th><th></th></tr></thead>
+        <tbody id="rides-table"></tbody>
+      </table></div>
+      <div class="empty-state" id="rides-empty" style="display:none"><i class="fas fa-route"></i><h3>Aucune course pour ce filtre</h3></div>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast-container"></div>
+<script type="module" src="client-history.js"></script>
+</body>
+</html>

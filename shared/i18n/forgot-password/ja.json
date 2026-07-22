@@ -1,0 +1,18 @@
+{
+  "nav_services": "サービス",
+  "nav_about": "会社概要",
+  "nav_contact": "お問い合わせ",
+  "footer_devis": "見積もり",
+  "footer_legal_link": "法的通知",
+  "footer_legal": "簡易株式会社（S.A.S.）— 無断複写・転載を禁じます",
+  "meta_title": "パスワードをお忘れの方 — LOC RÉACTION S.A.S",
+  "title": "パスワードをお忘れですか",
+  "subtitle": "メールアドレスをご入力いただくと、再設定用のリンクをお送りします。",
+  "f_email": "メールアドレス",
+  "submit": "リンクを送信",
+  "submitting": "送信中…",
+  "success": "メールを送信しました！受信ボックスをご確認のうえ、パスワードを再設定してください。",
+  "err_required": "メールアドレスをご入力ください。",
+  "err_generic": "エラーが発生しました。アドレスをご確認のうえ、再度お試しください。",
+  "back_to_login": "ログインに戻る"
+}

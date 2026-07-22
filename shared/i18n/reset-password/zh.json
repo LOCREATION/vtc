@@ -1,0 +1,23 @@
+{
+  "nav_services": "服务项目",
+  "nav_about": "关于我们",
+  "nav_contact": "联系我们",
+  "footer_devis": "报价",
+  "footer_legal_link": "法律声明",
+  "footer_legal": "简化股份公司 — 保留所有权利",
+  "meta_title": "重置密码 — LOC RÉACTION S.A.S",
+  "title": "设置新密码",
+  "subtitle": "请为您的账户设置新密码。",
+  "f_password": "新密码",
+  "f_password_confirm": "确认密码",
+  "submit": "重置密码",
+  "submitting": "保存中…",
+  "success": "密码已更新！正在跳转至登录页…",
+  "err_required": "请填写两个字段。",
+  "err_mismatch": "两次输入的密码不一致。",
+  "err_short": "密码长度至少为8位。",
+  "invalid_title": "链接无效或已过期",
+  "invalid_text": "该重置链接已失效，请重新申请。",
+  "request_new_link": "申请新链接",
+  "go_to_login": "返回登录"
+}

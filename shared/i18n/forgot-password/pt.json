@@ -1,0 +1,18 @@
+{
+  "nav_services": "Serviços",
+  "nav_about": "Sobre nós",
+  "nav_contact": "Contacto",
+  "footer_devis": "Orçamento",
+  "footer_legal_link": "Aviso legal",
+  "footer_legal": "Sociedade por Ações Simplificada — Todos os direitos reservados",
+  "meta_title": "Password Esquecida — LOC RÉACTION S.A.S",
+  "title": "Palavra-passe esquecida",
+  "subtitle": "Indique o seu email, enviaremos um link de reposição.",
+  "f_email": "Endereço de email",
+  "submit": "Enviar link",
+  "submitting": "A enviar…",
+  "success": "Email enviado! Verifique a sua caixa de entrada para repor a palavra-passe.",
+  "err_required": "Indique o seu endereço de email.",
+  "err_generic": "Ocorreu um erro. Verifique o endereço e tente novamente.",
+  "back_to_login": "Voltar ao início de sessão"
+}

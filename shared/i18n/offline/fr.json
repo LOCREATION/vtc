@@ -1,0 +1,17 @@
+{
+  "nav_services": "Services",
+  "nav_about": "À propos",
+  "nav_contact": "Contact",
+  "nav_login": "Se connecter",
+  "nav_register": "Inscription",
+  "nav_my_space": "Mon espace",
+  "footer_login": "Connexion",
+  "footer_register": "Inscription",
+  "footer_devis": "Devis",
+  "footer_legal_link": "Mentions légales",
+  "footer_legal": "Société par Actions Simplifiée — Tous droits réservés",
+  "meta_title": "Hors ligne — LOC RÉACTION S.A.S",
+  "title": "Pas de connexion internet",
+  "text": "Vérifiez votre connexion et réessayez. Certaines fonctionnalités nécessitent une connexion active.",
+  "btn_retry": "Réessayer"
+}

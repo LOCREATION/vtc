@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Préférences | LOC RÉACTION S.A.S</title>
+<link rel="icon" type="image/svg+xml" href="../../shared/img/logo-icon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="../../shared/main.css">
+<link rel="stylesheet" href="client-preferences.css">
+
+</head>
+<body>
+<div id="global-loader" class="global-loader"><div class="spinner"></div><div class="loader-text">Chargement…</div></div>
+
+<nav class="navbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="app-hamburger" id="app-hamburger-btn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <a href="../../index.html" class="nav-logo"><div class="nav-logo-icon"><i class="fas fa-bolt"></i></div>Loc'<span>Réaction</span></a>
+    <span class="nav-title">Préférences</span>
+  </div>
+  <div class="nav-right">
+    <div class="nav-user"><div class="nav-avatar" id="nav-av">?</div><div><div class="nav-name" id="nav-nm">…</div><div class="nav-role" id="nav-rl">…</div></div></div>
+    <button class="nav-icon-btn" id="logout-btn" title="Déconnexion"><i class="fas fa-sign-out-alt"></i></button>
+  </div>
+</nav>
+
+<div class="dashboard-wrap">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-profile"><div class="sidebar-avatar" id="sb-av">?</div><div class="sidebar-name" id="sb-nm">…</div><div class="sidebar-role">Client</div><div class="sidebar-stats" id="sb-st"></div></div>
+    <div class="sidebar-section"><div class="sidebar-label">Mon espace</div>
+      <ul class="sidebar-menu">
+        <li><a href="../dashboard/client-dash.html"><i class="fas fa-bolt"></i>Réserver</a></li>
+        <li><a href="../tracking/client-tracking.html"><i class="fas fa-map-marker-alt"></i>Suivi GPS</a></li>
+        <li><a href="../wallet/client-wallet.html"><i class="fas fa-wallet"></i>Portefeuille</a></li>
+        <li><a href="../history/client-history.html"><i class="fas fa-history"></i>Historique</a></li>
+        <li><a href="../receipts/client-receipts.html"><i class="fas fa-receipt"></i>Mes reçus</a></li>
+        <li><a href="../service-requests/client-service-requests.html"><i class="fas fa-file-invoice"></i>Mes devis</a></li>
+        <li><a href="../favorites/client-favorites.html"><i class="fas fa-heart"></i>Favoris</a></li>
+        <li><a href="../notifications/client-notifications.html"><i class="fas fa-bell"></i>Notifications</a></li>
+        <li><a href="../preferences/client-preferences.html" class="active"><i class="fas fa-sliders-h"></i>Préférences</a></li>
+        <li><a href="../profile/client-profile.html"><i class="fas fa-user-cog"></i>Profil</a></li>
+        <li><a href="../support/client-support.html"><i class="fas fa-life-ring"></i>Assistance</a></li>
+      </ul>
+    </div>
+    <div class="sidebar-section"><ul class="sidebar-menu"><li><a href="#" id="logout-link"><i class="fas fa-sign-out-alt"></i>Déconnexion</a></li></ul></div>
+  </aside>
+
+  <main class="main-content">
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+      <div>
+        <div class="card">
+          <div class="card-title" style="margin-bottom:18px">Confort habitacle</div>
+          <div class="form-group">
+            <label class="form-label">Température souhaitée : <span id="temp-val" style="color:var(--primary);font-weight:700">22°C</span></label>
+            <input type="range" min="16" max="28" value="22" id="pref-temp" style="width:100%;accent-color:var(--primary)" oninput="document.getElementById('temp-val').textContent=this.value+'°C'">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Volume sonore : <span id="vol-val" style="color:var(--primary);font-weight:700">30%</span></label>
+            <input type="range" min="0" max="100" value="30" id="pref-vol" style="width:100%;accent-color:var(--primary)" oninput="document.getElementById('vol-val').textContent=this.value+'%'">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ambiance musicale</label>
+            <select id="pref-music" class="form-select">
+              <option value="silence">🔇 Silence</option><option value="jazz">🎷 Jazz</option><option value="pop">🎵 Pop</option>
+              <option value="classique">🎻 Classique</option><option value="rnb">🎤 R&B</option><option value="lofi">🎧 Lo-Fi</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="margin-bottom:24px">
+          <div class="card-title" style="margin-bottom:18px">Options de voyage</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--gray-xlight)">
+            <div><div style="font-size:.87rem;font-weight:500">Animaux acceptés</div></div>
+            <label class="toggle-switch"><input type="checkbox" id="pref-pets"><span class="toggle-slider"></span></label>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0">
+            <div><div style="font-size:.87rem;font-weight:500">Siège bébé</div></div>
+            <label class="toggle-switch"><input type="checkbox" id="pref-baby"><span class="toggle-slider"></span></label>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="margin-bottom:10px">Note pour les chauffeurs</div>
+          <textarea id="pref-note" rows="4" class="form-control" placeholder="Ex : Je serai devant l'entrée principale…"></textarea>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:20px">
+          <button class="btn btn-outline-gray" onclick="loadPrefs()"><i class="fas fa-undo"></i>Annuler</button>
+          <button class="btn btn-primary btn-full" onclick="savePrefs()"><i class="fas fa-save"></i>Enregistrer</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast-container"></div>
+<script type="module" src="client-preferences.js"></script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "nav_services": "Services",
+  "nav_about": "About",
+  "nav_contact": "Contact",
+  "nav_login": "Log in",
+  "nav_register": "Sign up",
+  "nav_my_space": "My account",
+  "footer_login": "Log in",
+  "footer_register": "Sign up",
+  "footer_devis": "Quote",
+  "footer_legal_link": "Legal notice",
+  "footer_legal": "Simplified Joint-Stock Company — All rights reserved",
+  "meta_title": "Page Not Found — LOC RÉACTION S.A.S",
+  "code": "404",
+  "title": "Page not found",
+  "text": "The page you're looking for doesn't exist or has been moved.",
+  "btn_home": "Back to home",
+  "btn_contact": "Contact us"
+}

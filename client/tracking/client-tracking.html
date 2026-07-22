@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Suivi GPS | LOC RÉACTION S.A.S</title>
+<link rel="icon" type="image/svg+xml" href="../../shared/img/logo-icon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="../../shared/main.css">
+<link rel="stylesheet" href="client-tracking.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+<div id="global-loader" class="global-loader"><div class="spinner"></div><div class="loader-text">Chargement…</div></div>
+
+<nav class="navbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="app-hamburger" id="app-hamburger-btn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <a href="../../index.html" class="nav-logo"><div class="nav-logo-icon"><i class="fas fa-bolt"></i></div>Loc'<span>Réaction</span></a>
+    <span class="nav-title">Suivi GPS</span>
+  </div>
+  <div class="nav-right">
+    <div class="nav-user"><div class="nav-avatar" id="nav-av">?</div><div><div class="nav-name" id="nav-nm">…</div><div class="nav-role" id="nav-rl">…</div></div></div>
+    <button class="nav-icon-btn" id="logout-btn" title="Déconnexion"><i class="fas fa-sign-out-alt"></i></button>
+  </div>
+</nav>
+
+<div class="dashboard-wrap">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-profile"><div class="sidebar-avatar" id="sb-av">?</div><div class="sidebar-name" id="sb-nm">…</div><div class="sidebar-role">Client</div><div class="sidebar-stats" id="sb-st"></div></div>
+    <div class="sidebar-section"><div class="sidebar-label">Mon espace</div>
+      <ul class="sidebar-menu">
+        <li><a href="../dashboard/client-dash.html"><i class="fas fa-bolt"></i>Réserver</a></li>
+        <li><a href="../tracking/client-tracking.html" class="active"><i class="fas fa-map-marker-alt"></i>Suivi GPS</a></li>
+        <li><a href="../wallet/client-wallet.html"><i class="fas fa-wallet"></i>Portefeuille</a></li>
+        <li><a href="../history/client-history.html"><i class="fas fa-history"></i>Historique</a></li>
+        <li><a href="../receipts/client-receipts.html"><i class="fas fa-receipt"></i>Mes reçus</a></li>
+        <li><a href="../service-requests/client-service-requests.html"><i class="fas fa-file-invoice"></i>Mes devis</a></li>
+        <li><a href="../favorites/client-favorites.html"><i class="fas fa-heart"></i>Favoris</a></li>
+        <li><a href="../notifications/client-notifications.html"><i class="fas fa-bell"></i>Notifications</a></li>
+        <li><a href="../preferences/client-preferences.html"><i class="fas fa-sliders-h"></i>Préférences</a></li>
+        <li><a href="../profile/client-profile.html"><i class="fas fa-user-cog"></i>Profil</a></li>
+        <li><a href="../support/client-support.html"><i class="fas fa-life-ring"></i>Assistance</a></li>
+      </ul>
+    </div>
+    <div class="sidebar-section"><ul class="sidebar-menu"><li><a href="#" id="logout-link"><i class="fas fa-sign-out-alt"></i>Déconnexion</a></li></ul></div>
+  </aside>
+
+  <main class="main-content">
+
+    <div class="card" id="no-ride-card" style="display:none;text-align:center;padding:50px 24px">
+      <i class="fas fa-route" style="font-size:3rem;color:var(--gray-light);margin-bottom:16px"></i>
+      <h3 style="color:var(--gray);margin-bottom:8px">Aucune course en cours</h3>
+      <p style="font-size:.85rem;color:var(--gray);margin-bottom:20px">Réservez une course pour voir le suivi en temps réel ici.</p>
+      <a href="../dashboard/client-dash.html" class="btn btn-primary"><i class="fas fa-bolt"></i> Réserver une course</a>
+    </div>
+
+    <div id="ride-active-content" style="display:none">
+      <div class="card" id="eta-card" style="display:none;text-align:center;background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff">
+        <div style="font-size:.78rem;opacity:.8;margin-bottom:4px" id="eta-label">Votre chauffeur arrive dans</div>
+        <div style="font-size:2.2rem;font-weight:900;color:var(--gold)" id="eta-value">—</div>
+        <div style="font-size:.75rem;opacity:.7;margin-top:2px" id="eta-updated">—</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">Course en cours</div><div class="card-subtitle" id="ride-status-label">—</div></div>
+          <span class="badge badge-primary" id="ride-status-badge">—</span>
+        </div>
+        <div id="map" class="map-container"></div>
+      </div>
+
+      <div class="card" id="driver-info-card" style="display:none">
+        <div class="card-title" style="margin-bottom:14px">Votre chauffeur</div>
+        <div style="display:flex;align-items:center;gap:14px">
+          <div class="nav-avatar" id="driver-av" style="width:52px;height:52px;font-size:1.1rem">?</div>
+          <div style="flex:1">
+            <div style="font-weight:700" id="driver-name">—</div>
+            <div style="font-size:.8rem;color:var(--gray)" id="driver-phone">—</div>
+          </div>
+          <a id="driver-call-btn" href="#" class="btn btn-outline btn-sm"><i class="fas fa-phone"></i></a>
+          <button class="btn btn-primary btn-sm" onclick="openChat()"><i class="fas fa-comment-dots"></i> Message<span class="chat-unread-badge" id="chat-unread" style="display:none">0</span></button>
+        </div>
+      </div>
+
+      <div class="card" id="chat-card" style="display:none;padding:0">
+        <div class="chat-panel">
+          <div class="chat-header">
+            <div class="nav-avatar" id="chat-driver-av">?</div>
+            <div style="flex:1">
+              <div class="chat-header-name" id="chat-driver-name">—</div>
+              <div class="chat-header-status">Discussion sur cette course</div>
+            </div>
+          </div>
+          <div class="chat-messages" id="chat-messages"></div>
+          <div class="chat-input-bar">
+            <input type="file" id="chat-file-input" accept="image/*" style="display:none" onchange="sendChatImage(this.files[0])">
+            <button class="chat-btn-icon" onclick="document.getElementById('chat-file-input').click()"><i class="fas fa-camera"></i></button>
+            <input type="text" id="chat-input" placeholder="Écrire un message…" onkeydown="if(event.key==='Enter')sendChatText()">
+            <button class="chat-btn-icon chat-btn-send" onclick="sendChatText()"><i class="fas fa-paper-plane"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="margin-bottom:14px">Détails du trajet</div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-xlight);font-size:.87rem"><span style="color:var(--gray)">Départ</span><span style="font-weight:600;text-align:right;max-width:60%" id="d-depart">—</span></div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-xlight);font-size:.87rem"><span style="color:var(--gray)">Arrivée</span><span style="font-weight:600;text-align:right;max-width:60%" id="d-arrivee">—</span></div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-xlight);font-size:.87rem"><span style="color:var(--gray)">Distance</span><span style="font-weight:600" id="d-distance">—</span></div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;font-size:.87rem"><span style="color:var(--gray)">Prix</span><span style="font-weight:700;color:var(--primary)" id="d-prix">—</span></div>
+      </div>
+
+      <button class="btn btn-outline-gray btn-full" id="cancel-ride-btn" onclick="cancelActiveRide()" style="display:none"><i class="fas fa-times"></i> Annuler la course</button>
+    </div>
+
+    <div class="modal-overlay" id="rating-modal">
+      <div class="modal">
+        <div class="modal-header"><div class="modal-title">Comment s'est passée votre course ?</div></div>
+        <div class="modal-body" style="text-align:center">
+          <div id="rating-stars" style="font-size:2.4rem;color:var(--gray-light);margin-bottom:20px;cursor:pointer">
+            <i class="fas fa-star" data-val="1"></i><i class="fas fa-star" data-val="2"></i><i class="fas fa-star" data-val="3"></i><i class="fas fa-star" data-val="4"></i><i class="fas fa-star" data-val="5"></i>
+          </div>
+          <textarea id="rating-comment" class="form-control" rows="3" placeholder="Un commentaire pour le chauffeur (optionnel)…"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-gray" onclick="skipRating()">Passer</button>
+          <button class="btn btn-primary" onclick="submitRating()"><i class="fas fa-check"></i> Envoyer</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast-container"></div>
+<script type="module" src="client-tracking.js"></script>
+</body>
+</html>

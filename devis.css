@@ -1,0 +1,11 @@
+/* /devis.css */
+.devis-card { width: min(720px, 94vw); margin: 0 auto; background: #fff; border: 1px solid var(--gray-light); border-radius: var(--radius-xl); padding: clamp(24px, 3vw, 40px); box-shadow: 0 4px 20px rgba(10,26,56,.06); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: .82rem; font-weight: 600; color: var(--primary); margin-bottom: 6px; }
+.form-input { width: 100%; padding: 11px 14px; border: 1.5px solid var(--gray-light); border-radius: var(--radius); font-size: .9rem; font-family: inherit; outline: none; background: #fff; }
+.form-input:focus { border-color: var(--primary); }
+.form-alert { display: none; padding: 12px 16px; border-radius: var(--radius); font-size: .85rem; margin-bottom: 16px; }
+.form-alert.show-error { display: block; background: rgba(192,57,43,.08); color: var(--red); }
+.form-alert.show-success { display: block; background: rgba(26,107,58,.08); color: var(--green); }
+@media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }

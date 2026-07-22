@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assistance | LOC RÉACTION S.A.S</title>
+<link rel="icon" type="image/svg+xml" href="../../shared/img/logo-icon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="../../shared/main.css">
+<link rel="stylesheet" href="client-support.css">
+
+</head>
+<body>
+<div id="global-loader" class="global-loader"><div class="spinner"></div><div class="loader-text">Chargement…</div></div>
+
+<nav class="navbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="app-hamburger" id="app-hamburger-btn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <a href="../../index.html" class="nav-logo"><div class="nav-logo-icon"><i class="fas fa-bolt"></i></div>Loc'<span>Réaction</span></a>
+    <span class="nav-title">Assistance</span>
+  </div>
+  <div class="nav-right">
+    <div class="nav-user"><div class="nav-avatar" id="nav-av">?</div><div><div class="nav-name" id="nav-nm">…</div><div class="nav-role" id="nav-rl">…</div></div></div>
+    <button class="nav-icon-btn" id="logout-btn" title="Déconnexion"><i class="fas fa-sign-out-alt"></i></button>
+  </div>
+</nav>
+
+<div class="dashboard-wrap">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-profile"><div class="sidebar-avatar" id="sb-av">?</div><div class="sidebar-name" id="sb-nm">…</div><div class="sidebar-role">Client</div><div class="sidebar-stats" id="sb-st"></div></div>
+    <div class="sidebar-section"><div class="sidebar-label">Mon espace</div>
+      <ul class="sidebar-menu">
+        <li><a href="../dashboard/client-dash.html"><i class="fas fa-bolt"></i>Réserver</a></li>
+        <li><a href="../tracking/client-tracking.html"><i class="fas fa-map-marker-alt"></i>Suivi GPS</a></li>
+        <li><a href="../wallet/client-wallet.html"><i class="fas fa-wallet"></i>Portefeuille</a></li>
+        <li><a href="../history/client-history.html"><i class="fas fa-history"></i>Historique</a></li>
+        <li><a href="../receipts/client-receipts.html"><i class="fas fa-receipt"></i>Mes reçus</a></li>
+        <li><a href="../service-requests/client-service-requests.html"><i class="fas fa-file-invoice"></i>Mes devis</a></li>
+        <li><a href="../favorites/client-favorites.html"><i class="fas fa-heart"></i>Favoris</a></li>
+        <li><a href="../notifications/client-notifications.html"><i class="fas fa-bell"></i>Notifications</a></li>
+        <li><a href="../preferences/client-preferences.html"><i class="fas fa-sliders-h"></i>Préférences</a></li>
+        <li><a href="../profile/client-profile.html"><i class="fas fa-user-cog"></i>Profil</a></li>
+        <li><a href="../support/client-support.html" class="active"><i class="fas fa-life-ring"></i>Assistance</a></li>
+      </ul>
+    </div>
+    <div class="sidebar-section"><ul class="sidebar-menu"><li><a href="#" id="logout-link"><i class="fas fa-sign-out-alt"></i>Déconnexion</a></li></ul></div>
+  </aside>
+
+  <main class="main-content">
+
+    <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:24px">
+      <div class="card" style="padding:0">
+        <div class="chat-panel">
+          <div class="chat-header">
+            <div class="nav-avatar" style="background:linear-gradient(135deg,var(--gold),var(--gold-dark))"><i class="fas fa-headset"></i></div>
+            <div style="flex:1">
+              <div class="chat-header-name">Support LOC RÉACTION</div>
+              <div class="chat-header-status">Réponse généralement sous 24h</div>
+            </div>
+          </div>
+          <div class="chat-messages" id="chat-messages"></div>
+          <div class="chat-input-bar">
+            <input type="file" id="chat-file-input" accept="image/*" style="display:none" onchange="sendChatImage(this.files[0])">
+            <button class="chat-btn-icon" onclick="document.getElementById('chat-file-input').click()"><i class="fas fa-camera"></i></button>
+            <input type="text" id="chat-input" placeholder="Écrire à l'administration…" onkeydown="if(event.key==='Enter')sendChatText()">
+            <button class="chat-btn-icon chat-btn-send" onclick="sendChatText()"><i class="fas fa-paper-plane"></i></button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:16px">Autres moyens de contact</div>
+        <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:18px"><i class="fas fa-envelope" style="color:var(--primary);margin-top:3px"></i><div><div style="font-weight:600;font-size:.88rem">Email</div><div style="font-size:.82rem;color:var(--gray)">contact@locreaction.fr</div></div></div>
+        <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:18px"><i class="fas fa-map-marker-alt" style="color:var(--primary);margin-top:3px"></i><div><div style="font-weight:600;font-size:.88rem">Adresse</div><div style="font-size:.82rem;color:var(--gray)">Île-de-France<br>95270 Chaumontel</div></div></div>
+        <a href="../../faq.html" class="btn btn-outline-gray btn-full"><i class="fas fa-question-circle"></i> Consulter la FAQ</a>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast-container"></div>
+<script type="module" src="client-support.js"></script>
+</body>
+</html>

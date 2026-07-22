@@ -1,0 +1,19 @@
+{
+  "nav_services": "Services",
+  "nav_about": "À propos",
+  "nav_contact": "Contact",
+  "nav_login": "Se connecter",
+  "nav_register": "Inscription",
+  "nav_my_space": "Mon espace",
+  "footer_login": "Connexion",
+  "footer_register": "Inscription",
+  "footer_devis": "Devis",
+  "footer_legal_link": "Mentions légales",
+  "footer_legal": "Société par Actions Simplifiée — Tous droits réservés",
+  "meta_title": "Page introuvable — LOC RÉACTION S.A.S",
+  "code": "404",
+  "title": "Page introuvable",
+  "text": "La page que vous cherchez n'existe pas ou a été déplacée.",
+  "btn_home": "Retour à l'accueil",
+  "btn_contact": "Nous contacter"
+}

@@ -1,0 +1,17 @@
+{
+  "nav_services": "Servicios",
+  "nav_about": "Nosotros",
+  "nav_contact": "Contacto",
+  "nav_login": "Iniciar sesión",
+  "nav_register": "Registrarse",
+  "nav_my_space": "Mi cuenta",
+  "footer_login": "Iniciar sesión",
+  "footer_register": "Registrarse",
+  "footer_devis": "Presupuesto",
+  "footer_legal_link": "Aviso legal",
+  "footer_legal": "Sociedad por Acciones Simplificada — Todos los derechos reservados",
+  "meta_title": "Sin conexión — LOC RÉACTION S.A.S",
+  "title": "Sin conexión a internet",
+  "text": "Compruebe su conexión e inténtelo de nuevo. Algunas funciones requieren una conexión activa.",
+  "btn_retry": "Reintentar"
+}

@@ -1,0 +1,17 @@
+{
+  "nav_services": "Services",
+  "nav_about": "About",
+  "nav_contact": "Contact",
+  "footer_devis": "Quote",
+  "footer_legal_link": "Legal notice",
+  "footer_legal": "Simplified Joint-Stock Company — All rights reserved",
+  "meta_title": "Verify Your Email — LOC RÉACTION S.A.S",
+  "title": "Check your inbox",
+  "text": "We've sent a confirmation link to the address you provided. Click it to activate your account.",
+  "check_spam": "Can't find the email? Check your spam folder.",
+  "resend_btn": "Resend email",
+  "resend_sending": "Sending…",
+  "resend_success": "Email resent!",
+  "resend_error": "Error sending email. Try again shortly.",
+  "back_to_login": "Back to log in"
+}

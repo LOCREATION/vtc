@@ -1,0 +1,17 @@
+{
+  "nav_services": "サービス",
+  "nav_about": "会社概要",
+  "nav_contact": "お問い合わせ",
+  "footer_devis": "見積もり",
+  "footer_legal_link": "法的通知",
+  "footer_legal": "簡易株式会社（S.A.S.）— 無断複写・転載を禁じます",
+  "meta_title": "メールをご確認ください — LOC RÉACTION S.A.S",
+  "title": "受信ボックスをご確認ください",
+  "text": "ご登録のメールアドレスに確認リンクをお送りしました。リンクをクリックしてアカウントを有効化してください。",
+  "check_spam": "メールが見つかりませんか？迷惑メールフォルダをご確認ください。",
+  "resend_btn": "メールを再送信",
+  "resend_sending": "送信中…",
+  "resend_success": "メールを再送信しました！",
+  "resend_error": "送信エラーが発生しました。しばらくしてから再度お試しください。",
+  "back_to_login": "ログインに戻る"
+}

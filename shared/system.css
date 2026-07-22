@@ -1,0 +1,21 @@
+/* /system.css — 404, maintenance, offline */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Poppins', sans-serif; min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #0A1A38 0%, #1B3A6B 50%, #0A1A38 100%);
+  text-align: center; padding: 24px; overflow-x: hidden;
+}
+.sys-box { max-width: 480px; }
+.sys-logo { width: clamp(56px, 8vw, 76px); height: clamp(56px, 8vw, 76px); margin: 0 auto 26px; }
+.sys-code { font-size: clamp(3.5rem, 12vw, 6rem); font-weight: 900; color: #C8A84B; line-height: 1; margin-bottom: 10px; }
+.sys-icon { font-size: clamp(3rem, 10vw, 4.5rem); color: #C8A84B; margin-bottom: 20px; }
+.sys-title { font-size: clamp(1.2rem, 3vw, 1.7rem); font-weight: 800; color: #fff; margin-bottom: 12px; }
+.sys-text { font-size: clamp(.88rem, 1.6vw, 1rem); color: rgba(255,255,255,.7); line-height: 1.7; margin-bottom: 28px; }
+.sys-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 26px; border-radius: 12px; font-size: .9rem; font-weight: 600; font-family: inherit; text-decoration: none; transition: all .3s; border: none; cursor: pointer; }
+.btn-gold { background: linear-gradient(135deg, #C8A84B, #A8882B); color: #0A1A38; }
+.btn-gold:hover { transform: translateY(-2px); }
+.btn-outline { background: transparent; border: 1.5px solid rgba(255,255,255,.4); color: #fff; }
+@media (hover: none) and (pointer: coarse) { .btn { min-height: 44px; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

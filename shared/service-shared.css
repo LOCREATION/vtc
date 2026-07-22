@@ -1,0 +1,45 @@
+/* ============================================================
+   LOC RÉACTION S.A.S — /service-shared.css
+   Styles structurels communs aux 5 pages Services.
+   Chaque page a en plus SES styles propres (couleur d'accent, icônes).
+   ============================================================ */
+
+.svc-hero {
+  padding: clamp(110px, 14vh, 160px) clamp(16px, 3vw, 48px) clamp(50px, 7vh, 80px);
+  display: grid; grid-template-columns: 1.1fr .9fr; gap: clamp(30px, 4vw, 56px);
+  align-items: center; width: var(--container-max); margin: 0 auto;
+}
+.svc-icon-big { width: clamp(120px, 16vw, 200px); height: clamp(120px, 16vw, 200px); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: clamp(3rem, 7vw, 5rem); margin: 0 auto; }
+.svc-badge { display: inline-flex; align-items: center; gap: 8px; font-size: clamp(.72rem, .8vw, .82rem); font-weight: 700; padding: 6px 16px; border-radius: 9999px; margin-bottom: 18px; }
+.svc-hero h1 { font-size: clamp(1.9rem, 3.6vw, 3rem); font-weight: 900; color: var(--primary); line-height: 1.15; margin-bottom: 16px; }
+.svc-hero p { font-size: clamp(.92rem, 1.05vw, 1.08rem); color: var(--gray); line-height: 1.75; margin-bottom: 26px; max-width: 56ch; }
+.svc-hero-btns { display: flex; gap: 12px; flex-wrap: wrap; }
+
+.svc-section { padding: clamp(46px, 7vh, 80px) clamp(16px, 3vw, 48px); }
+.svc-inner { width: var(--container-max); margin: 0 auto; }
+.svc-section-title { font-size: clamp(1.4rem, 2vw, 1.9rem); font-weight: 800; color: var(--primary); margin-bottom: 30px; text-align: center; }
+
+.svc-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: clamp(16px, 1.8vw, 24px); }
+.svc-step { text-align: center; padding: clamp(20px, 2vw, 28px); }
+.svc-step-num { width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 800; color: #fff; margin: 0 auto 16px; }
+.svc-step h3 { font-size: .98rem; font-weight: 700; color: var(--primary); margin-bottom: 8px; }
+.svc-step p { font-size: .85rem; color: var(--gray); line-height: 1.6; }
+
+.svc-features { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: clamp(16px, 1.8vw, 22px); }
+.svc-feature { background: #fff; border: 1px solid var(--gray-light); border-radius: var(--radius-lg); padding: clamp(20px, 2vw, 26px); display: flex; gap: 16px; }
+.svc-feature i { font-size: 1.3rem; flex-shrink: 0; margin-top: 2px; }
+.svc-feature h4 { font-size: .92rem; font-weight: 700; color: var(--primary); margin-bottom: 5px; }
+.svc-feature p { font-size: .83rem; color: var(--gray); line-height: 1.6; }
+
+.svc-pricing-table { width: 100%; max-width: 640px; margin: 0 auto; border-collapse: collapse; background: #fff; border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 4px 20px rgba(10,26,56,.06); }
+.svc-pricing-table td { padding: 14px 20px; font-size: .88rem; border-bottom: 1px solid var(--gray-xlight); }
+.svc-pricing-table td:first-child { color: var(--gray); }
+.svc-pricing-table td:last-child { text-align: right; font-weight: 700; color: var(--primary); }
+.svc-pricing-table tr:last-child td { border-bottom: none; background: var(--gray-xlight); }
+
+.svc-cta { border-radius: var(--radius-xl); padding: clamp(32px, 4vw, 52px); text-align: center; width: var(--container-max); margin: 0 auto; }
+.svc-cta h2 { font-size: clamp(1.3rem, 1.9vw, 1.8rem); font-weight: 800; color: #fff; margin-bottom: 10px; }
+.svc-cta p { font-size: clamp(.86rem, .95vw, .98rem); color: rgba(255,255,255,.75); margin-bottom: 24px; }
+.svc-cta-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+@media (max-width: 900px) { .svc-hero { grid-template-columns: 1fr; text-align: center; } .svc-hero-btns { justify-content: center; } .svc-hero p { margin-left: auto; margin-right: auto; } }

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Courses | LOC RÉACTION S.A.S</title>
+<link rel="icon" type="image/svg+xml" href="../../shared/img/logo-icon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="../../shared/main.css">
+<link rel="stylesheet" href="admin-courses.css">
+
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+</head>
+<body>
+<div id="global-loader" class="global-loader"><div class="spinner"></div><div class="loader-text">Chargement…</div></div>
+
+<nav class="navbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="app-hamburger" id="app-hamburger-btn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <a href="../../index.html" class="nav-logo"><div class="nav-logo-icon"><i class="fas fa-bolt"></i></div>Loc'<span>Réaction</span></a>
+    <span class="nav-title">Courses</span>
+  </div>
+  <div class="nav-right">
+    <div class="nav-user"><div class="nav-avatar" id="nav-av">?</div><div><div class="nav-name" id="nav-nm">…</div><div class="nav-role" id="nav-rl">…</div></div></div>
+    <button class="nav-icon-btn" id="logout-btn" title="Déconnexion"><i class="fas fa-sign-out-alt"></i></button>
+  </div>
+</nav>
+
+<div class="dashboard-wrap">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-profile"><div class="sidebar-avatar" id="sb-av">?</div><div class="sidebar-name" id="sb-nm">…</div><div class="sidebar-role">Administrateur</div><div class="sidebar-stats" id="sb-st"></div></div>
+    <div class="sidebar-section"><div class="sidebar-label">Administration</div>
+      <ul class="sidebar-menu">
+        <li><a href="../dashboard/admin-dash.html"><i class="fas fa-chart-pie"></i>Vue d'ensemble</a></li>
+        <li><a href="../messagerie/admin-messagerie.html"><i class="fas fa-comments"></i>Messagerie</a></li>
+        <li><a href="../utilisateurs/admin-utilisateurs.html"><i class="fas fa-users"></i>Utilisateurs</a></li>
+        <li><a href="../courses/admin-courses.html" class="active"><i class="fas fa-route"></i>Courses</a></li>
+        <li><a href="../tarifs/admin-tarifs.html"><i class="fas fa-euro-sign"></i>Tarifs</a></li>
+        <li><a href="../comptabilite/admin-comptabilite.html"><i class="fas fa-calculator"></i>Comptabilité</a></li>
+        <li><a href="../paie/admin-paie.html"><i class="fas fa-file-invoice-dollar"></i>Fiches de Paie</a></li>
+        <li><a href="../employes/admin-employes.html"><i class="fas fa-id-badge"></i>Employés</a></li>
+        <li><a href="../devis-recus/admin-devis-recus.html"><i class="fas fa-file-alt"></i>Devis Reçus</a></li>
+        <li><a href="../verification-chauffeurs/admin-verif-chauffeurs.html"><i class="fas fa-user-check"></i>Vérif. Chauffeurs</a></li>
+        <li><a href="../rapports/admin-rapports.html"><i class="fas fa-chart-bar"></i>Rapports</a></li>
+        <li><a href="../reglages/admin-reglages.html"><i class="fas fa-cog"></i>Réglages</a></li>
+      </ul>
+    </div>
+    <div class="sidebar-section"><ul class="sidebar-menu"><li><a href="#" id="logout-link"><i class="fas fa-sign-out-alt"></i>Déconnexion</a></li></ul></div>
+  </aside>
+
+  <main class="main-content">
+
+    <div class="card">
+      <div class="card-header"><div class="card-title">Toutes les courses</div><button class="btn btn-outline btn-sm" onclick="exportCSV()"><i class="fas fa-download"></i>Export CSV</button></div>
+      <div class="tabs">
+        <button class="tab-btn active" onclick="setFilter('tous', this)">Toutes</button>
+        <button class="tab-btn" onclick="setFilter('en_attente', this)">En attente</button>
+        <button class="tab-btn" onclick="setFilter('accepte', this)">Acceptées</button>
+        <button class="tab-btn" onclick="setFilter('en_cours', this)">En cours</button>
+        <button class="tab-btn" onclick="setFilter('termine', this)">Terminées</button>
+        <button class="tab-btn" onclick="setFilter('annule', this)">Annulées</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Date</th><th>Client</th><th>Chauffeur</th><th>Trajet</th><th>Prix</th><th>Statut</th><th></th></tr></thead>
+        <tbody id="rides-table"></tbody>
+      </table></div>
+      <div class="empty-state" id="rides-empty" style="display:none"><i class="fas fa-route"></i><h3>Aucune course pour ce filtre</h3></div>
+    </div>
+
+    <div class="modal-overlay" id="detail-modal">
+      <div class="modal">
+        <div class="modal-header"><div class="modal-title">Détail de la course</div><button class="modal-close" onclick="document.getElementById('detail-modal').classList.remove('open')"><i class="fas fa-times"></i></button></div>
+        <div class="modal-body">
+          <input type="hidden" id="rd-id">
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-xlight);font-size:.87rem"><span style="color:var(--gray)">Date</span><span style="font-weight:600" id="rd-date">—</span></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-xlight);font-size:.87rem"><span style="color:var(--gray)">Client</span><span style="font-weight:600" id="rd-client">—</span></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-xlight);font-size:.87rem"><span style="color:var(--gray)">Chauffeur</span><span style="font-weight:600" id="rd-chauffeur">—</span></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-xlight);font-size:.87rem"><span style="color:var(--gray)">Départ</span><span style="font-weight:600;text-align:right" id="rd-depart">—</span></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-xlight);font-size:.87rem"><span style="color:var(--gray)">Arrivée</span><span style="font-weight:600;text-align:right" id="rd-arrivee">—</span></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-xlight);font-size:.87rem"><span style="color:var(--gray)">Distance</span><span style="font-weight:600" id="rd-distance">—</span></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0 14px;font-size:.87rem"><span style="color:var(--gray)">Prix</span><span style="font-weight:700;color:var(--primary)" id="rd-prix">—</span></div>
+
+          <div id="rd-assign-section" style="border-top:1px dashed var(--gray-light);padding-top:14px;margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+              <label class="form-label" style="margin:0">Assigner un chauffeur proche</label>
+              <button class="btn btn-outline-gray btn-sm" onclick="refreshNearbyDrivers()"><i class="fas fa-sync"></i></button>
+            </div>
+            <div id="rd-nearby-list" style="max-height:180px;overflow-y:auto"></div>
+          </div>
+
+          <div class="form-group"><label class="form-label">Modifier le statut (correction manuelle)</label>
+            <select id="rd-statut" class="form-select">
+              <option value="en_attente">En attente</option><option value="accepte">Acceptée</option>
+              <option value="en_cours">En cours</option><option value="termine">Terminée</option><option value="annule">Annulée</option>
+            </select>
+          </div>
+
+          <div id="rd-bon-section" style="border-top:1px dashed var(--gray-light);padding-top:14px;margin-top:4px">
+            <label class="form-label">Bon de commande</label>
+            <div id="rd-bon-status" style="font-size:.8rem;color:var(--gray);margin-bottom:10px">Aucun bon généré pour cette course.</div>
+            <button class="btn btn-outline btn-sm" id="rd-bon-generate-btn" onclick="generateBon()"><i class="fas fa-file-pdf"></i> Générer le bon de commande</button>
+            <div id="rd-bon-share" style="display:none;margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-success btn-sm" onclick="shareBonWhatsApp()"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+              <button class="btn btn-outline btn-sm" onclick="shareBonEmail()"><i class="fas fa-envelope"></i> Email</button>
+              <button class="btn btn-outline-gray btn-sm" onclick="downloadBonAdmin()"><i class="fas fa-download"></i> Télécharger</button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer" style="justify-content:space-between">
+          <button class="btn btn-danger" onclick="deleteRide()"><i class="fas fa-trash"></i> Supprimer</button>
+          <div style="display:flex;gap:10px"><button class="btn btn-outline-gray" onclick="document.getElementById('detail-modal').classList.remove('open')">Fermer</button><button class="btn btn-primary" onclick="saveRideStatus()"><i class="fas fa-save"></i> Enregistrer le statut</button></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast-container"></div>
+<script type="module" src="admin-courses.js"></script>
+</body>
+</html>

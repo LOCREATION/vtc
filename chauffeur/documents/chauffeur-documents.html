@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mes Documents | LOC RÉACTION S.A.S</title>
+<link rel="icon" type="image/svg+xml" href="../../shared/img/logo-icon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="../../shared/main.css">
+<link rel="stylesheet" href="chauffeur-documents.css">
+
+</head>
+<body>
+<div id="global-loader" class="global-loader"><div class="spinner"></div><div class="loader-text">Chargement…</div></div>
+
+<nav class="navbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="app-hamburger" id="app-hamburger-btn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <a href="../../index.html" class="nav-logo"><div class="nav-logo-icon"><i class="fas fa-bolt"></i></div>Loc'<span>Réaction</span></a>
+    <span class="nav-title">Mes Documents</span>
+  </div>
+  <div class="nav-right">
+    <div class="nav-user"><div class="nav-avatar" id="nav-av">?</div><div><div class="nav-name" id="nav-nm">…</div><div class="nav-role" id="nav-rl">…</div></div></div>
+    <button class="nav-icon-btn" id="logout-btn" title="Déconnexion"><i class="fas fa-sign-out-alt"></i></button>
+  </div>
+</nav>
+
+<div class="dashboard-wrap">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-profile"><div class="sidebar-avatar" id="sb-av">?</div><div class="sidebar-name" id="sb-nm">…</div><div class="sidebar-role">Chauffeur VTC</div><div class="sidebar-stats" id="sb-st"></div></div>
+    <div class="sidebar-section"><div class="sidebar-label">Mon espace</div>
+      <ul class="sidebar-menu">
+        <li><a href="../dashboard/chauffeur-dash.html"><i class="fas fa-tachometer-alt"></i>Tableau de bord</a></li>
+        <li><a href="../revenus/chauffeur-revenus.html"><i class="fas fa-chart-line"></i>Mes Revenus</a></li>
+        <li><a href="../planning/chauffeur-planning.html"><i class="fas fa-calendar-alt"></i>Planning</a></li>
+        <li><a href="../documents/chauffeur-documents.html" class="active"><i class="fas fa-id-card"></i>Mes Documents</a></li>
+        <li><a href="../profil/chauffeur-profil.html"><i class="fas fa-user-cog"></i>Mon Profil</a></li>
+        <li><a href="../support/chauffeur-support.html"><i class="fas fa-life-ring"></i>Assistance</a></li>
+      </ul>
+    </div>
+    <div class="sidebar-section"><ul class="sidebar-menu"><li><a href="#" id="logout-link"><i class="fas fa-sign-out-alt"></i>Déconnexion</a></li></ul></div>
+  </aside>
+
+  <main class="main-content">
+
+    <div class="card" id="verif-status-card">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div id="verif-icon" style="font-size:1.8rem;color:var(--warning)"><i class="fas fa-clock"></i></div>
+        <div><div style="font-weight:700" id="verif-title">Documents en attente de vérification</div><div style="font-size:.82rem;color:var(--gray)" id="verif-text">L'administration vérifie vos documents avant activation complète.</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="margin-bottom:18px">Carte professionnelle VTC</div>
+      <div class="form-group"><label class="form-label">Numéro de carte</label><input type="text" id="carte-numero" class="form-control"></div>
+      <div class="form-group"><label class="form-label">Date d'expiration</label><input type="date" id="carte-expiration" class="form-control"></div>
+      <div class="form-group"><label class="form-label">Document (PDF ou photo)</label><input type="file" id="carte-file" accept=".pdf,.png,.jpg,.jpeg" class="form-control"></div>
+      <div id="carte-current" style="font-size:.8rem;color:var(--gray);margin-bottom:10px"></div>
+      <button class="btn btn-primary btn-sm" onclick="uploadDoc('carte')"><i class="fas fa-upload"></i> Envoyer</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="margin-bottom:18px">Assurance professionnelle</div>
+      <div class="form-group"><label class="form-label">Date d'expiration</label><input type="date" id="assurance-expiration" class="form-control"></div>
+      <div class="form-group"><label class="form-label">Document (PDF ou photo)</label><input type="file" id="assurance-file" accept=".pdf,.png,.jpg,.jpeg" class="form-control"></div>
+      <div id="assurance-current" style="font-size:.8rem;color:var(--gray);margin-bottom:10px"></div>
+      <button class="btn btn-primary btn-sm" onclick="uploadDoc('assurance')"><i class="fas fa-upload"></i> Envoyer</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="margin-bottom:18px">Carte grise du véhicule</div>
+      <div class="form-group"><label class="form-label">Document (PDF ou photo)</label><input type="file" id="grise-file" accept=".pdf,.png,.jpg,.jpeg" class="form-control"></div>
+      <div id="grise-current" style="font-size:.8rem;color:var(--gray);margin-bottom:10px"></div>
+      <button class="btn btn-primary btn-sm" onclick="uploadDoc('grise')"><i class="fas fa-upload"></i> Envoyer</button>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast-container"></div>
+<script type="module" src="chauffeur-documents.js"></script>
+</body>
+</html>

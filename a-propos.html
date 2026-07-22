@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n-title="meta_title">À propos — LOC RÉACTION S.A.S</title>
+<meta name="description" content="LOC RÉACTION S.A.S : transport VTC, AMO, location immobilière, jardinage — Chaumontel (95).">
+<link rel="icon" type="image/svg+xml" href="shared/img/logo-icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="a-propos.css">
+</head>
+<body>
+
+<!-- ═══ NAVIGATION ═══ -->
+<nav class="site-nav">
+  <a href="index.html" class="brand">
+    <img src="shared/img/logo-icon.svg" alt="LOC RÉACTION S.A.S" class="brand-icon">
+    <span class="brand-text">
+      <span class="brand-name">LOC <span>RÉACTION</span></span>
+      <span class="brand-sub">TRANSPORT DE PASSAGERS | SERVICE VTC</span>
+    </span>
+  </a>
+
+  <div class="nav-links">
+    <a href="index.html#services" data-i18n="nav_services">Services</a>
+    <a href="a-propos.html" class="active" data-i18n="nav_about">À propos</a>
+    <a href="contact.html" data-i18n="nav_contact">Contact</a>
+  </div>
+
+  <div class="nav-right">
+    <select id="lang-select-desktop" class="lang-select" aria-label="Langue"></select>
+    <a href="auth/login/login.html" class="btn btn-outline nav-cta-login" data-i18n="nav_login">Se connecter</a>
+    <a href="auth/register/register.html" class="btn btn-primary" data-i18n="nav_register">Inscription</a>
+    <button class="hamburger" id="hamburger-btn" aria-label="Menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<div class="mobile-menu" id="mobile-menu">
+  <a href="index.html" data-i18n="about_nav_home">Accueil</a>
+  <a href="index.html#services" data-i18n="nav_services">Services</a>
+  <a href="a-propos.html" data-i18n="nav_about">À propos</a>
+  <a href="contact.html" data-i18n="nav_contact">Contact</a>
+  <a href="auth/login/login.html" class="nav-cta-login" data-i18n="nav_login">Se connecter</a>
+  <a href="auth/register/register.html" data-i18n="nav_register">Inscription</a>
+  <select id="lang-select-mobile" class="lang-select" aria-label="Langue"></select>
+</div>
+<div class="menu-backdrop"></div>
+
+<!-- ═══ HERO ═══ -->
+<header class="about-hero">
+  <div class="about-badge"><i class="fas fa-building"></i> <span data-i18n="about_badge">Notre entreprise</span></div>
+  <h1><span data-i18n="about_title_1">Une entreprise,</span> <span data-i18n="about_title_2">cinq savoir-faire</span></h1>
+  <p data-i18n="about_subtitle">LOC RÉACTION S.A.S accompagne particuliers, professionnels et collectivités sur cinq métiers complémentaires, avec la même exigence de sérieux et de proximité.</p>
+</header>
+
+<!-- ═══ MISSION ═══ -->
+<section class="mission-section">
+  <div class="mission-inner">
+    <div>
+      <div class="section-tag"><i class="fas fa-bullseye"></i> <span data-i18n="about_mission_tag">Notre mission</span></div>
+      <h2 class="mission-title" data-i18n="about_mission_title">Simplifier vos déplacements et vos projets</h2>
+      <p class="mission-text" data-i18n="about_mission_text">Fondée à Chaumontel, dans le Val-d'Oise, LOC RÉACTION S.A.S est née d'une conviction simple : un même partenaire de confiance peut vous accompagner du transport quotidien jusqu'à la conduite de vos projets immobiliers. Nous mettons à votre service des chauffeurs professionnels, des équipes techniques qualifiées et une gestion transparente, appuyée par une plateforme numérique en temps réel.</p>
+    </div>
+    <div class="mission-visual"><i class="fas fa-handshake"></i></div>
+  </div>
+</section>
+
+<!-- ═══ NOS 5 MÉTIERS (contenu réel issu de l'objet social) ═══ -->
+<section class="expertise-section">
+  <div class="expertise-inner">
+    <div class="section-tag"><i class="fas fa-th-large"></i> <span data-i18n="services_tag">Nos activités</span></div>
+    <h2 class="mission-title" data-i18n="about_title_2">Cinq savoir-faire</h2>
+
+    <div class="expertise-grid">
+      <article class="expertise-card">
+        <div class="expertise-icon ei-vtc"><i class="fas fa-car"></i></div>
+        <div><h3 data-i18n="about_vtc_title">Transport de personnes avec chauffeur</h3>
+        <p data-i18n="about_vtc_text">Nos chauffeurs VTC assurent vos trajets avec un tarif clair de 1,70 €/km, un suivi GPS en direct et une prise en charge professionnelle.</p></div>
+      </article>
+
+      <article class="expertise-card">
+        <div class="expertise-icon ei-amo"><i class="fas fa-drafting-compass"></i></div>
+        <div><h3 data-i18n="about_amo_title">Assistance à Maîtrise d'Ouvrage</h3>
+        <p data-i18n="about_amo_text">Nous accompagnons les maîtres d'ouvrage publics et privés dans le pilotage de leurs projets : marchés de travaux, coordination technique et financière, suivi de la sous-traitance jusqu'à la réception.</p></div>
+      </article>
+
+      <article class="expertise-card">
+        <div class="expertise-icon ei-immo"><i class="fas fa-home"></i></div>
+        <div><h3 data-i18n="about_immo_title">Location immobilière</h3>
+        <p data-i18n="about_immo_text">Nous proposons et gérons des biens à la location en Île-de-France, avec un accompagnement professionnel du premier contact jusqu'à la remise des clés.</p></div>
+      </article>
+
+      <article class="expertise-card">
+        <div class="expertise-icon ei-jardin"><i class="fas fa-leaf"></i></div>
+        <div><h3 data-i18n="about_jardin_title">Jardinage et entretien des espaces extérieurs</h3>
+        <p data-i18n="about_jardin_text">Tonte, taille, désherbage, arrosage, fertilisation : nous concevons et entretenons vos espaces verts, ainsi que le nettoyage courant des bâtiments, façades et parkings.</p></div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ VALEURS ═══ -->
+<section class="values-section">
+  <div class="values-inner">
+    <div class="section-tag"><i class="fas fa-star"></i> <span data-i18n="about_values_tag">Nos valeurs</span></div>
+    <div class="values-grid">
+      <div class="value-card">
+        <div class="value-icon"><i class="fas fa-eye"></i></div>
+        <h3 data-i18n="about_value_1_title">Transparence</h3>
+        <p data-i18n="about_value_1_text">Tarifs clairs, suivi en temps réel, aucune surprise.</p>
+      </div>
+      <div class="value-card">
+        <div class="value-icon"><i class="fas fa-map-marker-alt"></i></div>
+        <h3 data-i18n="about_value_2_title">Proximité</h3>
+        <p data-i18n="about_value_2_text">Une équipe locale, basée à Chaumontel, joignable et réactive.</p>
+      </div>
+      <div class="value-card">
+        <div class="value-icon"><i class="fas fa-medal"></i></div>
+        <h3 data-i18n="about_value_3_title">Exigence</h3>
+        <p data-i18n="about_value_3_text">Des équipes qualifiées sur chacun de nos cinq métiers.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CTA ═══ -->
+<section class="cta-section">
+  <div class="cta-box">
+    <h2 data-i18n="about_cta_title">Une question, un projet ?</h2>
+    <p data-i18n="about_cta_text">Contactez-nous ou demandez directement un devis.</p>
+    <div class="cta-btns">
+      <a href="contact.html" class="btn btn-gold btn-lg"><i class="fas fa-envelope"></i> <span data-i18n="about_cta_contact">Nous contacter</span></a>
+      <a href="devis.html" class="btn btn-lg" style="border:1.5px solid rgba(255,255,255,.4);color:#fff;"><i class="fas fa-file-alt"></i> <span data-i18n="about_cta_devis">Demander un devis</span></a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">⚡ LOC <span>RÉACTION</span> S.A.S</div>
+      <div style="font-size:.85rem;margin-top:10px">Île-de-France</div>
+      <div style="font-size:.85rem">95270 Chaumontel</div>
+    </div>
+    <div class="footer-links">
+      <a href="auth/login/login.html" style="color:var(--gold)" data-i18n="footer_login">Connexion</a>
+      <a href="auth/register/register.html" data-i18n="footer_register">Inscription</a>
+      <a href="devis.html" data-i18n="footer_devis">Devis</a>
+      <a href="mentions-legales.html" data-i18n="footer_legal_link">Mentions légales</a>
+    </div>
+  </div>
+  <div class="footer-bottom">© 2026 LOC RÉACTION S.A.S — <span data-i18n="footer_legal">Société par Actions Simplifiée — Tous droits réservés</span></div>
+</footer>
+
+<script type="module" src="a-propos.js"></script>
+</body>
+</html>

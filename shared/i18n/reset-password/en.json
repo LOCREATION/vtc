@@ -1,0 +1,23 @@
+{
+  "nav_services": "Services",
+  "nav_about": "About",
+  "nav_contact": "Contact",
+  "footer_devis": "Quote",
+  "footer_legal_link": "Legal notice",
+  "footer_legal": "Simplified Joint-Stock Company — All rights reserved",
+  "meta_title": "Reset Password — LOC RÉACTION S.A.S",
+  "title": "New password",
+  "subtitle": "Choose a new password for your account.",
+  "f_password": "New password",
+  "f_password_confirm": "Confirm password",
+  "submit": "Reset password",
+  "submitting": "Saving…",
+  "success": "Password updated! Redirecting to log in…",
+  "err_required": "Please fill in both fields.",
+  "err_mismatch": "Passwords do not match.",
+  "err_short": "Password must be at least 8 characters long.",
+  "invalid_title": "Invalid or expired link",
+  "invalid_text": "This reset link is no longer valid. Request a new one.",
+  "request_new_link": "Request a new link",
+  "go_to_login": "Back to log in"
+}

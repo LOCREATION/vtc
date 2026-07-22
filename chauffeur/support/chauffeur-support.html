@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assistance | LOC RÉACTION S.A.S</title>
+<link rel="icon" type="image/svg+xml" href="../../shared/img/logo-icon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="../../shared/main.css">
+<link rel="stylesheet" href="chauffeur-support.css">
+
+</head>
+<body>
+<div id="global-loader" class="global-loader"><div class="spinner"></div><div class="loader-text">Chargement…</div></div>
+
+<nav class="navbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="app-hamburger" id="app-hamburger-btn" aria-label="Menu"><span></span><span></span><span></span></button>
+    <a href="../../index.html" class="nav-logo"><div class="nav-logo-icon"><i class="fas fa-bolt"></i></div>Loc'<span>Réaction</span></a>
+    <span class="nav-title">Assistance</span>
+  </div>
+  <div class="nav-right">
+    <div class="nav-user"><div class="nav-avatar" id="nav-av">?</div><div><div class="nav-name" id="nav-nm">…</div><div class="nav-role" id="nav-rl">…</div></div></div>
+    <button class="nav-icon-btn" id="logout-btn" title="Déconnexion"><i class="fas fa-sign-out-alt"></i></button>
+  </div>
+</nav>
+
+<div class="dashboard-wrap">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-profile"><div class="sidebar-avatar" id="sb-av">?</div><div class="sidebar-name" id="sb-nm">…</div><div class="sidebar-role">Chauffeur VTC</div><div class="sidebar-stats" id="sb-st"></div></div>
+    <div class="sidebar-section"><div class="sidebar-label">Mon espace</div>
+      <ul class="sidebar-menu">
+        <li><a href="../dashboard/chauffeur-dash.html"><i class="fas fa-tachometer-alt"></i>Tableau de bord</a></li>
+        <li><a href="../revenus/chauffeur-revenus.html"><i class="fas fa-chart-line"></i>Mes Revenus</a></li>
+        <li><a href="../planning/chauffeur-planning.html"><i class="fas fa-calendar-alt"></i>Planning</a></li>
+        <li><a href="../documents/chauffeur-documents.html"><i class="fas fa-id-card"></i>Mes Documents</a></li>
+        <li><a href="../profil/chauffeur-profil.html"><i class="fas fa-user-cog"></i>Mon Profil</a></li>
+        <li><a href="../support/chauffeur-support.html" class="active"><i class="fas fa-life-ring"></i>Assistance</a></li>
+      </ul>
+    </div>
+    <div class="sidebar-section"><ul class="sidebar-menu"><li><a href="#" id="logout-link"><i class="fas fa-sign-out-alt"></i>Déconnexion</a></li></ul></div>
+  </aside>
+
+  <main class="main-content">
+
+    <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:24px">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:16px">Contacter l'assistance chauffeur</div>
+        <div id="support-alert" style="display:none;padding:12px 16px;border-radius:var(--radius);font-size:.85rem;margin-bottom:16px"></div>
+        <div class="form-group"><label class="form-label">Sujet</label>
+          <select id="s-sujet" class="form-select"><option>Problème avec un client</option><option>Problème de paiement/revenus</option><option>Documents et vérification</option><option>Application / bug technique</option><option>Autre</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Message</label><textarea id="s-message" class="form-control" rows="6" placeholder="Décrivez votre problème…"></textarea></div>
+        <button class="btn btn-primary" onclick="sendSupport()"><i class="fas fa-paper-plane"></i> Envoyer</button>
+      </div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:16px">Contact direct</div>
+        <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:18px"><i class="fas fa-envelope" style="color:var(--primary);margin-top:3px"></i><div><div style="font-weight:600;font-size:.88rem">Email</div><div style="font-size:.82rem;color:var(--gray)">contact@locreaction.fr</div></div></div>
+        <div style="display:flex;gap:12px;align-items:flex-start"><i class="fas fa-map-marker-alt" style="color:var(--primary);margin-top:3px"></i><div><div style="font-weight:600;font-size:.88rem">Adresse</div><div style="font-size:.82rem;color:var(--gray)">Île-de-France<br>95270 Chaumontel</div></div></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast-container"></div>
+<script type="module" src="chauffeur-support.js"></script>
+</body>
+</html>

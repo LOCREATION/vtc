@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n-title="meta_title">LOC RÉACTION S.A.S — VTC Premium & Services</title>
+<meta name="description" content="Transport VTC, Location Immobilière, BTP, Jardinage, AMO — LOC RÉACTION S.A.S, Chaumontel (95).">
+<link rel="icon" type="image/svg+xml" href="shared/img/logo-icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+<!-- ═══ NAVIGATION ═══ -->
+<nav class="site-nav">
+  <a href="index.html" class="brand">
+    <img src="shared/img/logo-icon.svg" alt="LOC RÉACTION S.A.S" class="brand-icon">
+    <span class="brand-text">
+      <span class="brand-name">LOC <span>RÉACTION</span></span>
+      <span class="brand-sub">TRANSPORT DE PASSAGERS | SERVICE VTC</span>
+    </span>
+  </a>
+
+  <div class="nav-links">
+    <a href="#services" data-i18n="nav_services">Services</a>
+    <a href="a-propos.html" data-i18n="nav_about">À propos</a>
+    <a href="contact.html" data-i18n="nav_contact">Contact</a>
+  </div>
+
+  <div class="nav-right">
+    <select id="lang-select-desktop" class="lang-select" aria-label="Langue"></select>
+    <a href="auth/login/login.html" class="btn btn-outline nav-cta-login" data-i18n="nav_login">Se connecter</a>
+    <a href="auth/register/register.html" class="btn btn-primary" data-i18n="nav_register">Inscription</a>
+    <button class="hamburger" id="hamburger-btn" aria-label="Menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- ═══ MENU MOBILE (hamburger) ═══ -->
+<div class="mobile-menu" id="mobile-menu">
+  <a href="#services" data-i18n="nav_services">Services</a>
+  <a href="a-propos.html" data-i18n="nav_about">À propos</a>
+  <a href="contact.html" data-i18n="nav_contact">Contact</a>
+  <a href="auth/login/login.html" class="nav-cta-login" data-i18n="nav_login">Se connecter</a>
+  <a href="auth/register/register.html" data-i18n="nav_register">Inscription</a>
+  <select id="lang-select-mobile" class="lang-select" aria-label="Langue"></select>
+</div>
+<div class="menu-backdrop"></div>
+
+<!-- ═══ HERO ═══ -->
+<header class="hero">
+  <div class="hero-content">
+    <div>
+      <div class="hero-badge"><i class="fas fa-star"></i> <span data-i18n="hero_badge">VTC Premium · Île-de-France</span></div>
+      <h1>
+        <span data-i18n="hero_title_1">Votre chauffeur</span>
+        <span data-i18n="hero_title_2">privé premium</span>
+        <span data-i18n="hero_title_3">à portée de main</span>
+      </h1>
+      <p class="hero-subtitle" data-i18n="hero_subtitle">Réservez en 3 clics. Tarif transparent à 1,70 €/km. Suivi GPS en temps réel. Paiement sécurisé.</p>
+      <div class="hero-btns">
+        <a href="auth/register/register.html?role=client" class="btn btn-gold btn-lg"><i class="fas fa-car"></i> <span data-i18n="hero_cta_book">Commander une course</span></a>
+        <a href="auth/register/register.html?role=chauffeur" class="btn btn-lg" style="border:1.5px solid rgba(255,255,255,.4);color:#fff;"><i class="fas fa-id-card"></i> <span data-i18n="hero_cta_driver">Devenir Chauffeur</span></a>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat"><div class="val" data-i18n="hero_stat_1_val">1,70 €</div><div class="lbl" data-i18n="hero_stat_1_lbl">Par kilomètre</div></div>
+        <div class="hero-stat"><div class="val" data-i18n="hero_stat_2_val">5 activités</div><div class="lbl" data-i18n="hero_stat_2_lbl">VTC · Immobilier · BTP · Jardinage · AMO</div></div>
+        <div class="hero-stat"><div class="val" data-i18n="hero_stat_3_val">100%</div><div class="lbl" data-i18n="hero_stat_3_lbl">Temps réel Supabase</div></div>
+      </div>
+    </div>
+
+    <div class="booking-widget">
+      <div class="bw-title"><i class="fas fa-bolt" style="color:var(--gold)"></i> <span data-i18n="widget_title">Réserver une course</span></div>
+      <div class="bw-field"><i class="fas fa-circle" style="color:#27AE60;font-size:.6rem"></i>
+        <input class="bw-input" id="bw-depart" data-i18n-placeholder="widget_depart" placeholder="Point de départ…">
+      </div>
+      <div class="bw-field"><i class="fas fa-map-marker-alt"></i>
+        <input class="bw-input" id="bw-arrivee" data-i18n-placeholder="widget_arrivee" placeholder="Destination…">
+      </div>
+      <button class="bw-cta" onclick="goBook()"><i class="fas fa-search"></i> <span data-i18n="widget_cta">Réserver maintenant</span></button>
+      <p class="bw-note" data-i18n="widget_note">Vous serez invité à vous connecter ou à créer un compte.</p>
+    </div>
+  </div>
+</header>
+
+<!-- ═══ SERVICES ═══ -->
+<section class="page-section" id="services" style="background:#F9F7FD">
+  <div class="section-inner">
+    <div class="section-tag"><i class="fas fa-th-large"></i> <span data-i18n="services_tag">Nos activités</span></div>
+    <h2 class="section-h2">
+      <span data-i18n="services_title_1">5 services,</span>
+      <span data-i18n="services_title_2">un seul partenaire</span>
+    </h2>
+    <p class="section-subtitle" data-i18n="services_subtitle">LOC RÉACTION S.A.S couvre tous vos besoins : transport, immobilier, construction, espaces verts et pilotage de projets.</p>
+
+    <div class="services-grid">
+      <article class="service-card">
+        <div class="service-icon si-vtc"><i class="fas fa-car"></i></div>
+        <h3 class="service-title" data-i18n="service_vtc_title">Transport VTC</h3>
+        <p class="service-desc" data-i18n="service_vtc_desc">Chauffeur privé premium. Tarif 1,70 €/km. Réservation immédiate ou programmée.</p>
+        <a href="services/vtc/vtc.html" style="font-size:.78rem;color:var(--primary);font-weight:600;display:block;margin-bottom:10px">En savoir plus →</a>
+        <a href="auth/login/login.html?role=client" class="btn btn-primary" style="width:100%" data-i18n="service_vtc_cta">Réserver</a>
+      </article>
+
+      <article class="service-card">
+        <div class="service-icon si-location"><i class="fas fa-home"></i></div>
+        <h3 class="service-title" data-i18n="service_location_title">Location Immobilière</h3>
+        <p class="service-desc" data-i18n="service_location_desc">Biens disponibles à la location en Île-de-France. Gestion professionnelle.</p>
+        <a href="services/location-immobiliere/location-immobiliere.html" style="font-size:.78rem;color:var(--primary);font-weight:600;display:block;margin-bottom:10px">En savoir plus →</a>
+        <a href="devis.html?type=location" class="btn btn-outline" style="width:100%" data-i18n="service_cta_devis">Demander un devis</a>
+      </article>
+
+      <article class="service-card">
+        <div class="service-icon si-btp"><i class="fas fa-hard-hat"></i></div>
+        <h3 class="service-title" data-i18n="service_btp_title">BTP & Construction</h3>
+        <p class="service-desc" data-i18n="service_btp_desc">Travaux, rénovations, construction. Équipes qualifiées, devis gratuit.</p>
+        <a href="services/btp/btp.html" style="font-size:.78rem;color:var(--primary);font-weight:600;display:block;margin-bottom:10px">En savoir plus →</a>
+        <a href="devis.html?type=btp" class="btn btn-outline" style="width:100%" data-i18n="service_cta_devis">Demander un devis</a>
+      </article>
+
+      <article class="service-card">
+        <div class="service-icon si-jardin"><i class="fas fa-leaf"></i></div>
+        <h3 class="service-title" data-i18n="service_jardinage_title">Jardinage & Espaces Verts</h3>
+        <p class="service-desc" data-i18n="service_jardinage_desc">Entretien, création d'espaces verts, tonte, élagage. Abonnements disponibles.</p>
+        <a href="services/jardinage/jardinage.html" style="font-size:.78rem;color:var(--primary);font-weight:600;display:block;margin-bottom:10px">En savoir plus →</a>
+        <a href="devis.html?type=jardinage" class="btn btn-outline" style="width:100%" data-i18n="service_cta_devis">Demander un devis</a>
+      </article>
+
+      <article class="service-card">
+        <div class="service-icon si-amo"><i class="fas fa-drafting-compass"></i></div>
+        <h3 class="service-title" data-i18n="service_amo_title">Assistance à Maîtrise d'Ouvrage</h3>
+        <p class="service-desc" data-i18n="service_amo_desc">Conseil, pilotage et coordination de vos projets immobiliers, de la conception à la réception.</p>
+        <a href="services/amo/amo.html" style="font-size:.78rem;color:var(--primary);font-weight:600;display:block;margin-bottom:10px">En savoir plus →</a>
+        <a href="devis.html?type=amo" class="btn btn-outline" style="width:100%" data-i18n="service_cta_devis">Demander un devis</a>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ ESPACES DÉDIÉS ═══ -->
+<section class="page-section">
+  <div class="section-inner">
+    <div class="section-tag"><i class="fas fa-users"></i> <span data-i18n="access_tag">Espaces dédiés</span></div>
+    <h2 class="section-h2">
+      <span data-i18n="access_title_1">Un espace pour</span>
+      <span data-i18n="access_title_2">chaque profil</span>
+    </h2>
+
+    <div class="roles-grid">
+      <article class="role-card client">
+        <div class="role-icon"><i class="fas fa-user"></i></div>
+        <h3 class="role-title" data-i18n="access_client_title">Espace Client</h3>
+        <p class="role-desc" data-i18n="access_client_desc">Réservez, suivez vos courses en temps réel, gérez votre portefeuille et retrouvez votre historique.</p>
+        <a href="auth/login/login.html?role=client" class="role-btn"><i class="fas fa-arrow-right"></i> <span data-i18n="access_cta">Accéder</span></a>
+      </article>
+
+      <article class="role-card driver">
+        <div class="role-icon"><i class="fas fa-car"></i></div>
+        <h3 class="role-title" data-i18n="access_driver_title">Espace Chauffeur</h3>
+        <p class="role-desc" data-i18n="access_driver_desc">Gérez vos invitations, suivez vos revenus et pilotez votre activité VTC en professionnel.</p>
+        <a href="auth/login/login.html?role=chauffeur" class="role-btn"><i class="fas fa-arrow-right"></i> <span data-i18n="access_cta">Accéder</span></a>
+      </article>
+
+      <article class="role-card admin">
+        <div class="role-icon"><i class="fas fa-shield-alt"></i></div>
+        <h3 class="role-title" data-i18n="access_admin_title">Administration</h3>
+        <p class="role-desc" data-i18n="access_admin_desc">Gérez utilisateurs, tarifs, comptabilité et fiches de paie depuis un tableau de bord centralisé.</p>
+        <a href="auth/login/login.html?role=admin" class="role-btn"><i class="fas fa-arrow-right"></i> <span data-i18n="access_cta">Accéder</span></a>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer class="site-footer" id="contact">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">⚡ LOC <span>RÉACTION</span> S.A.S</div>
+      <div style="font-size:.85rem;margin-top:10px">Île-de-France</div>
+      <div style="font-size:.85rem">95270 Chaumontel</div>
+    </div>
+    <div class="footer-links">
+      <a href="auth/login/login.html" style="color:var(--gold)" data-i18n="footer_login">Connexion</a>
+      <a href="auth/register/register.html" data-i18n="footer_register">Inscription</a>
+      <a href="devis.html" data-i18n="footer_devis">Devis</a>
+      <a href="mentions-legales.html" data-i18n="footer_legal_link">Mentions légales</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    © 2026 LOC RÉACTION S.A.S — <span data-i18n="footer_legal">Société par Actions Simplifiée — Tous droits réservés</span>
+  </div>
+</footer>
+
+<script type="module" src="index.js"></script>
+</body>
+</html>
