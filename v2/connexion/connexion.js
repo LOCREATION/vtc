@@ -1,6 +1,7 @@
 // =============================================================================
 // LOC RÉACTION S.A.S — Version 2
-// Connexion et inscription par code à 6 chiffres
+// Connexion et inscription par code reçu par e-mail (6 à 10 chiffres : la
+// longueur se règle dans Supabase, la page accepte toutes ces longueurs)
 // -----------------------------------------------------------------------------
 // - Même parcours pour un nouveau compte et pour un compte existant : la base
 //   crée le profil « client » à la première validation du code.
@@ -87,22 +88,33 @@ async function envoyerCode(email) {
 // Étape 2 : code reçu
 // ---------------------------------------------------------------------------
 // Ne garder que les chiffres ; validation automatique au 6e chiffre
+// Ne garder que les chiffres. Code collé ou proposé par le téléphone (arrivée
+// de plusieurs chiffres d'un coup) : validation immédiate. Code tapé chiffre
+// par chiffre : la personne touche « Valider » (la longueur du code dépend du
+// réglage Supabase, la page ne peut pas deviner quand il est complet).
+let longueurPrecedente = 0;
+let verificationEnCours = false;
 $('code').addEventListener('input', () => {
-  $('code').value = $('code').value.replace(/\D/g, '').slice(0, 6);
+  $('code').value = $('code').value.replace(/\D/g, '').slice(0, 10);
   erreurChamp('code', null);
-  if ($('code').value.length === 6) $('etape-code').requestSubmit();
+  const longueur = $('code').value.length;
+  if (longueur - longueurPrecedente >= 4 && longueur >= 6) $('etape-code').requestSubmit();
+  longueurPrecedente = longueur;
 });
 
 $('etape-code').addEventListener('submit', async (e) => {
   e.preventDefault();
+  if (verificationEnCours) return;
   const code = $('code').value;
-  if (!/^\d{6}$/.test(code)) {
+  if (!/^\d{6,10}$/.test(code)) {
     erreurChamp('code', t('connexion.code_invalide'));
     return;
   }
+  verificationEnCours = true;
   occuper('bouton-code', t('connexion.verification'));
   const { error } = await supabase.auth.verifyOtp({ email: emailSaisi, token: code, type: 'email' });
   liberer('bouton-code', t('connexion.valider'));
+  verificationEnCours = false;
   if (error) {
     erreurChamp('code', /expired|invalid/i.test(error.message || '') ? t('connexion.code_invalide') : messageErreur(error, langueActive()));
     $('code').select();

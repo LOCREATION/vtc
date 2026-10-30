@@ -82,7 +82,7 @@ async def router(route):
         return await route.fulfill(status=200, headers=entetes, body='{}')
     if url.startswith(f'{API}/auth/v1/verify'):
         donnees = json.loads(requete.post_data or '{}')
-        if donnees.get('token') != '123456':
+        if donnees.get('token') != '12345678':        # projet réglé sur 8 chiffres (défaut Supabase)
             return await route.fulfill(status=403, headers=entetes, body=json.dumps(
                 {'code': 403, 'error_code': 'otp_expired', 'msg': 'Token has expired or is invalid'}))
         utilisateur = {'id': ID_TEST, 'aud': 'authenticated', 'role': 'authenticated', 'email': 'essai@exemple.test',
@@ -168,10 +168,15 @@ async def connexion(navigateur):
     verifier('essai@exemple.test' in await page.inner_text('#code-envoye'), 'connexion : code envoyé, adresse rappelée')
     verifier('60' in await page.inner_text('#renvoyer') or '59' in await page.inner_text('#renvoyer'), 'connexion : renvoi possible après 60 s')
     await page.screenshot(path=f'{CAPTURES}/connexion-2-code.png', full_page=True)
+    # Code collé (tous les chiffres d'un coup) : validation immédiate
     await page.fill('#code', '000000')
     await page.wait_for_selector('#erreur-code:not([hidden])')
-    verifier('incorrect' in await page.inner_text('#erreur-code'), 'connexion : mauvais code refusé avec un message clair')
-    await page.fill('#code', '123456')
+    verifier('incorrect' in await page.inner_text('#erreur-code'), 'connexion : mauvais code collé, refusé avec un message clair')
+    # Code de 8 chiffres tapé chiffre par chiffre, puis « Valider »
+    await page.fill('#code', '')
+    await page.type('#code', '12345678', delay=40)
+    verifier(await page.input_value('#code') == '12345678', 'connexion : code de 8 chiffres accepté dans le champ')
+    await page.click('#bouton-code')
     await page.wait_for_selector('#etape-profil:not([hidden])')
     verifier(True, 'connexion : bon code accepté → profil à compléter')
     await page.screenshot(path=f'{CAPTURES}/connexion-3-profil.png', full_page=True)

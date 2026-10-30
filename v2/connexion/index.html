@@ -1,7 +1,7 @@
 <!doctype html>
 <!-- =============================================================================
      LOC RÉACTION S.A.S — Version 2
-     Connexion et inscription par code à 6 chiffres (sans mot de passe)
+     Connexion et inscription par code reçu par e-mail (sans mot de passe)
      Étapes : adresse e-mail → code reçu → profil (première fois seulement)
      ============================================================================= -->
 <html lang="fr">
@@ -35,7 +35,7 @@
     <!-- Étape 1 : adresse e-mail -->
     <form class="feuille etape" id="etape-email" novalidate>
       <h1 data-i18n="connexion.titre">Se connecter ou créer un compte</h1>
-      <p class="intro" data-i18n="connexion.intro">Pas de mot de passe : nous vous envoyons un code à 6 chiffres par e-mail.</p>
+      <p class="intro" data-i18n="connexion.intro">Pas de mot de passe : nous vous envoyons un code de connexion par e-mail.</p>
       <div class="champ">
         <label for="email" data-i18n="connexion.email">Adresse e-mail</label>
         <input id="email" class="saisie" type="email" autocomplete="email" inputmode="email" required aria-describedby="erreur-email">
@@ -49,9 +49,9 @@
       <h1 data-i18n="connexion.code_titre">Saisissez le code reçu</h1>
       <p class="intro" id="code-envoye"></p>
       <div class="champ">
-        <label for="code" data-i18n="connexion.code">Code à 6 chiffres</label>
+        <label for="code" data-i18n="connexion.code">Code reçu par e-mail</label>
         <input id="code" class="saisie saisie-code" type="text" inputmode="numeric" autocomplete="one-time-code"
-               pattern="[0-9]{6}" maxlength="6" required aria-describedby="erreur-code">
+               pattern="[0-9]{6,10}" maxlength="10" required aria-describedby="erreur-code">
         <p class="erreur-champ" id="erreur-code" hidden></p>
       </div>
       <button type="submit" class="bouton bouton-principal bouton-large" id="bouton-code" data-i18n="connexion.valider">Valider</button>
