@@ -1,0 +1,153 @@
+<!doctype html>
+<!-- =============================================================================
+     LOC RÉACTION S.A.S — Version 2
+     Page d'accueil : estimation du prix et commande
+     Le prix affiché est calculé par la base (fonction estimer_course) : le
+     navigateur ne fixe jamais un prix lui-même.
+     ============================================================================= -->
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>LOC RÉACTION, chauffeur VTC en Île-de-France et vers les aéroports</title>
+  <meta name="description" content="Berline hybride avec chauffeur en Île-de-France, vers Roissy, Orly et Beauvais. Prix fixe annoncé avant de commander.">
+  <!-- Version en construction : pas encore référencée par les moteurs de recherche -->
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0A1A38">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="commun/img/icone.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="commun/img/icone-192.png">
+  <link rel="preload" href="commun/polices/barlow-semi-condensed-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="commun/styles.css">
+  <link rel="stylesheet" href="accueil/accueil.css">
+  <script type="module" src="accueil/accueil.js"></script>
+</head>
+<body>
+  <header class="entete">
+    <div class="contenu">
+      <a class="marque" data-interne="./" data-i18n-aria="nav.accueil" href="./">
+        <img src="commun/img/logo.svg" alt="" width="56" height="28">
+        <span>LOC RÉACTION</span>
+      </a>
+      <nav class="entete-liens" aria-label="Compte et langue">
+        <a class="lien-discret lien-langue" data-changer-langue data-i18n="langue.autre" data-i18n-aria="langue.autre_aria" href="?lang=en">English</a>
+        <a class="lien-discret" id="lien-connexion" data-interne="connexion/" data-i18n="nav.connexion" href="connexion/">Se connecter</a>
+        <span class="salutation" id="salutation" hidden></span>
+        <button type="button" class="bouton bouton-texte" id="deconnexion" data-i18n="nav.deconnexion" hidden>Se déconnecter</button>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="accroche contenu">
+      <div class="accroche-texte">
+        <h1 data-i18n="accueil.titre">Votre trajet, au prix fixé avant le départ.</h1>
+        <p class="accroche-sous-titre" data-i18n="accueil.sous_titre">Berline hybride avec chauffeur en Île-de-France et vers les aéroports de Roissy, Orly et Beauvais, maintenant ou à l'avance.</p>
+      </div>
+
+      <form class="feuille trajet" id="trajet" novalidate aria-labelledby="trajet-titre">
+        <h2 id="trajet-titre" class="visuellement-cache" data-i18n="trajet.titre">Estimer et commander</h2>
+
+        <!-- Départ et arrivée, reliés par le tracé du trajet -->
+        <div class="trajet-points">
+          <div class="point point-depart">
+            <label for="depart" data-i18n="trajet.depart">Départ</label>
+            <div class="point-saisie">
+              <input id="depart" class="saisie" type="text" data-i18n-placeholder="trajet.depart_aide" placeholder="Adresse de départ" enterkeyhint="next">
+              <button type="button" class="bouton-icone" id="ma-position" data-i18n-aria="trajet.ma_position" data-i18n-title="trajet.ma_position" aria-label="Utiliser ma position">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+              </button>
+            </div>
+          </div>
+          <button type="button" class="inverser" id="inverser" data-i18n-aria="trajet.inverser" data-i18n-title="trajet.inverser" aria-label="Inverser le départ et l'arrivée">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16M7 4 3.5 7.5M7 4l3.5 3.5M17 20V4M17 20l-3.5-3.5M17 20l3.5-3.5"/></svg>
+          </button>
+          <div class="point point-arrivee">
+            <label for="arrivee" data-i18n="trajet.arrivee">Arrivée</label>
+            <div class="point-saisie">
+              <input id="arrivee" class="saisie" type="text" data-i18n-placeholder="trajet.arrivee_aide" placeholder="Où allez-vous ?" enterkeyhint="done">
+            </div>
+          </div>
+        </div>
+
+        <!-- Raccourcis vers les aéroports (lus dans la base) -->
+        <div class="trajet-raccourcis" id="bloc-raccourcis" hidden>
+          <span class="etiquette" id="raccourcis-titre" data-i18n="trajet.aeroports">Aéroports</span>
+          <div class="pastilles" id="raccourcis" role="group" aria-labelledby="raccourcis-titre"></div>
+        </div>
+
+        <!-- Maintenant ou plus tard -->
+        <fieldset class="trajet-quand">
+          <legend class="etiquette" data-i18n="trajet.quand">Quand ?</legend>
+          <div class="bascule">
+            <label><input type="radio" name="quand" value="maintenant" checked><span data-i18n="trajet.maintenant">Maintenant</span></label>
+            <label><input type="radio" name="quand" value="plus_tard"><span data-i18n="trajet.plus_tard">Plus tard</span></label>
+          </div>
+          <div class="champ" id="bloc-date" hidden>
+            <label for="date-heure" data-i18n="trajet.date_heure">Date et heure de prise en charge</label>
+            <input type="datetime-local" id="date-heure" class="saisie" aria-describedby="aide-date">
+            <p class="aide" id="aide-date"></p>
+          </div>
+        </fieldset>
+
+        <label class="case">
+          <input type="checkbox" id="chauffeuse">
+          <span data-i18n="trajet.chauffeuse">Je souhaite être conduite par une chauffeuse</span>
+        </label>
+
+        <!-- Plaque du prix : annoncé avant de commander -->
+        <div class="plaque" id="plaque" aria-live="polite">
+          <p class="plaque-prix" id="prix" aria-hidden="true">—</p>
+          <p class="plaque-libelle" id="prix-libelle" hidden data-i18n="prix.fixe">Prix fixe, TTC</p>
+          <p class="plaque-detail" id="prix-detail" data-i18n="prix.attente">Indiquez le départ et l'arrivée pour voir le prix.</p>
+        </div>
+
+        <div class="alerte" id="hors-zone" hidden>
+          <p data-i18n="prix.hors_zone">Ce trajet sort de notre zone ou dépasse la distance maximale : demandez-nous un devis.</p>
+          <a id="lien-devis" href="#" data-i18n="prix.devis">Demander un devis par e-mail</a>
+        </div>
+
+        <button type="submit" class="bouton bouton-principal bouton-large" id="commander" disabled data-i18n="action.commander">Commander</button>
+      </form>
+    </section>
+
+    <section class="atouts contenu" aria-labelledby="atouts-titre">
+      <h2 id="atouts-titre" data-i18n="atouts.titre">Un chauffeur, un prix, pas de surprise</h2>
+      <ul class="atouts-liste">
+        <li>
+          <svg viewBox="0 0 32 32" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h24v14H4z"/><path d="M20 13.5a4.5 4.5 0 1 0 0 5M13 15h6M13 17.5h6"/></svg>
+          <h3 data-i18n="atouts.prix">Prix fixe</h3>
+          <p data-i18n="atouts.prix_texte">Le prix affiché avant de commander est celui que vous payez, même dans les bouchons.</p>
+        </li>
+        <li>
+          <svg viewBox="0 0 32 32" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20l2.5-6.5A3 3 0 0 1 10.3 11.5h11.4a3 3 0 0 1 2.8 2L27 20v4H5z"/><circle cx="10" cy="24" r="2.5"/><circle cx="22" cy="24" r="2.5"/><path d="M15 4c3 1 4.5 3.5 3 6-2.5-.5-4-2.5-3-6z"/></svg>
+          <h3 data-i18n="atouts.hybride">Berline hybride</h3>
+          <p data-i18n="atouts.hybride_texte">Une Toyota Auris hybride, silencieuse, pour quatre passagers et leurs bagages.</p>
+        </li>
+        <li>
+          <svg viewBox="0 0 32 32" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="16" cy="11" r="5.5"/><path d="M6 28c1-5.5 5-8.5 10-8.5s9 3 10 8.5"/><path d="M10.5 9.5c1-4 4-5.5 8-4.5 2.5.6 4 2.7 3.5 6"/></svg>
+          <h3 data-i18n="atouts.chauffeuse">Chauffeuse pour les clientes</h3>
+          <p data-i18n="atouts.chauffeuse_texte">Vous préférez être conduite par une femme ? Cochez l'option au moment de commander.</p>
+        </li>
+        <li>
+          <svg viewBox="0 0 32 32" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M14 4.5c0-1 .9-1.5 2-1.5s2 .5 2 1.5v8l10 6v3l-10-3v6l3 2v2.5l-5-1.5-5 1.5V28l3-2v-6L4 23v-3l10-6z"/></svg>
+          <h3 data-i18n="atouts.aeroports">Aéroports et gares</h3>
+          <p data-i18n="atouts.aeroports_texte">Indiquez votre numéro de vol : votre chauffeur vérifie l'heure d'arrivée avant de partir.</p>
+        </li>
+      </ul>
+    </section>
+  </main>
+
+  <!-- Identité légale : lue dans la base (table « societe »), jamais recopiée à la main -->
+  <footer class="pied">
+    <div class="contenu">
+      <p class="pied-nom" id="pied-nom">LOC RÉACTION S.A.S</p>
+      <p id="pied-identite"></p>
+      <p class="pied-liens">
+        <a id="pied-contact" href="#" hidden data-i18n="pied.contact">Écrire à LOC RÉACTION</a>
+        <a data-changer-langue data-i18n="langue.autre" data-i18n-aria="langue.autre_aria" href="?lang=en">English</a>
+      </p>
+    </div>
+  </footer>
+</body>
+</html>

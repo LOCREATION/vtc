@@ -1,0 +1,87 @@
+<!doctype html>
+<!-- =============================================================================
+     LOC RÉACTION S.A.S — Version 2
+     Connexion et inscription par code à 6 chiffres (sans mot de passe)
+     Étapes : adresse e-mail → code reçu → profil (première fois seulement)
+     ============================================================================= -->
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Connexion, LOC RÉACTION</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0A1A38">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="icon" href="../commun/img/icone.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../commun/img/icone-192.png">
+  <link rel="stylesheet" href="../commun/styles.css">
+  <link rel="stylesheet" href="connexion.css">
+  <script type="module" src="connexion.js"></script>
+</head>
+<body>
+  <header class="entete">
+    <div class="contenu">
+      <a class="marque" data-interne="../" data-i18n-aria="nav.accueil" href="../">
+        <img src="../commun/img/logo.svg" alt="" width="56" height="28">
+        <span>LOC RÉACTION</span>
+      </a>
+      <nav class="entete-liens" aria-label="Langue">
+        <a class="lien-discret lien-langue" data-changer-langue data-i18n="langue.autre" data-i18n-aria="langue.autre_aria" href="?lang=en">English</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="contenu connexion">
+    <!-- Étape 1 : adresse e-mail -->
+    <form class="feuille etape" id="etape-email" novalidate>
+      <h1 data-i18n="connexion.titre">Se connecter ou créer un compte</h1>
+      <p class="intro" data-i18n="connexion.intro">Pas de mot de passe : nous vous envoyons un code à 6 chiffres par e-mail.</p>
+      <div class="champ">
+        <label for="email" data-i18n="connexion.email">Adresse e-mail</label>
+        <input id="email" class="saisie" type="email" autocomplete="email" inputmode="email" required aria-describedby="erreur-email">
+        <p class="erreur-champ" id="erreur-email" hidden></p>
+      </div>
+      <button type="submit" class="bouton bouton-principal bouton-large" id="bouton-email" data-i18n="connexion.recevoir">Recevoir mon code</button>
+    </form>
+
+    <!-- Étape 2 : code reçu -->
+    <form class="feuille etape" id="etape-code" novalidate hidden>
+      <h1 data-i18n="connexion.code_titre">Saisissez le code reçu</h1>
+      <p class="intro" id="code-envoye"></p>
+      <div class="champ">
+        <label for="code" data-i18n="connexion.code">Code à 6 chiffres</label>
+        <input id="code" class="saisie saisie-code" type="text" inputmode="numeric" autocomplete="one-time-code"
+               pattern="[0-9]{6}" maxlength="6" required aria-describedby="erreur-code">
+        <p class="erreur-champ" id="erreur-code" hidden></p>
+      </div>
+      <button type="submit" class="bouton bouton-principal bouton-large" id="bouton-code" data-i18n="connexion.valider">Valider</button>
+      <div class="actions-secondaires">
+        <button type="button" class="bouton bouton-texte" id="renvoyer" disabled></button>
+        <button type="button" class="bouton bouton-texte" id="changer" data-i18n="connexion.changer">Changer d'adresse</button>
+      </div>
+    </form>
+
+    <!-- Étape 3 : profil (première connexion) -->
+    <form class="feuille etape" id="etape-profil" novalidate hidden>
+      <h1 data-i18n="profil.titre">Complétez votre profil</h1>
+      <p class="intro" data-i18n="profil.intro">Votre chauffeur a besoin de votre prénom et d'un numéro pour vous joindre.</p>
+      <div class="champ">
+        <label for="prenom" data-i18n="profil.prenom">Prénom</label>
+        <input id="prenom" class="saisie" type="text" autocomplete="given-name" maxlength="80" required aria-describedby="erreur-prenom">
+        <p class="erreur-champ" id="erreur-prenom" hidden></p>
+      </div>
+      <div class="champ">
+        <label for="nom" data-i18n="profil.nom">Nom</label>
+        <input id="nom" class="saisie" type="text" autocomplete="family-name" maxlength="80">
+      </div>
+      <div class="champ">
+        <label for="telephone" data-i18n="profil.telephone">Téléphone mobile</label>
+        <input id="telephone" class="saisie" type="tel" autocomplete="tel" inputmode="tel" required aria-describedby="aide-telephone erreur-telephone">
+        <p class="aide" id="aide-telephone" data-i18n="profil.telephone_aide">Avec l'indicatif, par exemple +33 6 12 34 56 78</p>
+        <p class="erreur-champ" id="erreur-telephone" hidden></p>
+      </div>
+      <button type="submit" class="bouton bouton-principal bouton-large" id="bouton-profil" data-i18n="profil.enregistrer">Enregistrer</button>
+    </form>
+  </main>
+</body>
+</html>
