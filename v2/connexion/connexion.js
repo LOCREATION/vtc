@@ -214,11 +214,13 @@ $('etape-profil').addEventListener('submit', async (e) => {
 });
 
 // Page demandée avant la connexion (si elle fait partie du site), sinon
-// l'espace correspondant au rôle : chauffeur → espace chauffeur, sinon l'accueil
+// l'espace correspondant au rôle : chauffeur → espace chauffeur,
+// administrateur → administration (double authentification demandée là-bas),
+// sinon l'accueil
 function allerALaSuite(role) {
   redirectionEnCours = true;
   const suite = new URLSearchParams(location.search).get('suite');
-  let cible = role === 'chauffeur' ? `${RACINE}chauffeur/` : RACINE;
+  let cible = role === 'chauffeur' ? `${RACINE}chauffeur/` : role === 'admin' ? `${RACINE}admin/` : RACINE;
   if (suite) {
     const url = new URL(suite, location.origin + RACINE);
     if (url.origin === location.origin && url.pathname.startsWith(RACINE)) cible = url.pathname + url.search;

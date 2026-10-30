@@ -1,0 +1,23 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Administration : chauffeurs
+   ============================================================================= */
+
+#contenu { display: grid; gap: 16px; }
+
+/* Fiches : une colonne sur téléphone, deux sur grand écran */
+.fiches { display: grid; gap: 16px; }
+@media (min-width: 1280px) { .fiches { grid-template-columns: 1fr 1fr; align-items: start; } }
+.fiche-chauffeur .carte-entete h2 { margin-right: 0; }
+.fiche-chauffeur .carte-entete h2 + .badge { margin-left: auto; }
+.contact { display: flex; flex-wrap: wrap; gap: 0 4px; font-size: 15px; }
+.texte-long { white-space: pre-wrap; font-weight: 400; }
+
+/* Pièces déposées */
+.documents { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.documents li { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid var(--trait); border-radius: var(--rayon-champ); }
+.documents .secondaire { display: block; color: var(--gris); font-size: 14px; margin-top: 2px; }
+.refusees .fiches { margin-top: 12px; }
+
+/* Recherche d'un compte (enregistrer un chauffeur) */
+.resultats-comptes { display: grid; gap: 10px; }

@@ -1,0 +1,27 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Administration : courses (liste et fiche)
+   ============================================================================= */
+
+#vue-liste, #vue-fiche { display: grid; gap: 16px; }
+#vue-liste[hidden], #vue-fiche[hidden] { display: none; }
+
+/* Liste : rechargement sans saut (l'ancienne liste reste visible, atténuée) */
+.rechargement { opacity: 0.55; transition: opacity 0.15s ease; }
+.trajet-court { display: block; max-width: 340px; }
+.tableau .secondaire .badge { margin-top: 4px; }
+
+/* Fiche */
+.fiche-moment { font-family: var(--police-titre); font-weight: 600; font-size: 22px; }
+.pile { display: grid; gap: 16px; align-content: start; min-width: 0; }
+.sous-section { font-size: 17px; font-weight: 600; margin-top: 6px; }
+.liste-simple { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.etoiles { color: #A8882B; letter-spacing: 0.08em; }
+.carte-fiche { height: 260px; }
+@media (min-width: 1024px) { .carte-fiche { height: 300px; } }
+
+/* Repères de la carte du trajet */
+.repere-depart, .repere-arret, .repere-arrivee { width: 18px; height: 18px; border: 3px solid var(--blanc); box-shadow: 0 2px 6px rgba(4, 10, 24, 0.35); }
+.repere-depart { border-radius: 50%; background: var(--nuit); }
+.repere-arret { border-radius: 50%; background: var(--gris); transform: scale(0.8); }
+.repere-arrivee { border-radius: 3px; background: var(--or); }

@@ -154,7 +154,7 @@ select test.verifier((select statut from public.chauffeurs where id = auth.uid()
 call test.connexion(:'chauffeuse');
 select public.deposer_candidature('Paris', 'Trois ans de VTC', true, null, 'VTC-0002', current_date + 300, null, null);
 
-call test.connexion(:'admin');
+call test.connexion(:'admin', 'aal2');
 select test.verifier((select count(*) from public.candidatures) = 2, 'admin : voit les 2 candidatures');
 insert into public.vehicules (categorie_id, immatriculation, marque, modele, couleur)
 select id, 'GA-123-BC', 'Toyota', 'Auris', 'Gris' from public.categories where code = 'berline_hybride';
@@ -202,7 +202,7 @@ select test.doit_echouer($$select public.commander_course('berline_hybride', 'A'
 select test.doit_echouer($$select public.commander_course('berline_hybride', 'A', 48.8656, 2.3212, 'B', 48.8809, 2.3553,
                            p_type => 'planifiee', p_quand => now() + interval '1 day', p_mode_paiement => 'solde')$$, 'prochaine version');
 
-call test.connexion(:'admin');
+call test.connexion(:'admin', 'aal2');
 select test.verifier(exists (select 1 from public.notifications where titre = 'Course à attribuer'),
                      'administration prévenue : course à attribuer');
 
@@ -288,13 +288,13 @@ select test.verifier((select count(*) from public.evaluations) = 1, 'client : ne
 -- #############################################################################
 -- 6. FACTURES : INCHANGEABLES, PDF ARCHIVÉ
 -- #############################################################################
-call test.connexion(:'admin');
+call test.connexion(:'admin', 'aal2');
 select test.doit_echouer('update public.factures set montant_ttc = montant_ttc + 1', 'permission denied');
 call test.systeme();
 select test.doit_echouer('update public.factures set montant_ttc = montant_ttc + 1', 'ne peut plus être modifiée');
 select test.doit_echouer('delete from public.factures', 'ne peut pas être supprimée');
 
-call test.connexion(:'admin');
+call test.connexion(:'admin', 'aal2');
 update public.factures set pdf_chemin = client_id::text || '/' || numero || '.pdf';
 insert into storage.objects (bucket_id, name, owner) select 'factures', pdf_chemin, auth.uid() from public.factures;
 call test.connexion(:'client1');
@@ -306,7 +306,7 @@ select test.verifier((select count(*) from storage.objects where bucket_id = 'fa
 -- #############################################################################
 -- 7. RÉSERVATIONS ET ANNULATIONS
 -- #############################################################################
-call test.connexion(:'admin');
+call test.connexion(:'admin', 'aal2');
 update public.tarifs set frais_annulation = 5.00;
 select test.verifier((select count(*) from public.journal_lister('tarifs')) >= 2, 'journal : création et modification du tarif tracées');
 
@@ -371,7 +371,7 @@ select test.verifier((select statut from public.courses where id = :'course4') =
 select test.verifier((select count(*) from public.notifications where titre = 'Course à attribuer') = 2,
                      'administration prévenue une seule fois par course');
 
-call test.connexion(:'admin');
+call test.connexion(:'admin', 'aal2');
 select test.doit_echouer(format('select public.attribuer_course(%L, %L)', :'course4', :'chauffeur1'), 'chauffeuse');
 select public.attribuer_course(:'course4', :'chauffeuse');
 select test.verifier((select statut || ' ' || attribution from public.courses where id = :'course4') = 'acceptee manuelle',
@@ -405,7 +405,7 @@ select test.doit_echouer('select * from public.journal_lister()', 'Réservé');
 -- #############################################################################
 -- 10. CODES PROMO
 -- #############################################################################
-call test.connexion(:'admin');
+call test.connexion(:'admin', 'aal2');
 insert into public.codes_promo (code, libelle, type, valeur, utilisations_par_client)
 values ('BIENVENUE10', 'Bienvenue : 10 %', 'pourcentage', 10, 1);
 call test.connexion(:'chauffeur1');
@@ -433,7 +433,7 @@ select public.annuler_course(:'course6', null);
 -- #############################################################################
 -- 11. POUR UN PROCHE, HORS ZONE, PARRAINAGE
 -- #############################################################################
-call test.connexion(:'admin');
+call test.connexion(:'admin', 'aal2');
 update public.parametres set recompense_parrain = 5, recompense_filleul = 5;
 call test.connexion(:'chauffeur1');
 select public.mettre_en_ligne(true, 48.8557, 2.3601);
@@ -479,7 +479,7 @@ select test.verifier((select count(*) from public.demandes) = 0, 'support : un a
 select test.doit_echouer(format('insert into storage.objects (bucket_id, name) values (%L, %L)', 'support', :'demande1' || '/intrus.jpg'),
                          'row-level security');
 
-call test.connexion(:'admin');
+call test.connexion(:'admin', 'aal2');
 select test.verifier((select count(*) from public.messages where demande_id = :'demande1') = 2, 'support : l''administration lit le fil');
 insert into public.messages (demande_id, auteur_id, contenu) values (:'demande1', auth.uid(), 'Nous l''avons retrouvé.');
 update public.demandes set statut = 'resolue', assignee_a = auth.uid() where id = :'demande1';
@@ -495,7 +495,7 @@ select test.doit_echouer(format('insert into public.messages (demande_id, auteur
 -- #############################################################################
 -- 13. RH ET PAIE
 -- #############################################################################
-call test.connexion(:'admin');
+call test.connexion(:'admin', 'aal2');
 insert into public.salaries (profil_id, matricule, civilite, prenom, nom, type_contrat, date_entree, salaire_base_mensuel)
 values (:'chauffeur1', 'S0001', 'Monsieur', 'Paul', 'Bernard', 'CDI', date '2026-09-01', 1801.80)
 returning id as salarie_id \gset
@@ -512,7 +512,7 @@ insert into public.absences (salarie_id, type, debut, fin, jours) values (:'sala
 select test.doit_echouer(format('insert into public.absences (salarie_id, type, debut, fin, jours, statut) values (%L, %L, %L, %L, 1, %L)',
                                 :'salarie_id', 'conges_payes', '2026-12-28', '2026-12-28', 'validee'), 'row-level security');
 
-call test.connexion(:'admin');
+call test.connexion(:'admin', 'aal2');
 update public.bulletins set statut = 'valide', valide_par = auth.uid(), valide_le = now() where id = :'bulletin_id';
 call test.connexion(:'chauffeur1');
 select test.verifier((select count(*) from public.bulletins) = 1, 'paie : bulletin validé visible par le salarié');
@@ -524,7 +524,7 @@ select test.verifier((select count(*) from storage.objects where bucket_id = 'pa
 -- #############################################################################
 -- 14. BLOCAGE D'UN COMPTE, DERNIER ADMINISTRATEUR
 -- #############################################################################
-call test.connexion(:'admin');
+call test.connexion(:'admin', 'aal2');
 select test.doit_echouer(format('select public.admin_definir_statut(%L, %L)', :'admin', 'bloque'), 'propre compte');
 select public.admin_definir_statut(:'chauffeur1', 'bloque');
 call test.systeme();
@@ -533,7 +533,7 @@ call test.connexion(:'chauffeur1');
 select test.verifier(public.mon_role() is null, 'compte bloqué : plus aucun droit');
 select test.doit_echouer('select public.mettre_en_ligne(true, 48.85, 2.35)', 'pas encore validé');
 select public.mettre_en_ligne(false);
-call test.connexion(:'admin');
+call test.connexion(:'admin', 'aal2');
 select public.admin_definir_statut(:'chauffeur1', 'actif');
 select test.doit_echouer(format('select public.admin_definir_role(%L, %L)', :'admin', 'client'), 'dernier administrateur');
 
@@ -541,7 +541,7 @@ select test.doit_echouer(format('select public.admin_definir_role(%L, %L)', :'ad
 -- #############################################################################
 -- 15. REMBOURSEMENT, GESTE COMMERCIAL, REFUS, DOCUMENTS EXPIRÉS
 -- #############################################################################
-call test.connexion(:'admin');
+call test.connexion(:'admin', 'aal2');
 select test.doit_echouer(format('select public.rembourser(%L, %s, %L)', :'paiement1', :prix_c1 + 1, 'Erreur'), 'il reste');
 select public.rembourser(:'paiement1', 5.00, 'Retard de dix minutes');
 select test.verifier((select statut from public.paiements where id = :'paiement1') = 'encaisse',
@@ -583,7 +583,7 @@ select test.doit_echouer($$select public.commander_course('berline_hybride', 'A'
 select test.doit_echouer($$select public.deposer_candidature('Paris', 'Débutant', false)$$, 'Complétez');
 update public.profils set prenom = 'Karim', nom = 'Benali' where id = auth.uid();
 select public.deposer_candidature('Paris', 'Débutant', false);
-call test.connexion(:'admin');
+call test.connexion(:'admin', 'aal2');
 select public.refuser_candidature(:'clienttel', 'Carte VTC manquante');
 select test.verifier((select statut from public.candidatures where profil_id = :'clienttel') = 'refusee'
                      and (select statut from public.chauffeurs where id = :'clienttel') = 'refuse',
@@ -592,17 +592,17 @@ call test.connexion(:'clienttel');
 select test.verifier(exists (select 1 from public.notifications where titre = 'Votre candidature'), 'candidat prévenu du refus');
 
 -- Véhicule retiré, assurance expirée : impossible de passer en ligne
-call test.connexion(:'admin');
+call test.connexion(:'admin', 'aal2');
 select public.affecter_vehicule(:'chauffeur1', null);
 call test.connexion(:'chauffeur1');
 select public.mettre_en_ligne(false);
 select test.doit_echouer('select public.mettre_en_ligne(true, 48.85, 2.35)', 'Aucun véhicule');
-call test.connexion(:'admin');
+call test.connexion(:'admin', 'aal2');
 select public.affecter_vehicule(:'chauffeur1', (select id from public.vehicules where immatriculation = 'GA-123-BC'));
 update public.vehicules set assurance_expiration = current_date - 1 where immatriculation = 'GA-123-BC';
 call test.connexion(:'chauffeur1');
 select test.doit_echouer('select public.mettre_en_ligne(true, 48.85, 2.35)', 'assurance');
-call test.connexion(:'admin');
+call test.connexion(:'admin', 'aal2');
 update public.vehicules set assurance_expiration = current_date + 200 where immatriculation = 'GA-123-BC';
 select public.admin_definir_role(:'client2', 'admin');
 select public.admin_definir_role(:'client2', 'client');
@@ -614,7 +614,7 @@ select test.verifier((select count(*) from public.journal_lister('profils')) = 7
 
 
 -- Questions fréquentes : le visiteur ne lit que les réponses publiées
-call test.connexion(:'admin');
+call test.connexion(:'admin', 'aal2');
 insert into public.faq (theme, ordre, question_fr, reponse_fr, publie) values
   ('commande', 1, 'Comment réserver une course ?', 'Depuis l''application, en indiquant le départ et l''arrivée.', true),
   ('paiement', 1, 'Question en préparation', 'Réponse en cours de rédaction.', false);

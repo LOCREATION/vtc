@@ -1,0 +1,22 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Administration : flotte
+   ============================================================================= */
+
+.fiches { display: grid; gap: 16px; }
+@media (min-width: 1280px) { .fiches { grid-template-columns: 1fr 1fr; align-items: start; } }
+.fiche-vehicule .carte-entete h2 { margin-right: auto; }
+.fiche-vehicule.inactif { opacity: 0.75; }
+
+/* Immatriculation dessinée comme une plaque française (bande bleue à gauche) */
+.plaque {
+  display: inline-block; vertical-align: middle; margin-left: 6px; padding: 1px 8px 1px 14px;
+  font: 600 16px/1.4 var(--police); letter-spacing: 0.06em; color: var(--nuit);
+  background: linear-gradient(90deg, #1E4FA8 0 8px, var(--blanc) 8px); border: 1.5px solid var(--nuit); border-radius: 4px;
+}
+
+.texte-long { white-space: pre-wrap; font-weight: 400; }
+.repli[open] { display: grid; gap: 10px; }
+.documents { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.documents li { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid var(--trait); border-radius: var(--rayon-champ); }
+.documents .secondaire { display: block; color: var(--gris); font-size: 14px; margin-top: 2px; }

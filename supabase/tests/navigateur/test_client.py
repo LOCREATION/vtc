@@ -24,8 +24,10 @@ def psql(script):
     return r.returncode, r.stdout.strip(), r.stderr.strip()
 
 def en_tant_que(uid, requete):
-    """Exécute « requete » comme le ferait l'API pour l'utilisateur uid. Renvoie (ok, texte)."""
-    reglage = json.dumps({'sub': uid, 'role': 'authenticated'})
+    """Exécute « requete » comme le ferait l'API pour l'utilisateur uid. Renvoie (ok, texte).
+    Le compte administrateur des essais agit avec la double authentification
+    confirmée (niveau « aal2 »), exigée par la base depuis la migration 10."""
+    reglage = json.dumps({'sub': uid, 'role': 'authenticated', 'aal': 'aal2' if uid == ADMIN else 'aal1'})
     code, sortie, erreur = psql(f"""begin;
 set local role authenticated;
 select set_config('request.jwt.claims', $c${reglage}$c$, true) \\g /dev/null

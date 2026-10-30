@@ -34,8 +34,13 @@
         <a class="lien-discret lien-langue" data-changer-langue data-i18n="langue.autre" data-i18n-aria="langue.autre_aria" href="?lang=en">English</a>
         <a class="lien-discret" id="lien-connexion" data-interne="connexion/" data-i18n="nav.connexion" href="connexion/">Se connecter</a>
         <a class="lien-discret" id="lien-espace" href="chauffeur/" hidden>Espace chauffeur</a>
+        <a class="lien-discret" id="lien-admin" href="admin/" hidden>Administration</a>
         <span class="salutation" id="salutation" hidden></span>
-        <button type="button" class="bouton bouton-texte" id="deconnexion" data-i18n="nav.deconnexion" hidden>Se déconnecter</button>
+        <!-- Sur téléphone, seule l'icône reste visible (le texte reste lu par les lecteurs d'écran) -->
+        <button type="button" class="bouton bouton-texte bouton-deconnexion" id="deconnexion" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+          <span class="libelle-deconnexion" data-i18n="nav.deconnexion">Se déconnecter</span>
+        </button>
       </nav>
     </div>
   </header>

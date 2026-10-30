@@ -1,0 +1,98 @@
+<!doctype html>
+<!-- =============================================================================
+     LOC RÉACTION S.A.S — Version 2
+     Administration : dispatch
+     Courses à attribuer, recherches en cours, courses en route, réservations à
+     venir ; attribution à la main, relance de la recherche, retrait du
+     chauffeur, annulation. Mise à jour en temps réel.
+     ============================================================================= -->
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Dispatch, administration LOC RÉACTION</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0A1A38">
+  <link rel="manifest" href="../../manifest.webmanifest">
+  <link rel="icon" href="../../commun/img/icone.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../../commun/img/icone-192.png">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="../../commun/styles.css">
+  <link rel="stylesheet" href="../commun/admin.css">
+  <link rel="stylesheet" href="dispatch.css">
+  <script type="module" src="dispatch.js"></script>
+</head>
+<body class="admin">
+  <section class="porte" id="porte" aria-live="polite"><p class="chargement">Chargement…</p></section>
+
+  <div class="admin-cadre" id="admin-cadre" hidden>
+    <nav class="admin-menu" id="admin-menu" aria-label="Modules de l'administration" data-ouvert="false"></nav>
+    <div class="admin-zone">
+      <header class="admin-entete">
+        <button type="button" class="admin-bouton-menu" id="admin-ouvrir-menu" aria-controls="admin-menu" aria-expanded="false">Menu</button>
+        <h1 class="admin-titre">Dispatch</h1>
+        <p class="sous-titre resume" id="resume" aria-live="polite"></p>
+      </header>
+
+      <main class="admin-page dispatch" id="admin-page">
+        <div class="dispatch-colonnes">
+          <div class="dispatch-listes">
+            <section class="carte-admin" aria-labelledby="titre-a-attribuer" id="bloc-a-attribuer">
+              <div class="carte-entete">
+                <h2 id="titre-a-attribuer">À attribuer</h2>
+                <span class="badge badge-rouge" id="nb-a-attribuer">0</span>
+              </div>
+              <p class="sous-titre">Aucun chauffeur n'a accepté. Attribuez à la main, ou relancez la recherche si un chauffeur vient de se connecter.</p>
+              <div class="liste-courses-admin" id="liste-a-attribuer"></div>
+            </section>
+
+            <section class="carte-admin" aria-labelledby="titre-recherche">
+              <div class="carte-entete">
+                <h2 id="titre-recherche">Recherche en cours</h2>
+                <span class="badge badge-or" id="nb-recherche">0</span>
+              </div>
+              <div class="liste-courses-admin" id="liste-recherche"></div>
+            </section>
+
+            <section class="carte-admin" aria-labelledby="titre-en-cours">
+              <div class="carte-entete">
+                <h2 id="titre-en-cours">En route ou client à bord</h2>
+                <span class="badge badge-vert" id="nb-en-cours">0</span>
+              </div>
+              <div class="liste-courses-admin" id="liste-en-cours"></div>
+            </section>
+
+            <section class="carte-admin" aria-labelledby="titre-a-venir">
+              <div class="carte-entete">
+                <h2 id="titre-a-venir">Réservations à venir</h2>
+                <span class="badge badge-bleu" id="nb-a-venir">0</span>
+              </div>
+              <p class="sous-titre" id="aide-a-venir"></p>
+              <div id="liste-a-venir"></div>
+            </section>
+          </div>
+
+          <aside class="dispatch-carte">
+            <section class="carte-admin" aria-labelledby="titre-chauffeurs">
+              <div class="carte-entete">
+                <h2 id="titre-chauffeurs">Chauffeurs</h2>
+                <span class="sous-titre" id="resume-chauffeurs"></span>
+              </div>
+              <div class="carte-admin-map" id="carte" role="img" aria-label="Carte des chauffeurs et des points de prise en charge"></div>
+              <p class="legende-carte">
+                <span><i style="background:var(--vert)"></i>Libre</span>
+                <span><i style="background:var(--nuit-2)"></i>En course</span>
+                <span><i style="background:#8A9BBA"></i>Sans signal</span>
+                <span><i style="background:var(--rouge);border-radius:2px"></i>À attribuer</span>
+                <span><i style="background:var(--or);border-radius:2px"></i>Recherche</span>
+              </p>
+              <ul class="liste-chauffeurs" id="liste-chauffeurs"></ul>
+            </section>
+          </aside>
+        </div>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

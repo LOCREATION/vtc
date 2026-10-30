@@ -1,0 +1,76 @@
+<!doctype html>
+<!-- =============================================================================
+     LOC RÉACTION S.A.S — Version 2
+     Administration : courses
+     Liste filtrable (statut, période, recherche libre), export CSV, et fiche
+     complète d'une course (?id=…) : trajet, personnes, prix, paiements,
+     factures, étapes horodatées, notes ; actions de correction.
+     ============================================================================= -->
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Courses, administration LOC RÉACTION</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0A1A38">
+  <link rel="manifest" href="../../manifest.webmanifest">
+  <link rel="icon" href="../../commun/img/icone.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../../commun/img/icone-192.png">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="../../commun/styles.css">
+  <link rel="stylesheet" href="../commun/admin.css">
+  <link rel="stylesheet" href="courses.css">
+  <script type="module" src="courses.js"></script>
+</head>
+<body class="admin">
+  <section class="porte" id="porte" aria-live="polite"><p class="chargement">Chargement…</p></section>
+
+  <div class="admin-cadre" id="admin-cadre" hidden>
+    <nav class="admin-menu" id="admin-menu" aria-label="Modules de l'administration" data-ouvert="false"></nav>
+    <div class="admin-zone">
+      <header class="admin-entete">
+        <button type="button" class="admin-bouton-menu" id="admin-ouvrir-menu" aria-controls="admin-menu" aria-expanded="false">Menu</button>
+        <h1 class="admin-titre" id="titre-page">Courses</h1>
+        <div class="admin-entete-actions" id="entete-actions"></div>
+      </header>
+
+      <main class="admin-page" id="admin-page">
+        <!-- Liste -->
+        <div id="vue-liste" hidden>
+          <section class="carte-admin" aria-label="Filtres">
+            <div class="onglets" role="tablist" aria-label="Statut" id="onglets"></div>
+            <form class="barre-outils" id="filtres" role="search">
+              <div class="champ champ-large">
+                <label for="filtre-texte">Rechercher</label>
+                <input id="filtre-texte" class="saisie" type="search" placeholder="Numéro, client, chauffeur, adresse, plaque…" autocomplete="off">
+              </div>
+              <div class="champ">
+                <label for="filtre-du">Prise en charge du</label>
+                <input id="filtre-du" class="saisie" type="date">
+              </div>
+              <div class="champ">
+                <label for="filtre-au">au</label>
+                <input id="filtre-au" class="saisie" type="date">
+              </div>
+              <button type="submit" class="bouton bouton-principal">Rechercher</button>
+              <button type="button" class="bouton bouton-texte" id="effacer">Effacer</button>
+            </form>
+          </section>
+          <section class="carte-admin" aria-labelledby="titre-resultats">
+            <div class="carte-entete">
+              <h2 id="titre-resultats">Résultats</h2>
+              <span class="sous-titre" id="nb-resultats" aria-live="polite"></span>
+            </div>
+            <div id="resultats"><p class="chargement">Chargement…</p></div>
+            <div class="pagination" id="pagination"></div>
+          </section>
+        </div>
+
+        <!-- Fiche d'une course -->
+        <div id="vue-fiche" hidden></div>
+      </main>
+    </div>
+  </div>
+</body>
+</html>
