@@ -714,6 +714,20 @@ select test.verifier(not exists (select 1 from information_schema.role_table_gra
                      'avoirs et remises : lecture seule une fois connecté, rien pour un visiteur');
 select test.verifier(not exists (select 1 from pg_tables where schemaname = 'public' and not rowsecurity),
                      'toutes les tables restent protégées ligne par ligne');
+-- Deux index identiques sur une même table (mêmes colonnes dans le même
+-- ordre de tri, même condition) : chaque écriture paie les deux, aucune
+-- lecture n'y gagne
+select test.verifier(not exists (
+                       select 1
+                       from pg_index a
+                       join pg_index b on b.indrelid = a.indrelid and b.indexrelid > a.indexrelid
+                       join pg_class t on t.oid = a.indrelid
+                       where t.relnamespace = 'public'::regnamespace
+                         and a.indkey::text = b.indkey::text and a.indclass::text = b.indclass::text
+                         and a.indoption::text = b.indoption::text
+                         and coalesce(pg_get_expr(a.indexprs, a.indrelid), '') = coalesce(pg_get_expr(b.indexprs, b.indrelid), '')
+                         and coalesce(pg_get_expr(a.indpred, a.indrelid), '') = coalesce(pg_get_expr(b.indpred, b.indrelid), '')),
+                     'aucun index en double');
 select test.verifier(not exists (select 1 from public.factures f
                                  where (select coalesce(sum(a.montant_ttc), 0) from public.avoirs a where a.facture_id = f.id) > f.montant_ttc),
                      'aucune facture créditée au-delà de son montant');
