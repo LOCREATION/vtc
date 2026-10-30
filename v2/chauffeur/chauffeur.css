@@ -1,0 +1,89 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Espace chauffeur : thème de nuit (lisible au volant, de jour comme de nuit)
+   Commun à l'accueil chauffeur et à l'écran de course.
+   ============================================================================= */
+.theme-nuit {
+  --fond: #0A1A38;
+  --surface: #13274D;
+  --surface-2: #1B3461;
+  --ligne: #2A4677;
+  --texte-2: #B6C4DC;
+  background: var(--fond);
+  color: var(--blanc);
+}
+.theme-nuit a { color: var(--or); }
+.theme-nuit .saisie { background: var(--surface-2); border-color: var(--ligne); color: var(--blanc); }
+.theme-nuit .saisie::placeholder { color: #8A9BBA; }
+.theme-nuit .suggestions { background: var(--surface-2); border-color: var(--ligne); }
+.theme-nuit .suggestion[aria-selected='true'], .theme-nuit .suggestion:hover { background: var(--surface); }
+.theme-nuit .suggestion-detail, .theme-nuit .aide { color: var(--texte-2); }
+.theme-nuit .suggestion-etiquette { color: #7FD3A1; }
+.theme-nuit .bouton-secondaire { color: var(--blanc); border-color: var(--blanc); }
+.theme-nuit .bouton-secondaire:hover { background: rgba(255, 255, 255, 0.08); }
+.theme-nuit .bouton-texte { color: var(--or); }
+.theme-nuit .alerte { background: #4A1A1A; color: #FFD6D3; }
+.theme-nuit .alerte-info { background: var(--surface-2); color: var(--blanc); }
+.theme-nuit .case input { accent-color: var(--or); }
+
+/* Barre du haut */
+.barre { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 0 var(--marge); max-width: var(--largeur); margin: 0 auto; }
+.barre .marque { color: var(--blanc); }
+.barre .marque img { filter: brightness(0) invert(1); }
+.pastille-etat {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 14px;
+  border-radius: var(--rayon-pastille); background: var(--surface-2); font-weight: 600; font-size: 15px;
+}
+.pastille-etat::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: #8A9BBA; }
+.pastille-etat[data-en-ligne='true'] { background: #13432A; }
+.pastille-etat[data-en-ligne='true']::before { background: #4ADE80; }
+
+/* Mise en page : une colonne sur téléphone, carte à gauche sur ordinateur */
+.espace-chauffeur { display: grid; gap: 12px; padding: 0 var(--marge) 40px; max-width: var(--largeur); margin: 0 auto; }
+@media (min-width: 960px) {
+  .espace-chauffeur { grid-template-columns: 3fr 2fr; align-items: start; }
+  .espace-chauffeur .carte { grid-row: 1 / span 4; height: 76vh; position: sticky; top: 12px; }
+}
+.carte { height: 34vh; min-height: 220px; border-radius: var(--rayon-feuille); overflow: hidden; background: var(--surface); }
+.panneau { background: var(--surface); border-radius: var(--rayon-feuille); padding: 18px; display: grid; gap: 14px; }
+.panneau h2 { font-size: 22px; font-weight: 600; }
+
+/* Bouton « Passer en ligne » : l'action principale, grande et sans ambiguïté */
+.bouton-en-ligne { min-height: 60px; font-size: 20px; }
+.bouton-en-ligne[data-en-ligne='true'] { background: transparent; color: var(--blanc); border-color: #4ADE80; }
+
+/* Chiffres du jour */
+.chiffres { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0; }
+.chiffres div { background: var(--surface-2); border-radius: var(--rayon-champ); padding: 12px; }
+.chiffres dt { color: var(--texte-2); font-size: 14px; }
+.chiffres dd { margin: 2px 0 0; font-family: var(--police-titre); font-weight: 700; font-size: 26px; }
+
+/* Listes de courses */
+.liste-courses { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.course-carte { background: var(--surface-2); border-radius: var(--rayon-champ); padding: 14px; display: grid; gap: 6px; }
+.course-carte .entete-course { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.course-carte .moment { font-weight: 600; }
+.course-carte .montant { font-family: var(--police-titre); font-weight: 700; font-size: 22px; color: var(--or); }
+.course-carte .adresses { color: var(--texte-2); font-size: 15px; }
+.course-carte .bouton { justify-self: start; min-height: 44px; }
+.vide { color: var(--texte-2); }
+
+/* Demande entrante : plein écran */
+.demande { position: fixed; inset: 0; z-index: 50; background: rgba(4, 10, 24, 0.94); display: grid; place-items: end center; padding: 16px; }
+@media (min-width: 600px) { .demande { place-items: center; } }
+.demande-contenu { width: min(100%, 480px); background: var(--surface); border-radius: var(--rayon-feuille); border-top: 6px solid var(--or); padding: 22px; display: grid; gap: 14px; }
+.demande-titre { font-family: var(--police-titre); font-weight: 700; font-size: 24px; }
+.decompte { height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+.decompte span { display: block; height: 100%; background: var(--or); transform-origin: left center; }
+.demande-prix { font-family: var(--police-titre); font-weight: 700; font-size: 56px; line-height: 1; }
+.demande-approche { color: var(--texte-2); font-weight: 500; }
+.demande-trajet { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.demande-trajet li { padding-left: 22px; position: relative; }
+.demande-trajet li::before { content: ''; position: absolute; left: 2px; top: 8px; width: 9px; height: 9px; border: 2.5px solid var(--blanc); border-radius: 50%; }
+.demande-trajet li:last-child::before { border-radius: 0; background: var(--blanc); }
+.demande-infos { color: var(--texte-2); display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.demande-actions { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
+.demande-actions .bouton { min-height: 60px; font-size: 19px; }
+
+/* Repère de position du chauffeur sur la carte */
+.repere-moi { width: 20px; height: 20px; border-radius: 50%; background: var(--or); border: 4px solid var(--blanc); box-shadow: 0 0 0 6px rgba(200, 168, 75, 0.35); }

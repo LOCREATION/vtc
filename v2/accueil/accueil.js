@@ -55,6 +55,8 @@ async function demarrer() {
       $('salutation').hidden = false;
       $('salutation').textContent = profil.prenom ? t('nav.bonjour', { prenom: profil.prenom }) : (profil.email || '');
       $('deconnexion').hidden = false;
+      // Chauffeur connecté : accès direct à son espace
+      if (profil.role === 'chauffeur') $('lien-espace').hidden = false;
     }
   } else {
     // Après connexion, retour sur cette page

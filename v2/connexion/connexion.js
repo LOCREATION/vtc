@@ -173,9 +173,10 @@ async function apresConnexion() {
     montrerEtape('etape-profil');
     (profil.prenom ? $('telephone') : $('prenom')).focus();
     $('etape-profil').dataset.profil = profil.id;
+    $('etape-profil').dataset.role = profil.role;
     return;
   }
-  allerALaSuite();
+  allerALaSuite(profil.role);
 }
 
 // ---------------------------------------------------------------------------
@@ -197,14 +198,15 @@ $('etape-profil').addEventListener('submit', async (e) => {
     .eq('id', $('etape-profil').dataset.profil);
   liberer('bouton-profil', t('profil.enregistrer'));
   if (error) { afficherMessage(messageErreur(error, langueActive()), 'erreur'); return; }
-  allerALaSuite();
+  allerALaSuite($('etape-profil').dataset.role);
 });
 
-// Page demandée avant la connexion (si elle fait partie du site), sinon l'accueil
-function allerALaSuite() {
+// Page demandée avant la connexion (si elle fait partie du site), sinon
+// l'espace correspondant au rôle : chauffeur → espace chauffeur, sinon l'accueil
+function allerALaSuite(role) {
   redirectionEnCours = true;
   const suite = new URLSearchParams(location.search).get('suite');
-  let cible = RACINE;
+  let cible = role === 'chauffeur' ? `${RACINE}chauffeur/` : RACINE;
   if (suite) {
     const url = new URL(suite, location.origin + RACINE);
     if (url.origin === location.origin && url.pathname.startsWith(RACINE)) cible = url.pathname + url.search;

@@ -1,0 +1,100 @@
+<!doctype html>
+<!-- =============================================================================
+     LOC RÉACTION S.A.S — Version 2
+     Espace chauffeur : course en cours
+     Étapes, navigation, appel, attente, encaissement, note du client, feuille
+     de route électronique (à présenter en cas de contrôle), désistement.
+     ============================================================================= -->
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Course, espace chauffeur LOC RÉACTION</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0A1A38">
+  <link rel="manifest" href="../../manifest.webmanifest">
+  <link rel="icon" href="../../commun/img/icone.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../../commun/img/icone-192.png">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="../../commun/styles.css">
+  <link rel="stylesheet" href="../chauffeur.css">
+  <link rel="stylesheet" href="course.css">
+  <script type="module" src="course.js"></script>
+</head>
+<body class="theme-nuit">
+  <header class="barre">
+    <a class="lien-retour-nuit" href="../">← Accueil chauffeur</a>
+    <p class="pastille-etat" id="numero-course"></p>
+  </header>
+
+  <main>
+    <p class="alerte contenu" id="introuvable" hidden>Cette course est introuvable ou ne vous est pas attribuée. <a href="../">Retour</a></p>
+
+    <div class="espace-chauffeur" id="espace" hidden>
+      <div class="carte" id="carte" role="img" aria-label="Carte de la course"></div>
+
+      <section class="panneau etape" aria-live="polite">
+        <h1 class="etape-titre" id="etape-titre"></h1>
+        <p class="etape-texte" id="etape-texte"></p>
+        <p class="etape-texte" id="etape-vol" hidden></p>
+        <p class="attente" id="attente" hidden></p>
+        <div class="navigation" id="navigation">
+          <a class="bouton bouton-secondaire" id="nav-waze" target="_blank" rel="noopener">Waze</a>
+          <a class="bouton bouton-secondaire" id="nav-maps" target="_blank" rel="noopener">Google Maps</a>
+        </div>
+        <div class="client" id="bloc-client" hidden>
+          <p><span class="etiquette-nuit">Client</span> <strong id="client-prenom"></strong></p>
+          <a class="bouton bouton-secondaire" id="appeler-client" href="#">Appeler</a>
+        </div>
+        <button type="button" class="bouton bouton-principal bouton-large bouton-etape" id="action-etape" hidden></button>
+      </section>
+
+      <section class="panneau" id="bloc-paiement" hidden aria-labelledby="titre-paiement">
+        <h2 id="titre-paiement">Paiement</h2>
+        <p class="montant-encaisser" id="montant-encaisser"></p>
+        <p class="etape-texte" id="mode-encaisser"></p>
+        <button type="button" class="bouton bouton-principal bouton-large" id="confirmer-encaissement" hidden>Paiement encaissé</button>
+        <p class="etat-ok" id="encaisse" hidden>Paiement encaissé.</p>
+      </section>
+
+      <form class="panneau" id="bloc-note" hidden novalidate aria-labelledby="titre-note">
+        <h2 id="titre-note">Noter le client</h2>
+        <p class="aide">Cette note n'est visible que par l'administration.</p>
+        <div class="etoiles" id="etoiles"></div>
+        <button type="submit" class="bouton bouton-secondaire" id="envoyer-note">Envoyer la note</button>
+      </form>
+
+      <section class="panneau" aria-labelledby="titre-trajet">
+        <h2 id="titre-trajet">Trajet</h2>
+        <ol class="trajet-chauffeur" id="trajet"></ol>
+        <dl class="infos-course" id="infos-course"></dl>
+      </section>
+
+      <details class="panneau feuille-de-route" id="feuille-de-route">
+        <summary>Feuille de route électronique</summary>
+        <p class="aide">À présenter en cas de contrôle : justificatif de la réservation préalable.</p>
+        <dl class="infos-course" id="feuille"></dl>
+      </details>
+
+      <button type="button" class="bouton bouton-texte desister" id="desister" hidden>Je ne peux pas assurer cette course</button>
+    </div>
+
+    <!-- Confirmation : fin de course ou désistement -->
+    <dialog class="dialogue-nuit" id="dialogue" aria-labelledby="dialogue-titre">
+      <form method="dialog" class="dialogue-contenu">
+        <h2 id="dialogue-titre"></h2>
+        <p id="dialogue-texte"></p>
+        <div class="champ" id="bloc-motif" hidden>
+          <label for="motif">Motif (transmis à l'administration)</label>
+          <input id="motif" class="saisie" type="text" maxlength="500">
+        </div>
+        <div class="actions-dialogue">
+          <button type="button" class="bouton bouton-secondaire" id="dialogue-annuler">Retour</button>
+          <button type="button" class="bouton bouton-principal" id="dialogue-confirmer"></button>
+        </div>
+      </form>
+    </dialog>
+  </main>
+</body>
+</html>
