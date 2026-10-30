@@ -613,6 +613,18 @@ select test.verifier((select count(*) from public.journal_lister('profils')) = 7
                      'journal : chaque changement de rôle ou de blocage tracé, colonnes modifiées seulement');
 
 
+-- Questions fréquentes : le visiteur ne lit que les réponses publiées
+call test.connexion(:'admin');
+insert into public.faq (theme, ordre, question_fr, reponse_fr, publie) values
+  ('commande', 1, 'Comment réserver une course ?', 'Depuis l''application, en indiquant le départ et l''arrivée.', true),
+  ('paiement', 1, 'Question en préparation', 'Réponse en cours de rédaction.', false);
+select test.verifier((select count(*) from public.faq) = 2, 'administration : voit toutes les questions fréquentes');
+call test.visiteur();
+select test.verifier((select count(*) from public.faq) = 1, 'visiteur : ne voit que les questions publiées');
+call test.connexion(:'client1');
+select test.verifier((select count(*) from public.faq) = 1, 'client : ne voit que les questions publiées');
+
+
 -- #############################################################################
 -- 16. CONTRÔLES D'ENSEMBLE
 -- #############################################################################
@@ -628,7 +640,7 @@ select test.verifier((select string_agg(table_name || ':' || privilege_type, ','
 select test.verifier((select string_agg(p.proname, ',' order by p.proname collate "C")
                       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                       where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute'))
-                     = 'est_admin,est_chauffeur_actif,estimer_course,mon_role,peut_voir_course,vehicules_a_proximite',
+                     = 'estimer_course,vehicules_a_proximite',
                      'visiteur : seules l''estimation et la carte sont appelables');
 select test.verifier(not has_schema_privilege('authenticated', 'prive', 'usage')
                      and not has_schema_privilege('anon', 'prive', 'usage'),
