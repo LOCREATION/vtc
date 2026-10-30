@@ -1,0 +1,25 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Espace client : commande d'une course
+   ============================================================================= */
+.commande { display: grid; gap: 16px; max-width: 640px; padding-top: 8px; padding-bottom: 48px; }
+.commande h1 { font-size: clamp(32px, 7vw, 42px); font-weight: 700; }
+.lien-retour { font-weight: 500; justify-self: start; min-height: 40px; display: inline-flex; align-items: center; }
+
+/* Arrêts : même dessin que le départ, avec un bouton pour retirer */
+.retirer-arret {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  display: inline-grid; place-items: center; width: 40px; height: 40px;
+  background: none; border: none; border-radius: 8px; color: var(--gris); cursor: pointer; font-size: 22px; line-height: 1;
+}
+.retirer-arret:hover { background: var(--bitume); color: var(--nuit); }
+.ajouter-arret { justify-self: start; margin-top: -8px; padding-left: 28px; }
+
+.groupe-vol { display: grid; gap: 14px; grid-template-columns: 2fr 1fr; align-items: start; }
+.groupe-proche { display: grid; gap: 14px; }
+.paiement { border: none; margin: 0; padding: 0; display: grid; }
+.paiement legend { padding: 0; margin-bottom: 4px; }
+.ligne-code { display: flex; gap: 8px; }
+.ligne-code .saisie { text-transform: uppercase; }
+.ligne-code .bouton { flex: none; }
+select.saisie { appearance: auto; }

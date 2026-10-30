@@ -1,0 +1,182 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Charte et composants communs
+   -----------------------------------------------------------------------------
+   Couleurs de la marque (reprises de la version 1) : bleu nuit et or.
+   Typographie : Barlow, dessinée d'après les panneaux routiers et les plaques
+   d'immatriculation ; « Semi Condensed » pour les titres et les prix.
+   Les polices sont hébergées sur le site (aucun appel à Google : RGPD).
+   ============================================================================= */
+
+/* ---------- Polices ---------- */
+@font-face { font-family: 'Barlow'; src: url('polices/barlow-latin-400-normal.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Barlow'; src: url('polices/barlow-latin-500-normal.woff2') format('woff2'); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Barlow'; src: url('polices/barlow-latin-600-normal.woff2') format('woff2'); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Barlow Semi Condensed'; src: url('polices/barlow-semi-condensed-latin-500-normal.woff2') format('woff2'); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Barlow Semi Condensed'; src: url('polices/barlow-semi-condensed-latin-600-normal.woff2') format('woff2'); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Barlow Semi Condensed'; src: url('polices/barlow-semi-condensed-latin-700-normal.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
+
+/* ---------- Jetons de la charte ---------- */
+:root {
+  --nuit: #0A1A38;          /* bleu nuit de la marque : textes, plaque de prix */
+  --nuit-2: #1B3A6B;        /* bleu nuit clair : survols, éléments secondaires */
+  --or: #C8A84B;            /* or de la marque : action principale, filet du prix */
+  --or-fonce: #A8882B;      /* or au survol */
+  --bitume: #EEF1F5;        /* fond des pages : gris bleuté, comme l'asphalte au jour */
+  --blanc: #FFFFFF;
+  --trait: #D5DBE5;         /* bordures */
+  --gris: #4F5E78;          /* textes secondaires (contraste 6,4:1 sur blanc) */
+  --vert: #1A6B3A;          /* succès, chauffeur en ligne */
+  --rouge: #B3261E;         /* erreurs (contraste 6,5:1 sur blanc) */
+
+  --police: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --police-titre: 'Barlow Semi Condensed', 'Barlow', system-ui, sans-serif;
+
+  /* Arrondis selon la hiérarchie : feuille > champ > pastille */
+  --rayon-feuille: 18px;
+  --rayon-champ: 10px;
+  --rayon-pastille: 999px;
+
+  --marge: 16px;            /* marge latérale sur téléphone */
+  --largeur: 1120px;        /* largeur maximale du contenu */
+  --hauteur-tactile: 48px;  /* taille minimale d'une zone à toucher */
+}
+
+/* ---------- Base ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  font-family: var(--police);
+  font-size: 17px;
+  line-height: 1.5;
+  color: var(--nuit);
+  background: var(--bitume);
+  font-variant-numeric: tabular-nums;   /* chiffres alignés : prix, distances */
+}
+h1, h2, h3 { font-family: var(--police-titre); line-height: 1.1; margin: 0; }
+p { margin: 0; }
+a { color: var(--nuit-2); text-underline-offset: 3px; }
+a:hover { color: var(--nuit); }
+img, svg { display: block; }
+[hidden] { display: none !important; }
+
+/* Focus visible au clavier, net sur fond clair comme sur fond foncé */
+:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; border-radius: 4px; }
+
+.visuellement-cache {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+.contenu { width: 100%; max-width: var(--largeur); margin: 0 auto; padding: 0 var(--marge); }
+
+/* ---------- En-tête ---------- */
+.entete { background: var(--bitume); }
+.entete .contenu { display: flex; align-items: center; gap: 12px; min-height: 64px; }
+.marque { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--nuit); margin-right: auto; }
+.marque img { width: 56px; height: 28px; }
+.marque span { font-family: var(--police-titre); font-weight: 700; font-size: 20px; letter-spacing: 0.01em; }
+.entete-liens { display: flex; align-items: center; gap: 4px; }
+.lien-discret {
+  display: inline-flex; align-items: center; min-height: 40px; padding: 0 10px;
+  color: var(--nuit); text-decoration: none; font-weight: 500; border-radius: var(--rayon-champ);
+}
+.lien-discret:hover { background: rgba(10, 26, 56, 0.06); color: var(--nuit); }
+.salutation { font-weight: 500; color: var(--gris); padding: 0 6px; }
+/* Petits écrans : le nom reste visible, le choix de la langue passe en pied de page */
+@media (max-width: 520px) {
+  .marque span { font-size: 18px; }
+  .entete .lien-langue { display: none; }
+  .salutation { display: none; }
+}
+
+/* ---------- Boutons ---------- */
+.bouton {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: var(--hauteur-tactile); padding: 0 22px;
+  font: 600 17px/1 var(--police); border-radius: var(--rayon-champ);
+  border: 2px solid transparent; cursor: pointer; text-decoration: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.bouton-principal { background: var(--or); color: var(--nuit); }
+.bouton-principal:hover { background: var(--or-fonce); color: var(--nuit); }
+.bouton-secondaire { background: transparent; color: var(--nuit); border-color: var(--nuit); }
+.bouton-secondaire:hover { background: rgba(10, 26, 56, 0.06); }
+.bouton-texte { background: none; border: none; color: var(--nuit-2); padding: 0 8px; min-height: 40px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
+.bouton-large { width: 100%; }
+.bouton:disabled, .bouton[aria-disabled='true'] { opacity: 0.45; cursor: not-allowed; }
+
+/* ---------- Champs ---------- */
+.champ { display: grid; gap: 6px; }
+.champ label, .etiquette { font-weight: 600; font-size: 15px; }
+.champ .aide { font-size: 14px; color: var(--gris); }
+.saisie {
+  width: 100%; min-height: var(--hauteur-tactile); padding: 10px 14px;
+  font: 400 17px var(--police); color: var(--nuit);
+  background: var(--blanc); border: 1.5px solid var(--trait); border-radius: var(--rayon-champ);
+}
+.saisie::placeholder { color: #7B879C; }
+.saisie:focus { border-color: var(--nuit-2); outline: none; box-shadow: 0 0 0 3px rgba(200, 168, 75, 0.45); }
+.saisie[aria-invalid='true'] { border-color: var(--rouge); }
+.erreur-champ { color: var(--rouge); font-size: 15px; font-weight: 500; }
+
+/* Case à cocher lisible et facile à toucher */
+.case { display: flex; align-items: flex-start; gap: 10px; min-height: var(--hauteur-tactile); padding: 10px 0; cursor: pointer; }
+.case input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--nuit); flex: none; }
+
+/* Choix exclusif en deux boutons (Maintenant / Plus tard) */
+.bascule { display: inline-grid; grid-auto-flow: column; background: var(--bitume); border-radius: var(--rayon-pastille); padding: 4px; }
+.bascule label { position: relative; }
+.bascule input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.bascule span { display: inline-flex; align-items: center; min-height: 40px; padding: 0 18px; border-radius: var(--rayon-pastille); font-weight: 600; }
+.bascule input:checked + span { background: var(--nuit); color: var(--blanc); }
+.bascule input:focus-visible + span { outline: 3px solid var(--or); outline-offset: 2px; }
+
+/* Pastilles (raccourcis aéroports) */
+.pastilles { display: flex; flex-wrap: wrap; gap: 8px; }
+.pastille {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px;
+  background: var(--blanc); color: var(--nuit); border: 1.5px solid var(--trait); border-radius: var(--rayon-pastille);
+  font: 500 15px var(--police); cursor: pointer;
+}
+.pastille:hover { border-color: var(--nuit-2); }
+.pastille svg { width: 18px; height: 18px; }
+
+/* ---------- Suggestions d'adresses ---------- */
+.suggestions {
+  list-style: none; margin: 4px 0 0; padding: 6px; background: var(--blanc);
+  border: 1.5px solid var(--trait); border-radius: var(--rayon-champ);
+  box-shadow: 0 12px 28px rgba(10, 26, 56, 0.14);
+  position: absolute; left: 0; right: 0; top: 100%; z-index: 20; max-height: 320px; overflow-y: auto;
+}
+.suggestion { display: grid; gap: 2px; padding: 10px 12px; border-radius: 8px; cursor: pointer; }
+.suggestion[aria-selected='true'], .suggestion:hover { background: var(--bitume); }
+.suggestion-libelle { font-weight: 500; }
+.suggestion-detail { font-size: 14px; color: var(--gris); }
+.suggestion-etiquette { font-size: 13px; font-weight: 600; color: var(--vert); }
+.suggestion-vide { color: var(--gris); cursor: default; }
+
+/* ---------- Feuille (panneau blanc) ---------- */
+.feuille { background: var(--blanc); border-radius: var(--rayon-feuille); border: 1px solid var(--trait); padding: 20px; }
+@media (min-width: 600px) { .feuille { padding: 28px; } }
+
+/* ---------- Messages ---------- */
+.zone-messages { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 100; display: grid; gap: 8px; width: min(92vw, 480px); }
+.message { padding: 14px 16px; border-radius: var(--rayon-champ); font-weight: 500; color: var(--blanc); background: var(--nuit); box-shadow: 0 10px 24px rgba(10, 26, 56, 0.25); }
+.message-succes { background: var(--vert); }
+.message-erreur { background: var(--rouge); }
+.alerte { padding: 12px 14px; border-radius: var(--rayon-champ); background: #FCEDEC; color: var(--rouge); font-weight: 500; }
+.alerte-info { background: #E8EEF8; color: var(--nuit); }
+
+/* ---------- Pied de page ---------- */
+.pied { margin-top: 64px; padding: 32px 0 40px; background: var(--nuit); color: #C9D2E3; font-size: 15px; }
+.pied a { color: var(--blanc); }
+.pied .contenu { display: grid; gap: 10px; }
+.pied-nom { font-family: var(--police-titre); font-weight: 700; font-size: 20px; color: var(--blanc); }
+.pied-liens { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+
+/* ---------- Mouvement réduit ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}

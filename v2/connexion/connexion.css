@@ -1,0 +1,11 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Connexion : une feuille centrée, une étape à la fois
+   ============================================================================= */
+.connexion { display: grid; justify-items: center; padding-top: 24px; padding-bottom: 48px; }
+.etape { width: 100%; max-width: 460px; display: grid; gap: 18px; }
+.etape h1 { font-size: clamp(30px, 7vw, 38px); font-weight: 700; }
+.etape .intro { color: var(--gris); }
+/* Code : grands chiffres espacés, lisibles d'un coup d'œil */
+.saisie-code { font-family: var(--police-titre); font-size: 30px; font-weight: 600; letter-spacing: 0.4em; text-align: center; padding-left: 0.4em; }
+.actions-secondaires { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }

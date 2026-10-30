@@ -1,0 +1,23 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Page d'accueil : accroche, carte du trajet, plaque du prix, atouts
+   ============================================================================= */
+
+/* ---------- Accroche : texte à gauche, trajet à droite (une colonne sur téléphone) ---------- */
+.accroche { display: grid; gap: 24px; padding-top: 12px; padding-bottom: 8px; align-items: start; }
+.accroche h1 { font-size: clamp(36px, 8.5vw, 60px); font-weight: 700; letter-spacing: -0.01em; max-width: 13ch; }
+.accroche-sous-titre { margin-top: 16px; font-size: 18px; color: var(--gris); max-width: 42ch; }
+@media (min-width: 960px) {
+  .accroche { grid-template-columns: 5fr 6fr; gap: 48px; padding-top: 40px; }
+  .accroche-texte { align-self: center; padding-bottom: 40px; }
+}
+
+/* ---------- Atouts ---------- */
+.atouts { margin-top: 64px; }
+.atouts h2 { font-size: clamp(28px, 5vw, 40px); font-weight: 700; max-width: 22ch; }
+.atouts-liste { list-style: none; margin: 28px 0 0; padding: 0; display: grid; gap: 28px; }
+.atouts-liste svg { color: var(--nuit-2); margin-bottom: 10px; }
+.atouts-liste h3 { font-size: 22px; font-weight: 600; margin-bottom: 6px; }
+.atouts-liste p { color: var(--gris); max-width: 40ch; }
+@media (min-width: 720px) { .atouts-liste { grid-template-columns: 1fr 1fr; gap: 36px 48px; } }
+@media (min-width: 1040px) { .atouts-liste { grid-template-columns: repeat(4, 1fr); } }

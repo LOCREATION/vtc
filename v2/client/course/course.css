@@ -1,0 +1,77 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Espace client : suivi d'une course
+   Téléphone : la carte en haut, l'état de la course dessous.
+   Ordinateur : la carte à gauche, l'état et le récapitulatif à droite.
+   ============================================================================= */
+.suivi { padding-top: 4px; padding-bottom: 48px; }
+.suivi-grille { display: grid; gap: 14px; }
+.carte { height: 42vh; min-height: 260px; border-radius: var(--rayon-feuille); border: 1px solid var(--trait); overflow: hidden; background: #DDE3EC; }
+@media (min-width: 960px) {
+  .suivi-grille { grid-template-columns: 3fr 2fr; grid-template-rows: auto 1fr; align-items: start; }
+  .carte { grid-row: 1 / span 2; height: 72vh; position: sticky; top: 16px; }
+}
+
+/* État de la course */
+.etat-course { display: grid; gap: 12px; }
+.etat-titre { font-family: var(--police-titre); font-weight: 700; font-size: clamp(28px, 6vw, 34px); line-height: 1.1; }
+.etat-texte { color: var(--gris); }
+.etat-course[data-statut='annulee'] .etat-titre { color: var(--rouge); }
+
+/* Barre de progression : une impulsion douce pendant la recherche, seule animation de la page */
+.progression { height: 4px; border-radius: 2px; background: var(--bitume); overflow: hidden; }
+.progression span { display: block; height: 100%; width: 0; background: var(--or); transition: width 0.4s ease; }
+.etat-course[data-statut='recherche'] .progression span,
+.etat-course[data-statut='a_attribuer'] .progression span { width: 35%; animation: recherche 1.6s ease-in-out infinite alternate; }
+@keyframes recherche { from { transform: translateX(0); } to { transform: translateX(185%); } }
+
+/* Chauffeur, véhicule et plaque */
+.chauffeur { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 12px; border-top: 1px solid var(--trait); }
+.chauffeur-prenom { font-family: var(--police-titre); font-weight: 600; font-size: 22px; }
+.chauffeur-vehicule { color: var(--gris); }
+/* Plaque d'immatriculation : fond blanc, filet bleu à gauche, comme une plaque française */
+.plaque-immatriculation {
+  font-family: var(--police-titre); font-weight: 700; font-size: 20px; letter-spacing: 0.06em;
+  padding: 6px 12px 6px 18px; border: 2px solid var(--nuit); border-radius: 6px; background: var(--blanc);
+  border-left: 10px solid #1D4ED8; white-space: nowrap;
+}
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* Note en étoiles */
+.noter { display: grid; gap: 12px; padding-top: 12px; border-top: 1px solid var(--trait); }
+.noter fieldset { border: none; margin: 0; padding: 0; }
+.etoiles { display: flex; gap: 4px; margin-top: 6px; }
+.etoile { width: 48px; height: 48px; display: inline-grid; place-items: center; background: none; border: none; cursor: pointer; color: var(--trait); border-radius: 8px; }
+.etoile svg { width: 34px; height: 34px; }
+.etoile[aria-pressed='true'] { color: var(--or); }
+.etoile:hover { background: var(--bitume); }
+.noter textarea { resize: vertical; min-height: 64px; }
+.note-donnee { font-weight: 600; }
+
+/* Récapitulatif */
+.recapitulatif { display: grid; gap: 14px; }
+.recap-trajet { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.recap-trajet li { padding-left: 22px; position: relative; }
+.recap-trajet li::before { content: ''; position: absolute; left: 2px; top: 8px; width: 9px; height: 9px; border: 2.5px solid var(--nuit); border-radius: 50%; background: var(--blanc); }
+.recap-trajet li:last-child::before { border-radius: 0; background: var(--nuit); }
+.recap-liste { margin: 0; display: grid; gap: 8px; }
+.recap-liste div { display: flex; justify-content: space-between; gap: 12px; }
+.recap-liste dt { color: var(--gris); }
+.recap-liste dd { margin: 0; font-weight: 600; text-align: right; }
+.facture { padding: 12px 14px; border-radius: var(--rayon-champ); background: var(--bitume); display: grid; gap: 2px; }
+.facture strong { font-family: var(--police-titre); font-weight: 600; font-size: 18px; }
+.bouton-danger { color: var(--rouge); }
+.bouton-danger-plein { background: var(--rouge); color: var(--blanc); }
+.bouton-danger-plein:hover { background: #8E1E18; color: var(--blanc); }
+
+/* Boîte de confirmation */
+.dialogue { border: none; border-radius: var(--rayon-feuille); padding: 0; width: min(92vw, 460px); color: var(--nuit); }
+.dialogue::backdrop { background: rgba(10, 26, 56, 0.55); }
+.dialogue-contenu { display: grid; gap: 14px; padding: 22px; }
+.dialogue h2 { font-size: 26px; font-weight: 700; }
+
+/* Repères de la carte */
+.repere { width: 18px; height: 18px; border: 4px solid var(--nuit); background: var(--blanc); border-radius: 50%; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3); }
+.repere-arrivee { border-radius: 3px; background: var(--nuit); }
+.repere-voiture { width: 34px; height: 34px; border-radius: 50%; background: var(--nuit); border: 3px solid var(--or); display: grid; place-items: center; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35); }
+.repere-voiture svg { width: 20px; height: 20px; color: var(--blanc); }
