@@ -349,8 +349,12 @@ function abonner() {
     .subscribe();
   setInterval(async () => {
     try {
-      const { data } = await supabase.from('courses').select('*').eq('id', idCourse).maybeSingle();
-      if (data) majDepuisBase(data);
+      const { data, error } = await supabase.from('courses').select('*').eq('id', idCourse).maybeSingle();
+      if (error) return;                         // réseau coupé : nouvel essai au prochain tour
+      // Course devenue invisible pour ce chauffeur : l'administration la lui a
+      // retirée (le temps réel ne prévient pas d'une ligne qu'on ne voit plus)
+      if (!data) { majDepuisBase({ ...etat.course, chauffeur_id: null }); return; }
+      majDepuisBase(data);
     } catch {
       // Réseau coupé : nouvel essai au prochain tour
     }
@@ -360,10 +364,17 @@ function abonner() {
 async function majDepuisBase(course) {
   const avant = etat.course.statut;
   // Plus attribuée à ce chauffeur (désistement, réattribution) : retour à l'accueil
-  if (course.chauffeur_id !== etat.profil.id) { etat.gps.arreter(); location.replace('../'); return; }
+  if (course.chauffeur_id !== etat.profil.id) {
+    etat.gps.arreter();
+    afficherMessage('Cette course ne vous est plus attribuée.', 'erreur');
+    setTimeout(() => location.replace('../'), 2500);
+    return;
+  }
   etat.course = course;
   if (course.statut !== avant) {
-    if (course.statut === 'annulee') afficherMessage('Le client a annulé la course.', 'erreur');
+    if (course.statut === 'annulee') {
+      afficherMessage(course.annulee_par === 'admin' ? 'LOC RÉACTION a annulé la course.' : 'Le client a annulé la course.', 'erreur');
+    }
     await chargerFin();
     afficher();
   }

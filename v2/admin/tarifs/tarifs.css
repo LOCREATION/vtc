@@ -1,0 +1,17 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Administration : tarifs et zones
+   ============================================================================= */
+
+#contenu { display: grid; gap: 16px; }
+.resume-tarif { font-weight: 500; }
+
+/* Recherche d'adresse dans la fenêtre d'un lieu : suggestions sous le champ */
+.point-saisie-admin { position: relative; }
+
+/* Jours fériés par année */
+.annee-feries { display: grid; gap: 6px; }
+.liste-feries { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.liste-feries li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--trait); }
+.liste-feries li:last-child { border-bottom: 0; }
+@media (min-width: 900px) { .liste-feries { grid-template-columns: 1fr 1fr; column-gap: 32px; } }

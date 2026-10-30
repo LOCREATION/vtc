@@ -1,0 +1,54 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Administration : dispatch
+   Ordinateur : listes à gauche, carte et chauffeurs à droite (fixes au
+   défilement). Téléphone : carte des chauffeurs en premier, puis les listes.
+   ============================================================================= */
+
+.resume { margin-left: auto; }
+@media (max-width: 1023px) { .admin-entete .resume { color: #B6C4DC; font-size: 14px; width: 100%; } }
+
+.dispatch-colonnes { display: grid; gap: 16px; align-items: start; }
+.dispatch-listes { display: grid; gap: 16px; min-width: 0; }
+@media (min-width: 1100px) {
+  .dispatch-colonnes { grid-template-columns: minmax(0, 3fr) minmax(320px, 2fr); }
+  .dispatch-carte { position: sticky; top: 16px; }
+}
+
+/* Bloc « À attribuer » : mis en avant quand il n'est pas vide */
+#bloc-a-attribuer[data-urgent='true'] { border: 2px solid var(--rouge); }
+
+/* Cartes de course */
+.liste-courses-admin { display: grid; gap: 10px; }
+.course-admin {
+  border: 1px solid var(--trait); border-left: 4px solid var(--trait); border-radius: 12px;
+  padding: 12px 14px; display: grid; gap: 6px; background: var(--blanc);
+}
+.course-admin[data-statut='a_attribuer'] { border-left-color: var(--rouge); }
+.course-admin[data-statut='recherche'] { border-left-color: var(--or); }
+.course-admin[data-statut='acceptee'], .course-admin[data-statut='arrivee'], .course-admin[data-statut='en_cours'] { border-left-color: var(--vert); }
+.course-admin[data-statut='planifiee'] { border-left-color: var(--nuit-2); }
+.course-admin-entete { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.course-numero { font-family: var(--police-titre); font-weight: 700; font-size: 19px; color: var(--nuit); text-decoration: none; }
+.course-numero:hover { text-decoration: underline; }
+.course-quand { color: var(--gris); font-size: 15px; width: 100%; }
+@media (min-width: 700px) { .course-quand { width: auto; margin-left: auto; } }
+.course-infos, .course-client, .course-etat { font-size: 15px; }
+.course-infos { color: var(--gris); }
+.course-client .secondaire { color: var(--gris); }
+.minuteur { color: var(--nuit); }
+.course-admin .actions-ligne { margin-top: 4px; }
+
+/* Réservations par jour */
+.groupe-jour { display: grid; gap: 8px; }
+.groupe-jour + .groupe-jour { margin-top: 14px; }
+.groupe-jour h3 { font-size: 17px; font-weight: 600; color: var(--gris); }
+
+/* Chauffeurs sous la carte */
+.liste-chauffeurs { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.chauffeur-ligne { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 2px; border-bottom: 1px solid var(--trait); }
+.chauffeur-ligne:last-child { border-bottom: 0; }
+.chauffeur-ligne .secondaire { display: block; color: var(--gris); font-size: 14px; }
+.chauffeur-ligne[data-cliquable] { cursor: pointer; }
+.chauffeur-ligne[data-cliquable]:hover { background: #F6F8FB; }
+.chauffeur-ligne a { white-space: nowrap; font-size: 15px; }

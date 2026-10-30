@@ -1,0 +1,44 @@
+<!doctype html>
+<!-- =============================================================================
+     LOC RÉACTION S.A.S — Version 2
+     Administration : tarifs et zones
+     Tarifs datés par catégorie (prix, attente, mise à disposition, frais
+     d'annulation, option chauffeuse), lieux desservis et forfaits, majorations
+     et jours fériés, catégories, zone desservie et réglages du dispatch.
+     ============================================================================= -->
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Tarifs et zones, administration LOC RÉACTION</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0A1A38">
+  <link rel="manifest" href="../../manifest.webmanifest">
+  <link rel="icon" href="../../commun/img/icone.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../../commun/img/icone-192.png">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="../../commun/styles.css">
+  <link rel="stylesheet" href="../commun/admin.css">
+  <link rel="stylesheet" href="tarifs.css">
+  <script type="module" src="tarifs.js"></script>
+</head>
+<body class="admin">
+  <section class="porte" id="porte" aria-live="polite"><p class="chargement">Chargement…</p></section>
+
+  <div class="admin-cadre" id="admin-cadre" hidden>
+    <nav class="admin-menu" id="admin-menu" aria-label="Modules de l'administration" data-ouvert="false"></nav>
+    <div class="admin-zone">
+      <header class="admin-entete">
+        <button type="button" class="admin-bouton-menu" id="admin-ouvrir-menu" aria-controls="admin-menu" aria-expanded="false">Menu</button>
+        <h1 class="admin-titre">Tarifs et zones</h1>
+      </header>
+
+      <main class="admin-page" id="admin-page">
+        <div class="onglets" role="tablist" aria-label="Rubriques" id="onglets"></div>
+        <div id="contenu"><p class="chargement">Chargement…</p></div>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

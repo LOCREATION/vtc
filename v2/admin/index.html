@@ -1,0 +1,90 @@
+<!doctype html>
+<!-- =============================================================================
+     LOC RÉACTION S.A.S — Version 2
+     Administration : tableau de bord
+     Chiffre d'affaires, courses par statut, chauffeurs en ligne sur la carte,
+     alertes (échéances, attributions, identité de l'entreprise, tarifs).
+     ============================================================================= -->
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Tableau de bord, administration LOC RÉACTION</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0A1A38">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="icon" href="../commun/img/icone.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../commun/img/icone-192.png">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="../commun/styles.css">
+  <link rel="stylesheet" href="commun/admin.css">
+  <link rel="stylesheet" href="tableau/tableau.css">
+  <script type="module" src="tableau/tableau.js"></script>
+</head>
+<body class="admin">
+  <section class="porte" id="porte" aria-live="polite"><p class="chargement">Chargement…</p></section>
+
+  <div class="admin-cadre" id="admin-cadre" hidden>
+    <nav class="admin-menu" id="admin-menu" aria-label="Modules de l'administration" data-ouvert="false"></nav>
+    <div class="admin-zone">
+      <header class="admin-entete">
+        <button type="button" class="admin-bouton-menu" id="admin-ouvrir-menu" aria-controls="admin-menu" aria-expanded="false">Menu</button>
+        <h1 class="admin-titre">Tableau de bord</h1>
+        <p class="sous-titre maj" id="maj" aria-live="polite"></p>
+      </header>
+
+      <main class="admin-page" id="admin-page">
+        <!-- Chiffres clés -->
+        <dl class="chiffres-cles" id="chiffres"></dl>
+
+        <!-- Courses en ce moment, par statut -->
+        <section class="carte-admin" aria-labelledby="titre-statuts">
+          <div class="carte-entete">
+            <h2 id="titre-statuts">Courses en ce moment</h2>
+            <a class="bouton bouton-secondaire bouton-petit" href="dispatch/">Ouvrir le dispatch</a>
+          </div>
+          <ul class="statuts" id="statuts"></ul>
+        </section>
+
+        <div class="grille-2">
+          <!-- Alertes -->
+          <section class="carte-admin" aria-labelledby="titre-alertes">
+            <div class="carte-entete">
+              <h2 id="titre-alertes">À traiter</h2>
+              <span class="sous-titre" id="nb-alertes"></span>
+            </div>
+            <ul class="liste-alertes" id="alertes"></ul>
+          </section>
+
+          <!-- Carte des chauffeurs -->
+          <section class="carte-admin" aria-labelledby="titre-carte">
+            <div class="carte-entete">
+              <h2 id="titre-carte">Chauffeurs en ligne</h2>
+              <span class="sous-titre" id="resume-carte"></span>
+            </div>
+            <div class="carte-admin-map" id="carte" role="img" aria-label="Carte des chauffeurs en ligne et des courses à attribuer"></div>
+            <p class="legende-carte">
+              <span><i style="background:var(--vert)"></i>Libre</span>
+              <span><i style="background:var(--nuit-2)"></i>En course</span>
+              <span><i style="background:#8A9BBA"></i>Sans signal depuis 3 min</span>
+              <span><i style="background:var(--rouge);border-radius:2px"></i>Course à attribuer</span>
+            </p>
+          </section>
+        </div>
+
+        <!-- Chiffre d'affaires sur 14 jours -->
+        <section class="carte-admin" aria-labelledby="titre-graphique">
+          <div class="carte-entete">
+            <h2 id="titre-graphique">Chiffre d'affaires par jour, 14 derniers jours</h2>
+            <button type="button" class="bouton bouton-texte" id="voir-tableau" aria-expanded="false" aria-controls="tableau-serie">Voir les chiffres</button>
+          </div>
+          <p class="sous-titre">TTC : courses terminées, attente et frais d'annulation. Les pourboires, reversés aux chauffeurs, n'y figurent pas.</p>
+          <div class="zone-graphique" id="graphique"></div>
+          <div id="tableau-serie" hidden></div>
+        </section>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,12 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Administration : paramètres
+   ============================================================================= */
+
+#contenu { display: grid; gap: 16px; }
+.resultats-comptes { display: grid; gap: 10px; }
+
+/* Journal : détail des modifications lisible sur téléphone */
+#journal-liste .diff span { overflow-wrap: anywhere; }
+#journal-liste .tableau td:last-child { min-width: 240px; }
+@media (max-width: 760px) { #journal-liste .tableau td:last-child { min-width: 0; } }

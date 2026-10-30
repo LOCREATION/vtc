@@ -57,6 +57,8 @@ async function demarrer() {
       $('deconnexion').hidden = false;
       // Chauffeur connecté : accès direct à son espace
       if (profil.role === 'chauffeur') $('lien-espace').hidden = false;
+      // Administrateur connecté : accès direct à l'administration
+      if (profil.role === 'admin') $('lien-admin').hidden = false;
     }
   } else {
     // Après connexion, retour sur cette page

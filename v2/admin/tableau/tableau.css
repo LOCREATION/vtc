@@ -1,0 +1,38 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Administration : tableau de bord
+   ============================================================================= */
+
+.maj { margin-left: auto; }
+@media (max-width: 1023px) { .admin-entete .maj { color: #B6C4DC; font-size: 14px; width: 100%; } }
+
+/* Courses par statut : six cases cliquables vers le dispatch */
+.statuts { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (min-width: 700px) { .statuts { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1200px) { .statuts { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.statut a {
+  display: grid; gap: 2px; padding: 12px 14px; border-radius: var(--rayon-champ);
+  text-decoration: none; color: var(--nuit); background: var(--bitume); border-left: 4px solid #B8C2D3;
+}
+.statut[data-ton='rouge'] a { background: #FCEDEC; border-left-color: var(--rouge); }
+.statut[data-ton='or'] a { background: #FBF3DC; border-left-color: var(--or); }
+.statut[data-ton='vert'] a { background: #E3F2E8; border-left-color: var(--vert); }
+.statut[data-ton='bleu'] a { background: #E8EEF8; border-left-color: var(--nuit-2); }
+.statut-nombre { font-family: var(--police-titre); font-weight: 700; font-size: 30px; line-height: 1; font-variant-numeric: normal; }
+.statut-libelle { font-size: 15px; font-weight: 500; }
+.statut[data-ton='gris'] .statut-nombre { color: var(--gris); }
+
+/* Graphique */
+.zone-graphique { position: relative; }
+.graphique .barre { outline: none; cursor: default; }
+.graphique .barre path { transition: opacity 0.1s ease; }
+.graphique .barre.active path { opacity: 0.8; }
+.graphique .barre:focus-visible rect { stroke: var(--or); stroke-width: 2; }
+.graphique .valeur-jour { fill: var(--nuit); font-weight: 600; font-size: 13px; }
+.bulle-graphique {
+  position: absolute; top: 0; transform: translateX(-50%); pointer-events: none; z-index: 2;
+  background: var(--nuit); color: var(--blanc); border-radius: 8px; padding: 6px 10px;
+  display: grid; gap: 0; font-size: 14px; white-space: nowrap; box-shadow: 0 6px 16px rgba(4, 10, 24, 0.25);
+}
+.bulle-graphique strong { font-size: 16px; }
+.bulle-graphique span { color: #C9D2E3; }
