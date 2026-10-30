@@ -1,0 +1,113 @@
+<!doctype html>
+<!-- =============================================================================
+     LOC RÉACTION S.A.S — Version 2
+     Espace client : suivi d'une course en temps réel
+     Étape en cours, chauffeur et véhicule, carte, appel, partage, annulation,
+     puis note et facture une fois la course terminée.
+     ============================================================================= -->
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Suivi de votre course, LOC RÉACTION</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0A1A38">
+  <link rel="manifest" href="../../manifest.webmanifest">
+  <link rel="icon" href="../../commun/img/icone.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../../commun/img/icone-192.png">
+  <!-- Carte OpenStreetMap (bibliothèque Leaflet, version figée) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="../../commun/styles.css">
+  <link rel="stylesheet" href="course.css">
+  <script type="module" src="course.js"></script>
+</head>
+<body>
+  <header class="entete">
+    <div class="contenu">
+      <a class="marque" data-interne="../../" data-i18n-aria="nav.accueil" href="../../">
+        <img src="../../commun/img/logo.svg" alt="" width="56" height="28">
+        <span>LOC RÉACTION</span>
+      </a>
+      <nav class="entete-liens" aria-label="Langue">
+        <a class="lien-discret lien-langue" data-changer-langue data-i18n="langue.autre" data-i18n-aria="langue.autre_aria" href="?lang=en">English</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="contenu suivi">
+    <h1 class="visuellement-cache" data-i18n="suivi.titre">Suivi de votre course</h1>
+    <p class="alerte" id="introuvable" hidden data-i18n="suivi.introuvable">Cette course est introuvable ou ne vous concerne pas.</p>
+
+    <div class="suivi-grille" id="suivi" hidden>
+      <div class="carte" id="carte" role="img" data-i18n-aria="suivi.carte" aria-label="Carte du trajet"></div>
+
+      <section class="feuille etat-course" aria-live="polite">
+        <p class="etat-titre" id="etat-titre"></p>
+        <p class="etat-texte" id="etat-texte"></p>
+        <div class="progression" id="progression" aria-hidden="true"><span></span></div>
+
+        <!-- Chauffeur et véhicule (après attribution) -->
+        <div class="chauffeur" id="bloc-chauffeur" hidden>
+          <div class="chauffeur-identite">
+            <p class="chauffeur-prenom" id="chauffeur-prenom"></p>
+            <p class="chauffeur-vehicule" id="chauffeur-vehicule"></p>
+          </div>
+          <p class="plaque-immatriculation" id="immatriculation" data-i18n-title="suivi.plaque"></p>
+        </div>
+        <div class="actions" id="actions">
+          <a class="bouton bouton-secondaire" id="appeler" hidden href="#"></a>
+          <button type="button" class="bouton bouton-secondaire" id="partager" hidden data-i18n="suivi.partager">Partager le trajet</button>
+        </div>
+
+        <!-- Fin de course : note -->
+        <form class="noter" id="bloc-note" hidden novalidate>
+          <fieldset>
+            <legend class="etiquette" data-i18n="suivi.noter">Notez votre chauffeur</legend>
+            <div class="etoiles" id="etoiles"></div>
+          </fieldset>
+          <div class="champ">
+            <label for="commentaire" data-i18n="suivi.commentaire">Un mot pour votre chauffeur (facultatif)</label>
+            <textarea id="commentaire" class="saisie" rows="2" maxlength="1000"></textarea>
+          </div>
+          <p class="erreur-champ" id="erreur-note" hidden></p>
+          <button type="submit" class="bouton bouton-principal" id="envoyer-note" data-i18n="suivi.envoyer_note">Envoyer ma note</button>
+        </form>
+        <p class="note-donnee" id="note-donnee" hidden></p>
+      </section>
+
+      <section class="feuille recapitulatif">
+        <h2 class="etiquette" data-i18n="suivi.trajet">Trajet</h2>
+        <ol class="recap-trajet" id="recap-trajet"></ol>
+        <dl class="recap-liste">
+          <div><dt data-i18n="suivi.prix">Prix fixe</dt><dd id="recap-prix"></dd></div>
+          <div><dt data-i18n="suivi.paiement">Paiement</dt><dd id="recap-paiement"></dd></div>
+        </dl>
+        <p id="recap-attente" hidden></p>
+        <p id="recap-frais" hidden></p>
+        <div id="recap-factures"></div>
+        <div class="actions">
+          <button type="button" class="bouton bouton-texte bouton-danger" id="annuler" hidden data-i18n="suivi.annuler">Annuler la course</button>
+          <a class="bouton bouton-secondaire" id="recommander" hidden href="#" data-i18n="suivi.recommander">Commander à nouveau ce trajet</a>
+        </div>
+      </section>
+    </div>
+
+    <!-- Confirmation d'annulation -->
+    <dialog class="dialogue" id="dialogue-annulation" aria-labelledby="annulation-titre">
+      <form method="dialog" class="dialogue-contenu" id="formulaire-annulation">
+        <h2 id="annulation-titre" data-i18n="suivi.annuler_titre">Annuler cette course ?</h2>
+        <p id="annulation-frais"></p>
+        <div class="champ">
+          <label for="motif" data-i18n="suivi.motif">Motif (facultatif)</label>
+          <input id="motif" class="saisie" type="text" maxlength="500">
+        </div>
+        <div class="actions">
+          <button type="button" class="bouton bouton-secondaire" id="garder" data-i18n="suivi.garder">Garder la course</button>
+          <button type="button" class="bouton bouton-principal bouton-danger-plein" id="confirmer-annulation" data-i18n="suivi.confirmer_annulation">Confirmer l'annulation</button>
+        </div>
+      </form>
+    </dialog>
+  </main>
+</body>
+</html>

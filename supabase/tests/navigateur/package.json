@@ -1,0 +1,13 @@
+{
+  "name": "loc-reaction-v2-tests-navigateur",
+  "private": true,
+  "description": "Banc d'essai des pages v2 dans Chromium (bibliothèques servies localement)",
+  "scripts": {
+    "preparer": "esbuild entree.js --bundle --format=esm --platform=browser --outfile=supabase-esm.js --log-level=warning"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.117.3",
+    "esbuild": "0.24.0",
+    "leaflet": "1.9.4"
+  }
+}

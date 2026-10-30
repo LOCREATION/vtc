@@ -87,3 +87,18 @@ export function emailValide(saisie) {
 export function sansAccents(texte) {
   return String(texte || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
+
+// Distance à vol d'oiseau entre deux points, en km (même formule que la base)
+export function distanceKm(lat1, lng1, lat2, lng2) {
+  const rad = (degres) => (degres * Math.PI) / 180;
+  const a = Math.sin(rad(lat2 - lat1) / 2) ** 2
+          + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(rad(lng2 - lng1) / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.sqrt(a));
+}
+
+// Lieu desservi (aéroport, gare) qui contient ce point, le plus précis d'abord
+export function zoneDuPoint(zones, lat, lng) {
+  return zones
+    .filter((z) => distanceKm(lat, lng, Number(z.latitude), Number(z.longitude)) <= Number(z.rayon_km))
+    .sort((a, b) => Number(a.rayon_km) - Number(b.rayon_km))[0] || null;
+}

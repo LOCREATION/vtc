@@ -1,0 +1,69 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Trajet (départ, arrêts, arrivée) et plaque du prix : communs à l'accueil et
+   à la commande
+   ============================================================================= */
+
+/* ---------- Carte du trajet ---------- */
+.trajet { display: grid; gap: 18px; }
+
+/* Départ et arrivée : un rond, un carré, et le tracé entre les deux */
+.trajet-points { position: relative; display: grid; gap: 14px; }
+/* Étiquettes alignées sur les champs : le tracé passe dans la marge de gauche */
+.point label { display: block; font-weight: 600; font-size: 15px; line-height: 22px; margin-bottom: 6px; padding-left: 28px; }
+.point-saisie { position: relative; padding-left: 28px; }
+.point-saisie .saisie { height: 48px; }
+.point-saisie::before {
+  content: ''; position: absolute; left: 4px; top: 50%; width: 12px; height: 12px; transform: translateY(-50%);
+  border: 3px solid var(--nuit); background: var(--blanc);
+}
+.point-depart .point-saisie::before { border-radius: 50%; }
+.point-arrivee .point-saisie::before { background: var(--nuit); }
+/* Tracé continu dans la marge gauche, du premier repère au dernier, quel que
+   soit le nombre d'arrêts : chaque point mesure 22 px d'étiquette + 6 px + 48 px
+   de champ, son repère est donc à 52 px du haut et à 24 px du bas */
+.trajet-points::before {
+  content: ''; position: absolute; left: 9px; top: 62px; bottom: 34px; width: 2px;
+  background: repeating-linear-gradient(to bottom, var(--nuit) 0 6px, transparent 6px 11px);
+}
+.point-arret .point-saisie::before { width: 10px; height: 10px; left: 5px; border-width: 2.5px; border-radius: 50%; }
+.point-arret .saisie { padding-right: 52px; }
+.point-depart .saisie { padding-right: 52px; }
+.bouton-icone {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  display: inline-grid; place-items: center; width: 40px; height: 40px;
+  background: none; border: none; border-radius: 8px; color: var(--nuit-2); cursor: pointer;
+}
+.bouton-icone:hover { background: var(--bitume); }
+/* Bouton d'inversion : dans l'espace entre les deux champs (de 76 à 118 px),
+   à droite de l'étiquette « Arrivée » */
+.inverser {
+  position: absolute; right: 8px; top: 79px; z-index: 2;
+  display: inline-grid; place-items: center; width: 36px; height: 36px;
+  background: var(--blanc); border: 1.5px solid var(--trait); border-radius: 50%; color: var(--nuit); cursor: pointer;
+}
+.inverser:hover { border-color: var(--nuit-2); }
+/* Le champ d'arrivée laisse la place au bouton d'inversion qui le surplombe */
+.point-arrivee label { padding-right: 56px; }
+
+.trajet-raccourcis { display: grid; gap: 8px; }
+
+/* Quand ? */
+.trajet-quand { border: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.trajet-quand legend { padding: 0; margin-bottom: 8px; }
+.trajet-quand .bascule { justify-self: start; }
+
+/* ---------- Plaque du prix : l'élément fort de la page ---------- */
+.plaque {
+  display: grid; gap: 4px; padding: 18px 20px 16px;
+  background: var(--nuit); color: var(--blanc);
+  border-radius: var(--rayon-champ); border-bottom: 5px solid var(--or);
+}
+.plaque-prix {
+  font-family: var(--police-titre); font-weight: 700; font-size: clamp(44px, 12vw, 64px); line-height: 1;
+  letter-spacing: -0.01em;
+}
+.plaque-libelle { font-weight: 600; color: var(--or); }
+.plaque-detail { color: #C9D2E3; font-size: 16px; display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.plaque[data-etat='calcul'] .plaque-prix { opacity: 0.45; }
+

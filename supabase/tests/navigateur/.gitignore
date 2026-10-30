@@ -1,0 +1,4 @@
+node_modules/
+supabase-esm.js
+captures/
+package-lock.json
