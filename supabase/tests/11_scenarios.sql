@@ -635,8 +635,15 @@ select test.verifier((select string_agg(table_name || ':' || privilege_type, ','
                       from information_schema.role_table_grants
                       where grantee = 'anon' and table_schema = 'public')
                      = 'categories:SELECT,demandes_devis:INSERT,faq:SELECT,forfaits:SELECT,jours_feries:SELECT,majorations:SELECT,'
-                       'messages_contact:INSERT,parametres:SELECT,societe:SELECT,tarifs:SELECT,zones:SELECT',
+                       'messages_contact:INSERT,parametres:SELECT,tarifs:SELECT,zones:SELECT',
                      'visiteur : uniquement le catalogue, le contact et les devis');
+-- Identité de l'entreprise : colonne par colonne depuis la migration 14
+select test.verifier(has_column_privilege('anon', 'public.societe', 'raison_sociale', 'select')
+                     and has_column_privilege('anon', 'public.societe', 'siret', 'select')
+                     and has_column_privilege('anon', 'public.societe', 'mentions_factures', 'select')
+                     and not has_column_privilege('anon', 'public.societe', 'iban', 'select')
+                     and not has_column_privilege('anon', 'public.societe', 'bic', 'select'),
+                     'visiteur : identité légale de l''entreprise lisible, mais ni son IBAN ni son BIC');
 select test.verifier((select string_agg(p.proname, ',' order by p.proname collate "C")
                       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                       where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute'))

@@ -17,7 +17,7 @@ import { supabase } from '../../commun/supabase.js';
 import { el, euros, nombre, afficherMessage } from '../../commun/outils.js';
 import { ouvrirAdministration, lienAdmin } from '../commun/admin.js';
 import {
-  badge, badgeCourse, dateCourte, jourHeure, dateHeureComplete, MODES_PAIEMENT, TYPES_COURSE, tableau, exporterCsv,
+  badge, badgeCourse, dateCourte, jourHeure, dateHeureComplete, MODES_PAIEMENT, ORIGINES_AVOIR, TYPES_COURSE, tableau, exporterCsv,
   nombreCsv, boutonExporter, fenetreFormulaire, confirmer, messageErreurAdmin, jourParis, nomComplet, lienTelephone,
   telephoneLisible
 } from '../commun/composants.js';
@@ -414,9 +414,11 @@ function lienCourse(id, numero) {
 }
 
 function sectionAEncaisser(f) {
+  const recherche = f.profil.telephone || f.profil.email || '';
   return el('section', { classe: 'carte-admin carte-attention', 'aria-labelledby': 'titre-a-encaisser' },
-    el('h2', { id: 'titre-a-encaisser', texte: 'Paiements à encaisser' }),
-    el('p', { classe: 'sous-titre', texte: 'Confirmez chaque encaissement dans la fiche de la course, une fois l\'argent reçu.' }),
+    el('div', { classe: 'carte-entete' }, el('h2', { id: 'titre-a-encaisser', texte: 'Paiements à encaisser' }),
+      el('a', { classe: 'bouton bouton-secondaire bouton-petit', href: lienAdmin(`finances/?vue=a_encaisser&q=${encodeURIComponent(recherche)}`), texte: 'Les traiter dans Finances' })),
+    el('p', { classe: 'sous-titre', texte: 'Une fois l\'argent reçu, confirmez chaque encaissement (Finances, Encaissements, ou fiche de la course) ; sinon déclarez-le impayé, ou annulez la somme.' }),
     tableau({
       colonnes: [
         { titre: 'Course', valeur: (x) => lienCourse(x.course_id, x.course_numero) },
@@ -451,18 +453,26 @@ function sectionCourses(f) {
     }));
 }
 
+// Factures et avoirs, les plus récents d'abord ; chaque numéro ouvre la pièce
+// imprimable (module Finances)
 function sectionFactures(f) {
-  return section('Factures', 'titre-factures', tableauRepliable({
-    libelleSuite: (n) => `Afficher ${n > 1 ? `les ${n} autres factures` : 'l\'autre facture'}`,
+  const pieces = [...f.factures.map((x) => ({ ...x, type: 'facture' })), ...f.avoirs.map((x) => ({ ...x, type: 'avoir' }))]
+    .sort((a, b) => (b.date_emission > a.date_emission ? 1 : b.date_emission < a.date_emission ? -1 : b.numero.localeCompare(a.numero)));
+  return section('Factures et avoirs', 'titre-factures', tableauRepliable({
+    libelleSuite: (n) => `Afficher ${n > 1 ? `les ${n} autres pièces` : 'l\'autre pièce'}`,
     colonnes: [
-      { titre: 'Numéro', valeur: (x) => el('span', {}, x.numero, el('span', { classe: 'secondaire', texte: x.nature === 'course' ? 'Course' : 'Frais d\'annulation' })) },
+      { titre: 'Numéro', valeur: (x) => el('span', {},
+        el('a', { href: lienAdmin(x.type === 'avoir' ? `finances/?avoir=${x.id}` : `finances/?facture=${x.id}`), texte: x.numero }),
+        el('span', { classe: 'secondaire', texte: x.type === 'avoir' ? `Avoir sur ${x.facture_numero}` : x.nature === 'course' ? 'Course' : 'Frais d\'annulation' })) },
       { titre: 'Date', valeur: (x) => dateCourte(x.date_emission) },
-      { titre: 'TTC', droite: true, valeur: (x) => euros(x.montant_ttc) },
+      { titre: 'TTC', droite: true, valeur: (x) => (x.type === 'avoir' ? el('span', { classe: 'texte-rouge', texte: `− ${euros(x.montant_ttc)}` }) : euros(x.montant_ttc)) },
       { titre: 'Course', valeur: (x) => el('span', {}, lienCourse(x.course_id, x.course_numero),
         x.compte_pro_id ? el('span', { classe: 'secondaire', texte: x.destinataire_nom }) : null) },
-      { titre: 'Statut', valeur: (x) => (x.statut === 'emise' ? badge('Émise', 'vert') : badge('Annulée', 'gris')) }
+      { titre: 'État', valeur: (x) => (x.type === 'avoir' ? el('span', {}, badge(ORIGINES_AVOIR[x.origine] || x.origine, 'gris'), el('span', { classe: 'secondaire', texte: x.motif }))
+        : Number(x.credite) >= Number(x.montant_ttc) && Number(x.credite) > 0 ? badge('Entièrement créditée', 'gris')
+          : Number(x.credite) > 0 ? badge(`Créditée de ${euros(x.credite)}`, 'or') : badge('Émise', 'vert')) }
     ],
-    lignes: f.factures, vide: 'Aucune facture : elle est émise à la fin de chaque course.'
+    lignes: pieces, vide: 'Aucune facture : elle est émise à la fin de chaque course.'
   }));
 }
 

@@ -103,8 +103,9 @@ select test.verifier(exists (select 1 from jsonb_array_elements(:'tdb'::jsonb ->
                              where a ->> 'niveau' = 'attention' and a ->> 'titre' = 'Permis de conduire · Paul Bernard'),
                      'alerte : permis expirant dans 10 jours');
 select test.verifier(exists (select 1 from jsonb_array_elements(:'tdb'::jsonb -> 'alertes') a
-                             where a ->> 'module' = 'courses' and a ->> 'titre' like '%à encaisser depuis plus de 24 h'),
-                     'alerte : paiement à encaisser depuis plus de 24 h');
+                             where a ->> 'module' = 'finances' and a ->> 'lien' = 'finances/?vue=a_encaisser'
+                               and a ->> 'titre' like '%à encaisser depuis plus de 24 h'),
+                     'alerte : paiement à encaisser depuis plus de 24 h (mène aux encaissements du module Finances)');
 select test.verifier(exists (select 1 from jsonb_array_elements(:'tdb'::jsonb -> 'alertes') a
                              where a ->> 'titre' = 'Numéro d''inscription au registre VTC manquant'),
                      'alerte : n° d''inscription au registre VTC manquant');

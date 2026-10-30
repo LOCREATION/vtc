@@ -28,6 +28,9 @@ import {
   boutonAction, tuile, ligne, moisLisible, pluriel, montantCourse, normaliserTelephone, erreurTelephone, section,
   blocNotesInternes, blocHistorique
 } from './blocs.js';
+import {
+  enteteDocument, blocDestinataire, lignesCompte, barreDocument, avertissementMentions, tableauDefilant, enteteTableau, blocTotaux
+} from '../commun/documents.js';
 
 const $ = (id) => document.getElementById(id);
 const filtres = { texte: '', statut: '' };
@@ -243,7 +246,7 @@ function afficherFiche(f) {
     tuile('À encaisser', euros(ch.a_encaisser), Number(ch.en_retard) > 0 ? `dont ${euros(ch.en_retard)} en retard` : 'aucun retard',
       Number(ch.en_retard) > 0 ? 'rouge' : null),
     tuile('Courses terminées', String(ch.courses_terminees), 'depuis l\'ouverture du compte'),
-    tuile('Total facturé', euros(ch.total_facture), 'TTC, toutes factures émises'));
+    tuile('Total facturé', euros(ch.total_facture), 'TTC, toutes factures émises, avoirs déduits'));
 
   const releve = el('section', { classe: 'carte-admin', id: 'releve', 'aria-labelledby': 'titre-releve' });
   $('contenu').replaceChildren(
@@ -399,8 +402,9 @@ function rattacher(f, recharger) {
 // ---------------------------------------------------------------------------
 const REGLEMENTS = {
   a_encaisser: { libelle: 'À payer', ton: 'or' }, encaisse: { libelle: 'Payé', ton: 'vert' },
-  rembourse: { libelle: 'Remboursé', ton: 'gris' }, echoue: { libelle: 'Échoué', ton: 'rouge' }, annule: { libelle: 'Annulé', ton: 'gris' }
+  rembourse: { libelle: 'Remboursé', ton: 'gris' }, echoue: { libelle: 'Impayé', ton: 'rouge' }, annule: { libelle: 'Annulé', ton: 'gris' }
 };
+const ORIGINES_AVOIR = { remboursement: 'Remboursement', annulation: 'Somme annulée' };
 
 // Règlement d'une ligne : sur le relevé (à payer, payé le …) ou sur place
 function reglement(mode, statut, encaisseLe) {
@@ -408,6 +412,12 @@ function reglement(mode, statut, encaisseLe) {
   if (mode !== 'facture_mensuelle') return el('span', {}, badge('Réglé sur place', 'gris'), el('span', { classe: 'secondaire', texte: MODES_PAIEMENT[mode] || mode }));
   const s = REGLEMENTS[statut] || { libelle: statut, ton: 'gris' };
   return el('span', {}, badge(s.libelle, s.ton), statut === 'encaisse' && encaisseLe ? el('span', { classe: 'secondaire', texte: `le ${dateCourte(encaisseLe)}` }) : null);
+}
+
+// Lignes du relevé à l'écran : chaque facture, suivie de ses avoirs
+function lignesReleve(r) {
+  return r.lignes.flatMap((l) => [{ ...l, type: 'facture' }, ...l.avoirs.map((a) => ({ ...a, type: 'avoir', facture_numero: l.numero,
+    course_id: l.course_id, course_numero: l.course_numero, prise_en_charge_le: l.prise_en_charge_le, passager: l.passager }))]);
 }
 
 async function dessinerReleve(c, mois, recharger) {
@@ -425,44 +435,54 @@ async function dessinerReleve(c, mois, recharger) {
   if (error) { corps.replaceChildren(el('p', { classe: 'alerte', texte: messageErreurAdmin(error) })); return; }
   const t = r.totaux;
   const reste = Number(t.reste_a_payer);
+  const nbAvoirs = r.lignes.reduce((n, l) => n + l.avoirs.length, 0);
   const actions = el('div', { classe: 'actions-ligne' },
     reste > 0 ? boutonAction(`Encaisser le relevé (${euros(reste)})`, () => encaisser(c, r, recharger), 'bouton-principal') : null,
     el('a', { classe: 'bouton bouton-secondaire bouton-petit', href: lienAdmin(`clients/?entreprise=${c.id}&releve=${r.mois}`), texte: 'Relevé imprimable (PDF)' }),
     boutonAction('Exporter (CSV)', async () => exporterReleve(c, r)));
 
-  corps.replaceChildren(
+  // (éléments absents filtrés : replaceChildren écrirait « null »)
+  corps.replaceChildren(...[
     el('p', { classe: 'sous-titre', texte: r.provisoire
       ? `Relevé provisoire : le mois de ${r.mois_lisible} n'est pas terminé. Les courses à venir s'y ajouteront.`
       : `Relevé de ${r.mois_lisible}, établi le ${dateCourte(r.date_releve)} · échéance le ${dateCourte(r.echeance)}.` }),
     el('dl', { classe: 'fiche-donnees totaux-releve' },
-      ...ligne('Factures du mois', `${pluriel(r.lignes.length, 'facture', 'factures')} · ${euros(t.montant_ttc)} TTC (${euros(t.montant_ht)} HT + ${euros(t.montant_tva)} TVA)`),
+      ...ligne('Factures du mois', `${pluriel(r.lignes.length, 'facture', 'factures')} · ${euros(t.factures_ttc)} TTC`),
+      ...ligne('Avoirs', nbAvoirs ? `− ${euros(t.avoirs_ttc)} (${pluriel(nbAvoirs, 'avoir', 'avoirs')}, sous la facture qu'ils corrigent)` : null),
+      ...ligne('Total des factures', `${euros(t.montant_ttc)} TTC (${euros(t.montant_ht)} HT + ${euros(t.montant_tva)} TVA)`),
       ...ligne('Pourboires', Number(t.pourboires) > 0 ? `${euros(t.pourboires)} (hors TVA, reversés aux chauffeurs)` : null),
       ...ligne('Déjà réglé', euros(t.deja_regle)),
       ...ligne('Reste à payer', el('strong', { classe: reste > 0 ? 'texte-or' : 'texte-vert', texte: euros(reste) }))),
     actions,
     tableau({
       colonnes: [
-        { titre: 'Facture', valeur: (l) => el('span', {}, l.numero, el('span', { classe: 'secondaire', texte: l.nature === 'course' ? dateCourte(l.date_emission) : `Frais d'annulation · ${dateCourte(l.date_emission)}` })) },
+        { titre: 'Facture', valeur: (l) => (l.type === 'avoir'
+          ? el('span', {}, el('a', { href: lienAdmin(`finances/?avoir=${l.avoir_id}`), texte: l.numero }),
+            el('span', { classe: 'secondaire', texte: `Avoir du ${dateCourte(l.date_emission)} sur ${l.facture_numero}` }))
+          : el('span', {}, el('a', { href: lienAdmin(`finances/?facture=${l.facture_id}`), texte: l.numero }),
+            el('span', { classe: 'secondaire', texte: l.nature === 'course' ? dateCourte(l.date_emission) : `Frais d'annulation · ${dateCourte(l.date_emission)}` }))) },
         { titre: 'Course', valeur: (l) => el('span', {}, el('a', { href: lienAdmin(`courses/?id=${l.course_id}`), texte: l.course_numero }),
           el('span', { classe: 'secondaire', texte: jourHeure(l.prise_en_charge_le) })) },
-        { titre: 'Passager', valeur: (l) => l.passager },
-        { titre: 'TTC', droite: true, valeur: (l) => euros(l.montant_ttc) },
-        { titre: 'Règlement', valeur: (l) => reglement(l.paiement_mode, l.paiement_statut, l.encaisse_le) }
+        { titre: 'Passager', valeur: (l) => (l.type === 'avoir' ? el('span', { classe: 'texte-gris', texte: l.motif }) : l.passager) },
+        { titre: 'TTC', droite: true, valeur: (l) => (l.type === 'avoir' ? el('span', { classe: 'texte-rouge', texte: `− ${euros(l.montant_ttc)}` }) : euros(l.montant_ttc)) },
+        { titre: 'Règlement', valeur: (l) => (l.type === 'avoir' ? badge(ORIGINES_AVOIR[l.origine] || l.origine, 'gris')
+          : reglement(l.paiement_mode, l.paiement_statut, l.encaisse_le)) }
       ],
-      lignes: r.lignes, vide: `Aucune facture en ${r.mois_lisible}.`
+      lignes: lignesReleve(r), vide: `Aucune facture en ${r.mois_lisible}.`
     }),
     r.pourboires.length ? el('div', {},
       el('h3', { classe: 'sous-section', texte: 'Pourboires' }),
       el('ul', { classe: 'liste-simple' }, ...r.pourboires.map((p) => el('li', {},
         el('strong', { texte: euros(p.montant) }), ' · course ', el('a', { href: lienAdmin(`courses/?id=${p.course_id}`), texte: p.course_numero }),
-        ' ', reglement(p.mode, p.statut, null))))) : null);
+        ' ', reglement(p.mode, p.statut, null),
+        Number(p.rembourse) > 0 ? el('span', { classe: 'secondaire', texte: `dont ${euros(p.rembourse)} remboursé` }) : null)))) : null].filter(Boolean));
 }
 
 async function encaisser(c, r, recharger) {
   const reste = Number(r.totaux.reste_a_payer);
   const fait = await fenetreFormulaire({
     titre: `Encaisser le relevé de ${r.mois_lisible}`,
-    intro: `Virement de ${euros(reste)} reçu de ${c.raison_sociale} ? Les ${r.totaux.paiements_a_encaisser} paiements de ce relevé passent « encaissés », à votre nom. Les gestionnaires du compte sont prévenus.`,
+    intro: `Virement de ${euros(reste)} reçu de ${c.raison_sociale} ? Les ${r.totaux.paiements_a_encaisser} paiements de ce relevé passent « encaissés », à votre nom. Les gestionnaires du compte sont prévenus.`,
     champs: [{ nom: 'reference', libelle: 'Référence du virement', type: 'texte', longueur: 120, plein: true,
       aide: 'Lue sur le relevé de banque : elle permet de retrouver le virement.' }],
     libelle: `Encaisser ${euros(reste)}`,
@@ -478,19 +498,23 @@ async function encaisser(c, r, recharger) {
 
 function exporterReleve(c, r) {
   const lignes = [
-    ...r.lignes.map((l) => ({ ...l, type: l.nature === 'course' ? 'Course' : 'Frais d\'annulation' })),
+    ...lignesReleve(r).map((l) => (l.type === 'avoir'
+      ? { ...l, type: `Avoir (${(ORIGINES_AVOIR[l.origine] || l.origine).toLowerCase()}) sur ${l.facture_numero}`,
+        montant_ht: -l.montant_ht, montant_tva: -l.montant_tva, montant_ttc: -l.montant_ttc,
+        depart_adresse: '', arrivee_adresse: '', passager: l.motif, paiement_mode: null, paiement_statut: null, reference: '' }
+      : { ...l, type: l.nature === 'course' ? 'Course' : 'Frais d\'annulation' })),
     ...r.pourboires.map((p) => ({ numero: '', date_emission: p.cree_le, type: 'Pourboire', course_numero: p.course_numero,
       prise_en_charge_le: null, passager: '', depart_adresse: '', arrivee_adresse: '', montant_ht: null, montant_tva: null,
-      montant_ttc: p.montant, paiement_mode: p.mode, paiement_statut: p.statut, reference: '' }))
+      montant_ttc: Number(p.montant) - Number(p.rembourse || 0), paiement_mode: p.mode, paiement_statut: p.statut, reference: '' }))
   ];
   exporterCsv(`releve-${r.mois}-${c.raison_sociale.replace(/[^\p{L}\p{N}]+/gu, '-').toLowerCase()}.csv`, [
-    { titre: 'Facture', csv: (l) => l.numero }, { titre: 'Type', csv: (l) => l.type },
+    { titre: 'Pièce', csv: (l) => l.numero }, { titre: 'Type', csv: (l) => l.type },
     { titre: 'Date', csv: (l) => dateCourte(l.date_emission) }, { titre: 'Course', csv: (l) => l.course_numero },
     { titre: 'Prise en charge', csv: (l) => (l.prise_en_charge_le ? jourHeure(l.prise_en_charge_le) : '') },
-    { titre: 'Passager', csv: (l) => l.passager }, { titre: 'Départ', csv: (l) => l.depart_adresse }, { titre: 'Arrivée', csv: (l) => l.arrivee_adresse },
+    { titre: 'Passager ou motif', csv: (l) => l.passager }, { titre: 'Départ', csv: (l) => l.depart_adresse }, { titre: 'Arrivée', csv: (l) => l.arrivee_adresse },
     { titre: 'HT', csv: (l) => nombreCsv(l.montant_ht) }, { titre: 'TVA', csv: (l) => nombreCsv(l.montant_tva) },
     { titre: 'TTC', csv: (l) => nombreCsv(l.montant_ttc) },
-    { titre: 'Règlement', csv: (l) => (l.paiement_mode && l.paiement_mode !== 'facture_mensuelle' ? `Sur place (${MODES_PAIEMENT[l.paiement_mode] || l.paiement_mode})`
+    { titre: 'Règlement', csv: (l) => (!l.paiement_mode ? '' : l.paiement_mode !== 'facture_mensuelle' ? `Sur place (${MODES_PAIEMENT[l.paiement_mode] || l.paiement_mode})`
       : (REGLEMENTS[l.paiement_statut] || { libelle: l.paiement_statut || '' }).libelle) },
     { titre: 'Référence du virement', csv: (l) => l.reference || '' }
   ], lignes);
@@ -534,22 +558,15 @@ export async function ouvrirReleve(id, mois) {
   const s = r.societe || {};
   document.title = `Relevé ${r.mois_lisible} · ${c.raison_sociale}`;
   $('titre-page').textContent = `Relevé de ${r.mois_lisible}`;
-  const imprimer = el('button', { type: 'button', classe: 'bouton bouton-principal bouton-petit', texte: 'Imprimer ou enregistrer en PDF' });
-  imprimer.addEventListener('click', () => window.print());
-  const barre = el('div', { classe: 'actions-ligne non-imprimable barre-releve' },
-    imprimer, boutonAction('Exporter (CSV)', async () => exporterReleve(c, r)));
+  const barre = barreDocument(boutonAction('Exporter (CSV)', async () => exporterReleve(c, r)));
 
   // Mentions manquantes : signalées à l'écran seulement (jamais imprimées)
-  const manquants = [
+  const avertissement = avertissementMentions([
     !s.siret ? 'le SIRET' : null, !s.tva_intracommunautaire ? 'le n° de TVA' : null,
     !s.iban || !s.bic ? 'l\'IBAN et le BIC (règlement par virement)' : null
-  ].filter(Boolean);
-  const avertissement = manquants.length
-    ? el('p', { classe: 'alerte non-imprimable' }, `À compléter dans Paramètres, Entreprise, pour qu'ils figurent sur le relevé : ${manquants.join(', ')}. `,
-      el('a', { href: lienAdmin('parametres/'), texte: 'Ouvrir les paramètres' }))
-    : null;
+  ].filter(Boolean));
   const provisoire = r.provisoire
-    ? el('p', { classe: 'alerte non-imprimable', texte: `Le mois de ${r.mois_lisible} n'est pas terminé : ce relevé est provisoire (il porte la mention « provisoire » une fois imprimé).` })
+    ? el('p', { classe: 'alerte non-imprimable', texte: `Le mois de ${r.mois_lisible} n'est pas terminé : ce relevé est provisoire (il porte la mention « provisoire » une fois imprimé).` })
     : null;
 
   $('contenu').replaceChildren(...[barre, avertissement, provisoire, documentReleve(r)].filter(Boolean));
@@ -559,90 +576,74 @@ function documentReleve(r) {
   const c = r.compte;
   const s = r.societe || {};
   const t = r.totaux;
-  const capital = s.capital !== null && s.capital !== undefined
-    ? `au capital de ${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(s.capital)}` : null;
-  const identiteSociete = [
-    [s.forme_juridique, capital].filter(Boolean).join(' '),
-    s.adresse, [s.code_postal, s.ville].filter(Boolean).join(' '),
-    [s.rcs, s.siret ? `SIRET ${siretLisible(s.siret)}` : null].filter(Boolean).join(' · '),
-    s.tva_intracommunautaire ? `TVA intracommunautaire ${s.tva_intracommunautaire}` : null,
-    [s.telephone ? telephoneLisible(s.telephone) : null, s.email].filter(Boolean).join(' · ')
-  ].filter(Boolean);
-  const identiteClient = [
-    c.adresse, [c.code_postal, c.ville].filter(Boolean).join(' '),
-    c.siret ? `SIRET ${siretLisible(c.siret)}` : null,
-    c.tva_intracommunautaire ? `TVA intracommunautaire ${c.tva_intracommunautaire}` : null,
-    c.contact_nom ? `À l'attention de ${c.contact_nom}` : null
-  ].filter(Boolean);
   const reste = Number(t.reste_a_payer);
+  const avoirs = Number(t.avoirs_ttc) > 0;
 
-  const entete = el('header', { classe: 'releve-entete' },
-    el('div', { classe: 'releve-emetteur' },
-      el('img', { src: '../../commun/img/logo.svg', alt: '', width: '72', height: '36', classe: 'releve-logo' }),
-      el('strong', { classe: 'releve-raison', texte: s.raison_sociale || 'LOC RÉACTION S.A.S' }),
-      ...identiteSociete.map((l) => el('span', { texte: l }))),
-    el('div', { classe: 'releve-titre' },
-      el('h2', { texte: 'Relevé de factures' }),
-      el('p', { classe: 'releve-mois', texte: r.mois_lisible.charAt(0).toUpperCase() + r.mois_lisible.slice(1) }),
-      r.provisoire ? el('p', { classe: 'releve-provisoire', texte: 'Provisoire : mois en cours' }) : null,
-      el('dl', {},
-        el('dt', { texte: 'Établi le' }), el('dd', { texte: dateCourte(r.date_releve) }),
-        el('dt', { texte: 'Échéance' }), el('dd', { texte: dateCourte(r.echeance) }))));
+  const entete = enteteDocument({
+    societe: s, titre: 'Relevé de factures',
+    sousTitre: r.mois_lisible.charAt(0).toUpperCase() + r.mois_lisible.slice(1),
+    mention: r.provisoire ? 'Provisoire : mois en cours' : null,
+    dates: [['Établi le', dateCourte(r.date_releve)], ['Échéance', dateCourte(r.echeance)]]
+  });
+  const client = blocDestinataire({ nom: c.raison_sociale, lignes: lignesCompte(c) });
 
-  const client = el('section', { classe: 'releve-client', 'aria-label': 'Client' },
-    el('span', { classe: 'releve-etiquette', texte: 'Client' }),
-    el('strong', { texte: c.raison_sociale }),
-    ...identiteClient.map((l) => el('span', { texte: l })));
+  // Chaque facture, suivie de ses avoirs (montants négatifs)
+  const tableLignes = el('table', { classe: 'doc-table' },
+    enteteTableau(['Pièce', 'Course', 'Passager', 'HT', 'TVA', 'TTC', 'Règlement'], [3, 4, 5]),
+    el('tbody', {}, ...(r.lignes.length ? r.lignes.flatMap((l) => [
+      el('tr', {},
+        el('td', { classe: 'doc-numero' }, l.numero,
+          el('span', { classe: 'doc-detail', texte: l.nature === 'frais_annulation' ? `Frais d'annulation · ${dateCourte(l.date_emission)}` : dateCourte(l.date_emission) })),
+        el('td', {}, el('span', { classe: 'doc-numero', texte: l.course_numero }),
+          el('span', { classe: 'doc-detail', texte: `${jourHeure(l.prise_en_charge_le)} · ${l.depart_adresse} → ${l.arrivee_adresse}` })),
+        el('td', { texte: l.passager }),
+        el('td', { classe: 'droite', texte: euros(l.montant_ht) }),
+        el('td', { classe: 'droite' }, euros(l.montant_tva), el('span', { classe: 'doc-detail', texte: `${nombre(l.taux_tva, 2)} %` })),
+        el('td', { classe: 'droite', texte: euros(l.montant_ttc) }),
+        el('td', { texte: texteReglement(l.paiement_mode, l.paiement_statut, l.encaisse_le) })),
+      ...l.avoirs.map((a) => el('tr', { classe: 'doc-ligne-avoir' },
+        el('td', { classe: 'doc-numero' }, a.numero, el('span', { classe: 'doc-detail', texte: `Avoir du ${dateCourte(a.date_emission)}` })),
+        el('td', { colspan: '2' }, `${ORIGINES_AVOIR[a.origine] || a.origine} : ${a.motif}`),
+        el('td', { classe: 'droite', texte: `− ${euros(a.montant_ht)}` }),
+        el('td', { classe: 'droite', texte: `− ${euros(a.montant_tva)}` }),
+        el('td', { classe: 'droite', texte: `− ${euros(a.montant_ttc)}` }),
+        el('td', { texte: a.origine === 'remboursement' ? 'Remboursé' : 'Non dû' })))
+    ]) : [el('tr', {}, el('td', { colspan: '7', texte: `Aucune facture en ${r.mois_lisible}.` }))])));
 
-  const tableLignes = el('table', { classe: 'releve-table' },
-    el('thead', {}, el('tr', {}, ...['Facture', 'Course', 'Passager', 'HT', 'TVA', 'TTC', 'Règlement']
-      .map((x, i) => el('th', { scope: 'col', classe: i >= 3 && i <= 5 ? 'droite' : null, texte: x })))),
-    el('tbody', {}, ...(r.lignes.length ? r.lignes.map((l) => el('tr', {},
-      el('td', { classe: 'releve-numero' }, l.numero,
-        el('span', { classe: 'releve-detail', texte: l.nature === 'frais_annulation' ? `Frais d'annulation · ${dateCourte(l.date_emission)}` : dateCourte(l.date_emission) })),
-      el('td', {}, el('span', { classe: 'releve-numero', texte: l.course_numero }),
-        el('span', { classe: 'releve-detail', texte: `${jourHeure(l.prise_en_charge_le)} · ${l.depart_adresse} → ${l.arrivee_adresse}` })),
-      el('td', { texte: l.passager }),
-      el('td', { classe: 'droite', texte: euros(l.montant_ht) }),
-      el('td', { classe: 'droite' }, euros(l.montant_tva), el('span', { classe: 'releve-detail', texte: `${nombre(l.taux_tva, 2)} %` })),
-      el('td', { classe: 'droite', texte: euros(l.montant_ttc) }),
-      el('td', { texte: texteReglement(l.paiement_mode, l.paiement_statut, l.encaisse_le) })))
-      : [el('tr', {}, el('td', { colspan: '7', texte: `Aucune facture en ${r.mois_lisible}.` }))])));
-
-  const pourboires = r.pourboires.length ? el('section', { classe: 'releve-bloc' },
+  const pourboires = r.pourboires.length ? el('section', { classe: 'doc-bloc' },
     el('h3', { texte: 'Pourboires (hors TVA, reversés intégralement aux chauffeurs)' }),
-    el('table', { classe: 'releve-table' },
-      el('thead', {}, el('tr', {}, ...['Date', 'Course', 'Montant', 'Règlement'].map((x, i) => el('th', { scope: 'col', classe: i === 2 ? 'droite' : null, texte: x })))),
+    el('table', { classe: 'doc-table' },
+      enteteTableau(['Date', 'Course', 'Montant', 'Règlement'], [2]),
       el('tbody', {}, ...r.pourboires.map((p) => el('tr', {},
-        el('td', { texte: dateCourte(p.cree_le) }), el('td', { classe: 'releve-numero', texte: p.course_numero }),
-        el('td', { classe: 'droite', texte: euros(p.montant) }), el('td', { texte: texteReglement(p.mode, p.statut, null) })))))) : null;
+        el('td', { texte: dateCourte(p.cree_le) }), el('td', { classe: 'doc-numero', texte: p.course_numero }),
+        el('td', { classe: 'droite', texte: euros(Number(p.montant) - Number(p.rembourse || 0)) }),
+        el('td', { texte: texteReglement(p.mode, p.statut, null) })))))) : null;
 
-  const totaux = el('section', { classe: 'releve-totaux', 'aria-label': 'Totaux' },
-    el('dl', {},
-      el('dt', { texte: 'Total HT' }), el('dd', { texte: euros(t.montant_ht) }),
-      ...r.tva_par_taux.flatMap((x) => [el('dt', { texte: `TVA ${nombre(x.taux, 2)} % sur ${euros(x.montant_ht)}` }), el('dd', { texte: euros(x.montant_tva) })]),
-      el('dt', { texte: 'Total TTC des factures' }), el('dd', { texte: euros(t.montant_ttc) }),
-      ...(Number(t.pourboires) > 0 ? [el('dt', { texte: 'Pourboires' }), el('dd', { texte: euros(t.pourboires) })] : []),
-      el('dt', { texte: 'Total du mois' }), el('dd', { texte: euros(t.total) }),
-      el('dt', { texte: 'Déjà réglé' }), el('dd', { texte: euros(t.deja_regle) }),
-      el('div', { classe: 'releve-trait', 'aria-hidden': 'true' }),
-      el('dt', { classe: 'releve-reste', texte: 'Reste à payer' }), el('dd', { classe: 'releve-reste', texte: euros(reste) })));
+  const totaux = blocTotaux([
+    ['Total HT', euros(t.montant_ht)],
+    ...r.tva_par_taux.map((x) => [`TVA ${nombre(x.taux, 2)} % sur ${euros(x.montant_ht)}`, euros(x.montant_tva)]),
+    avoirs ? ['Factures TTC', euros(t.factures_ttc)] : null,
+    avoirs ? ['Avoirs TTC', `− ${euros(t.avoirs_ttc)}`] : null,
+    ['Total TTC des factures', euros(t.montant_ttc)],
+    Number(t.pourboires) > 0 ? ['Pourboires', euros(t.pourboires)] : null,
+    ['Total du mois', euros(t.total)],
+    ['Déjà réglé', euros(t.deja_regle)],
+    'trait',
+    ['Reste à payer', euros(reste), true]
+  ]);
 
-  const reglementBloc = el('section', { classe: 'releve-bloc releve-reglement' },
+  const reglementBloc = el('section', { classe: 'doc-bloc doc-reglement' },
     el('h3', { texte: 'Règlement' }),
     reste > 0
-      ? el('p', { texte: `Merci de régler ${euros(reste)} par virement au plus tard le ${dateCourte(r.echeance)}, en indiquant la référence « ${c.raison_sociale} ${r.mois} ».` })
+      ? el('p', { texte: `Merci de régler ${euros(reste)} par virement au plus tard le ${dateCourte(r.echeance)}, en indiquant la référence « ${c.raison_sociale} ${r.mois} ».` })
       : el('p', { texte: 'Ce relevé est entièrement réglé. Merci.' }),
-    reste > 0 && s.iban ? el('p', { classe: 'releve-iban' }, el('strong', { texte: 'IBAN ' }), ibanLisible(s.iban),
+    reste > 0 && s.iban ? el('p', { classe: 'doc-iban' }, el('strong', { texte: 'IBAN ' }), ibanLisible(s.iban),
       s.bic ? el('span', {}, el('strong', { texte: '  BIC ' }), s.bic) : null) : null,
-    el('p', { classe: 'releve-detail', texte: 'Chaque course fait l\'objet d\'une facture numérotée, disponible sur demande ; ce relevé les récapitule pour un règlement unique.' }),
-    s.mentions_factures ? el('p', { classe: 'releve-mentions', texte: s.mentions_factures }) : null);
+    el('p', { classe: 'doc-detail', texte: 'Chaque course fait l\'objet d\'une facture numérotée, disponible sur demande ; ce relevé les récapitule pour un règlement unique. Un avoir corrige la facture sous laquelle il figure.' }),
+    s.mentions_factures ? el('p', { classe: 'doc-mentions', texte: s.mentions_factures }) : null);
 
-  return el('article', { classe: 'releve-document', 'aria-label': `Relevé de factures de ${r.mois_lisible}` },
-    entete, client,
-    el('p', { classe: 'releve-glisser non-imprimable', texte: 'Faites glisser le tableau vers la gauche pour voir les montants.' }),
-    el('div', { classe: 'releve-defilement' }, tableLignes),
-    pourboires, totaux, reglementBloc);
+  return el('article', { classe: 'doc', 'aria-label': `Relevé de factures de ${r.mois_lisible}` },
+    entete, client, ...tableauDefilant(tableLignes), pourboires, totaux, reglementBloc);
 }
 
 // Règlement en toutes lettres (document imprimé)

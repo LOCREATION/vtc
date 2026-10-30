@@ -69,7 +69,8 @@ async function demarrer() {
   const [zones, parametres, societe] = await Promise.all([
     supabase.from('zones').select('code, nom, type, latitude, longitude').eq('active', true).order('nom'),
     supabase.from('parametres').select('delai_min_planification_min').maybeSingle(),
-    supabase.from('societe').select('*').maybeSingle()
+    // Identité légale du pied de page (un visiteur ne lit pas les coordonnées bancaires)
+    supabase.from('societe').select('raison_sociale, forme_juridique, capital, rcs, adresse, code_postal, ville, email').maybeSingle()
   ]);
   if (zones.error) throw zones.error;
   if (parametres.data) etat.delaiMinutes = parametres.data.delai_min_planification_min;

@@ -1,0 +1,115 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Administration : documents imprimables (relevés, factures, avoirs)
+   -----------------------------------------------------------------------------
+   À l'écran : un document lisible sur téléphone (le tableau défile dans son
+   cadre, la page jamais) ; à l'impression : une page A4 sans le menu ni les
+   boutons. Même mise en page pour le relevé mensuel d'une entreprise, une
+   facture et un avoir.
+   ============================================================================= */
+
+.doc {
+  background: var(--blanc); border: 1px solid var(--trait); border-radius: 14px;
+  padding: 20px 16px; display: grid; gap: 18px; width: 100%; max-width: 920px; min-width: 0;
+  font-size: 15px; line-height: 1.4;
+}
+@media (min-width: 760px) { .doc { padding: 32px 36px; } }
+
+/* ---------- En-tête : émetteur, titre, dates ---------- */
+.doc-entete { display: grid; gap: 16px; }
+@media (min-width: 640px) { .doc-entete { grid-template-columns: 1.3fr 1fr; align-items: start; } }
+.doc-emetteur { display: grid; gap: 1px; color: var(--gris); font-size: 14px; }
+.doc-logo { width: 72px; height: 36px; margin-bottom: 6px; }
+.doc-raison { color: var(--nuit); font-family: var(--police-titre); font-size: 20px; font-weight: 700; }
+.doc-titre { display: grid; gap: 4px; }
+@media (min-width: 640px) { .doc-titre { text-align: right; justify-items: end; } }
+.doc-titre h2 { font-size: 26px; text-transform: uppercase; letter-spacing: 0.04em; }
+.doc-sous-titre { font-family: var(--police-titre); font-size: 20px; font-weight: 600; margin: 0; }
+.doc-mention { margin: 0; color: var(--rouge); font-weight: 600; }
+.doc-titre dl { display: grid; grid-template-columns: auto auto; gap: 2px 10px; margin: 6px 0 0; font-size: 15px; }
+.doc-titre dt { color: var(--gris); }
+.doc-titre dd { margin: 0; font-weight: 600; }
+
+/* ---------- Destinataire ---------- */
+.doc-client { display: grid; gap: 1px; padding: 12px 14px; border: 1px solid var(--trait); border-radius: var(--rayon-champ); background: #F8FAFC; }
+@media (min-width: 640px) { .doc-client { width: min(100%, 420px); justify-self: end; } }
+.doc-etiquette { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gris); }
+.doc-client strong { font-size: 17px; }
+.doc-objet { margin: 0; }
+.doc-objet strong { font-weight: 600; }
+
+/* ---------- Tableaux : toujours de vrais tableaux (jamais en fiches), qui
+   défilent horizontalement dans leur cadre sur téléphone ---------- */
+.doc-defilement { overflow-x: auto; min-width: 0; }
+.doc-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.doc-defilement .doc-table { min-width: 720px; }
+.doc-defilement .doc-table-courte { min-width: 520px; }
+.doc-table th { text-align: left; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--gris);
+  padding: 6px 8px; border-bottom: 1.5px solid var(--nuit); white-space: nowrap; }
+.doc-table td { padding: 7px 8px; border-bottom: 1px solid var(--trait); vertical-align: top; }
+.doc-table .droite { text-align: right; white-space: nowrap; }
+.doc-table tfoot td { font-weight: 700; border-bottom: 0; border-top: 1.5px solid var(--nuit); }
+/* Ligne d'avoir : sous la facture qu'elle corrige, montants négatifs */
+.doc-table tr.doc-ligne-avoir td { color: #8A2A22; background: #FFF8F7; }
+.doc-table tr.doc-ligne-avoir td:first-child { padding-left: 18px; }
+.doc-numero { white-space: nowrap; }
+.doc-detail { display: block; color: var(--gris); font-size: 12.5px; white-space: normal; }
+.doc-glisser { display: none; color: var(--gris); font-size: 14px; margin: 0 0 -8px; }
+@media (max-width: 759px) { .doc-glisser { display: block; } }
+.barre-document { justify-content: flex-start; }
+
+/* ---------- Blocs, détail du prix, totaux ---------- */
+.doc-bloc { display: grid; gap: 8px; }
+.doc-bloc h3 { font-size: 17px; }
+.doc-colonnes { display: grid; gap: 18px; align-items: start; }
+@media (min-width: 640px) { .doc-colonnes { grid-template-columns: 1fr 1fr; } }
+.doc-detail-prix { display: grid; grid-template-columns: 1fr auto; gap: 3px 16px; margin: 0; font-size: 14px; font-variant-numeric: tabular-nums; }
+.doc-detail-prix dt { color: var(--gris); }
+.doc-detail-prix dd { margin: 0; text-align: right; }
+.doc-totaux { display: grid; justify-items: end; }
+.doc-totaux dl { display: grid; grid-template-columns: auto auto; gap: 4px 18px; margin: 0; min-width: min(100%, 360px); }
+.doc-totaux dt { color: var(--gris); }
+.doc-totaux dd { margin: 0; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.doc-totaux .doc-trait { grid-column: 1 / -1; border-top: 1.5px solid var(--nuit); margin-top: 2px; }
+.doc-totaux .doc-total-fort { color: var(--nuit); font-size: 18px; font-weight: 700; }
+.doc-iban { font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 15px; letter-spacing: 0.03em; overflow-wrap: anywhere; }
+.doc-reglement p { margin: 0; }
+.doc-mentions { white-space: pre-wrap; color: var(--gris); font-size: 13px; }
+.doc-acquittee { justify-self: start; border: 2px solid var(--vert); color: var(--vert); border-radius: 8px; padding: 4px 10px;
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; font-size: 14px; }
+
+/* Impression : seule la page du document, au format A4 */
+@media print {
+  @page { size: A4; margin: 12mm 12mm 14mm; }
+  html, body, body.admin { background: #FFFFFF !important; }
+  .admin-menu, .admin-entete, .admin-voile, .onglets, .non-imprimable, .zone-messages, .porte { display: none !important; }
+  .admin-cadre, .admin-zone, .admin-page, .admin-page > div { display: block !important; min-height: 0; padding: 0 !important; }
+  .doc { border: 0; border-radius: 0; padding: 0; max-width: none; gap: 10px; font-size: 9.5pt; color: #000000; }
+  .doc-logo { width: 56px; height: 28px; margin-bottom: 2px; }
+  .doc-raison { font-size: 14pt; }
+  .doc-emetteur { font-size: 8.5pt; }
+  .doc-titre h2 { font-size: 17pt; }
+  .doc-sous-titre { font-size: 13pt; }
+  .doc-titre dl { font-size: 9.5pt; }
+  .doc-client { padding: 8px 10px; }
+  .doc-client strong { font-size: 11pt; }
+  .doc-bloc h3 { font-size: 10.5pt; }
+  .doc-totaux .doc-total-fort { font-size: 12pt; }
+  .doc-entete { grid-template-columns: 1.3fr 1fr; }
+  .doc-titre { text-align: right; justify-items: end; }
+  .doc-client { width: 360px; justify-self: end; background: none; }
+  .doc-colonnes { grid-template-columns: 1fr 1fr; }
+  .doc-defilement { overflow: visible; }
+  .doc-defilement .doc-table, .doc-defilement .doc-table-courte { min-width: 0; }
+  .doc-table { font-size: 8.5pt; }
+  .doc-table td { padding: 4px 6px; }
+  .doc-table th { padding: 4px 6px; }
+  .doc-table thead { display: table-header-group; }
+  .doc-table tr { break-inside: avoid; }
+  .doc-table tr.doc-ligne-avoir td { background: none; }
+  .doc-detail { font-size: 7.5pt; }
+  .doc-detail-prix { font-size: 8.5pt; }
+  .doc-totaux { break-inside: avoid; }
+  .doc-reglement h3 { break-after: avoid; }
+  a { color: inherit; text-decoration: none; }
+}

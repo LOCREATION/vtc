@@ -16,6 +16,7 @@
 .pile { display: grid; gap: 16px; align-content: start; min-width: 0; }
 .sous-section { font-size: 17px; font-weight: 600; margin-top: 6px; }
 .liste-simple { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.liste-simple .secondaire { display: block; color: var(--gris); font-size: 14px; }
 .etoiles { color: #A8882B; letter-spacing: 0.08em; }
 .carte-fiche { height: 260px; }
 @media (min-width: 1024px) { .carte-fiche { height: 300px; } }

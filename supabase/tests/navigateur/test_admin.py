@@ -159,7 +159,7 @@ async def tableau_de_bord(nav):
     verifier('€' in await page.inner_text('.bulle-graphique'), 'graphique : infobulle au survol')
     await page.click('#voir-tableau')
     verifier(await page.locator('#tableau-serie tbody tr').count() == 14, 'graphique : les mêmes chiffres en tableau')
-    verifier(await page.locator('.admin-lien').count() == 8, 'menu : huit modules')
+    verifier(await page.locator('.admin-lien').count() == 9, 'menu : neuf modules')
     verifier(await page.get_attribute('.admin-lien[data-module="tableau"]', 'aria-current') == 'page', 'menu : module actif signalé')
     await page.screenshot(path=f'{CAPTURES}/admin-tableau-ordinateur.png', full_page=True)
     await ctx.close()
@@ -824,11 +824,11 @@ async def clients(nav):
     ctx, page, _ = await entrer(nav, mobile=True)
     await page.goto(SITE + 'admin/clients/')
     await page.wait_for_selector('#resultats tbody tr')
-    verifier(await page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), 'téléphone : liste sans défilement horizontal')
+    verifier(await page.evaluate('document.documentElement.scrollWidth <= screen.width'), 'téléphone : liste sans défilement horizontal')
     await page.screenshot(path=f'{CAPTURES}/admin-clients-telephone.png', full_page=True)
     await page.goto(SITE + f'admin/clients/?id={CLIENT}')
     await page.wait_for_selector('#titre-identite')
-    verifier(await page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), 'téléphone : fiche sans défilement horizontal')
+    verifier(await page.evaluate('document.documentElement.scrollWidth <= screen.width'), 'téléphone : fiche sans défilement horizontal')
     await page.screenshot(path=f'{CAPTURES}/admin-fiche-client-telephone.png', full_page=True)
     await ctx.close()
     systeme(f"update public.profils set telephone = '+33655555555' where id = '{KARIM}'")
@@ -924,11 +924,16 @@ async def entreprises(nav):
 
     # Relevé imprimable
     await page.get_by_role('link', name='Relevé imprimable (PDF)').click()
-    await page.wait_for_selector('.releve-document')
-    document = await page.inner_text('.releve-document')
+    await page.wait_for_selector('.doc')
+    document = await page.inner_text('.doc')
     verifier('Relevé de factures'.upper() in document.upper() and 'LOC RÉACTION S.A.S' in document and 'Atelier Lumière SARL' in document
              and course['numero'] in document and 'Reste à payer' in document,
              'relevé imprimable : émetteur, client, courses, totaux')
+    avoirs_releve = int(valeur(f"""select count(*) from public.avoirs a join public.factures f on f.id = a.facture_id
+                                   where f.compte_pro_id = '{compte}' and to_char(f.date_emission, 'YYYY-MM') = to_char(now() at time zone 'Europe/Paris', 'YYYY-MM')"""))
+    verifier(await page.locator('.doc tr.doc-ligne-avoir').count() == avoirs_releve and avoirs_releve > 0
+             and 'Avoirs TTC' in document and 'Non dû' in document,
+             f'relevé imprimable : {avoirs_releve} avoir(s) sous la facture corrigée, déduit(s) des totaux')
     await page.screenshot(path=f'{CAPTURES}/admin-releve-ecran.png', full_page=True)
     await page.emulate_media(media='print')
     verifier(not await page.locator('#admin-menu').is_visible() and not await page.locator('.admin-entete').is_visible(),
@@ -941,22 +946,272 @@ async def entreprises(nav):
     ctx, page, _ = await entrer(nav, mobile=True)
     await page.goto(SITE + 'admin/clients/?vue=entreprises')
     await page.wait_for_selector('#liste-comptes tbody tr')
-    verifier(await page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), 'téléphone : liste des entreprises sans défilement horizontal')
+    verifier(await page.evaluate('document.documentElement.scrollWidth <= screen.width'), 'téléphone : liste des entreprises sans défilement horizontal')
     await page.screenshot(path=f'{CAPTURES}/admin-entreprises-telephone.png', full_page=True)
     await page.goto(SITE + f'admin/clients/?entreprise={compte}')
     await page.wait_for_selector('#releve tbody tr')
-    verifier(await page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), 'téléphone : fiche de l\'entreprise sans défilement horizontal')
+    verifier(await page.evaluate('document.documentElement.scrollWidth <= screen.width'), 'téléphone : fiche de l\'entreprise sans défilement horizontal')
     await page.screenshot(path=f'{CAPTURES}/admin-fiche-entreprise-telephone.png', full_page=True)
     mois = valeur("select to_char(now() at time zone 'Europe/Paris', 'YYYY-MM')")
     await page.goto(SITE + f'admin/clients/?entreprise={compte}&releve={mois}')
-    await page.wait_for_selector('.releve-document')
-    verifier(await page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), 'téléphone : relevé sans défilement de la page (le tableau défile dans son cadre)')
+    await page.wait_for_selector('.doc')
+    verifier(await page.evaluate('document.documentElement.scrollWidth <= screen.width'), 'téléphone : relevé sans défilement de la page (le tableau défile dans son cadre)')
     await page.screenshot(path=f'{CAPTURES}/admin-releve-telephone.png', full_page=True)
     await ctx.close()
 
 
+def course_terminee(client, mode, heure_paris):
+    """Réservation payée sur place, attribuée à Paul et menée jusqu'au bout par l'administration."""
+    course = commander(client, p_type='planifiee', p_quand=demain(heure_paris), p_mode_paiement=mode)
+    appels = [('attribuer_course', {'p_course': course['id'], 'p_chauffeur': CHAUFFEUR})]
+    appels += [('avancer_course', {'p_course': course['id'], 'p_etape': e}) for e in ('en_route', 'arrivee', 'a_bord', 'terminee')]
+    for nom, corps in appels:
+        ok, sortie = appel_rpc(nom, corps, ADMIN)
+        assert ok, sortie
+    course['paiement'] = valeur(f"select id from public.paiements where course_id = '{course['id']}' and nature = 'course'")
+    course['montant'] = valeur(f"select montant from public.paiements where id = '{course['paiement']}'")
+    return course
+
+
+def ligne_paiement(page, numero):
+    return page.locator('#liste-paiements tbody tr', has_text=numero)
+
+
+async def fenetre(page):
+    await page.wait_for_selector('dialog.fenetre[open]')
+    return page.locator('dialog.fenetre')
+
+
+async def fermee(page):
+    await page.wait_for_selector('dialog.fenetre', state='detached')
+    await page.wait_for_timeout(400)
+
+
+async def finances(nav):
+    print('Finances')
+    KARIM = valeur("select id from public.profils where prenom = 'Karim' and nom = 'Benali'")
+    especes = course_terminee(KARIM, 'especes', '06:00')
+    carte = course_terminee(CLIENT, 'carte', '05:00')     # de nuit : majoration
+    du_jour = course_terminee(KARIM, 'especes', '05:30')
+    # Un paiement oublié depuis deux jours : alerte du tableau de bord
+    systeme(f"update public.paiements set cree_le = now() - interval '2 days' where id = '{du_jour['paiement']}'")
+
+    ctx, page, _ = await entrer(nav, mobile=False)
+
+    # Tableau de bord : l'alerte mène directement aux paiements à encaisser
+    await page.goto(SITE + 'admin/')
+    await page.wait_for_selector('#alertes li')
+    lien = page.locator('#alertes li', has_text='depuis plus de 24 h').locator('a')
+    verifier(await lien.get_attribute('href') == '/v2/admin/finances/?vue=a_encaisser',
+             'tableau de bord : « paiements à encaisser depuis plus de 24 h » mène à Finances, liste à encaisser')
+    await lien.click()
+    await page.wait_for_selector('#liste-paiements tbody tr')
+    verifier(await page.inner_text('.admin-titre') == 'Finances'
+             and await page.get_attribute('.admin-lien[data-module="finances"]', 'aria-current') == 'page',
+             'module Finances ouvert, signalé dans le menu')
+
+    # 1. À encaisser : cases de chiffres et liste conformes à la base
+    attendu = valeur("select count(*) || '|' || coalesce(sum(montant), 0) from public.paiements where statut = 'a_encaisser' and mode <> 'facture_mensuelle'").split('|')
+    tuiles = await page.locator('#chiffres-encaissements .chiffre-cle').all_inner_texts()
+    verifier(len(tuiles) == 4 and attendu[1].replace('.', ',') in tuiles[0].replace(' ', ' ').replace(' ', '')
+             and 'depuis plus de 24 h' in tuiles[0], f'case « À encaisser » : {attendu[1]} € sur place, dont un paiement de plus de 24 h')
+    total = int(valeur("select count(*) from public.paiements where statut = 'a_encaisser'"))
+    verifier(f'{total} paiement' in await page.inner_text('#resume-paiements'), f'liste « À encaisser » : {total} paiements')
+    plus_ancien = valeur("select c.numero from public.paiements p join public.courses c on c.id = p.course_id where p.statut = 'a_encaisser' order by p.cree_le, p.id limit 1")
+    verifier(plus_ancien in await page.locator('#liste-paiements tbody tr').first.inner_text(), 'liste « À encaisser » : le plus ancien en tête')
+
+    # 2. Confirmer des espèces : gardées par le chauffeur
+    await ligne_paiement(page, especes['numero']).get_by_role('button', name='Confirmer l\'encaissement').click()
+    f = await fenetre(page)
+    verifier('Paul Bernard, qui les remettra au bureau' in await f.locator('select[name=recu_par]').inner_text(),
+             'espèces : qui a reçu l\'argent (le chauffeur, ou le bureau)')
+    await f.get_by_role('button', name='Confirmer').click()
+    await fermee(page)
+    verifier(valeur(f"select statut || ' ' || coalesce(especes_chauffeur_id::text, '-') from public.paiements where id = '{especes['paiement']}'")
+             == f'encaisse {CHAUFFEUR}', 'espèces confirmées : gardées par Paul jusqu\'à leur remise')
+
+    # 3. Déclarer impayé (carte refusée), puis encaisser quand le client règle
+    await ligne_paiement(page, carte['numero']).get_by_role('button', name='Déclarer impayé').click()
+    f = await fenetre(page)
+    await f.get_by_role('button', name='Déclarer impayé').click()
+    verifier(await f.locator('.erreur-champ:not([hidden])').count() == 1, 'impayé : motif obligatoire')
+    await f.locator('textarea[name=motif]').fill('Carte refusée au terminal')
+    await f.get_by_role('button', name='Déclarer impayé').click()
+    await fermee(page)
+    verifier(valeur(f"select statut || ' ' || motif from public.paiements where id = '{carte['paiement']}'") == 'echoue Carte refusée au terminal',
+             'paiement déclaré impayé, avec son motif')
+    await page.get_by_role('tab', name=re.compile('^Impayés')).click()
+    await page.wait_for_function("location.search.includes('vue=impayes')")
+    await page.wait_for_selector(f"#liste-paiements tbody tr:has-text('{carte['numero']}')")
+    verifier('Carte refusée au terminal' in await ligne_paiement(page, carte['numero']).inner_text(), 'liste « Impayés » : le motif')
+    await ligne_paiement(page, carte['numero']).get_by_role('button', name='Encaisser (réglé depuis)').click()
+    f = await fenetre(page)
+    await f.get_by_role('button', name='Confirmer').click()
+    await fermee(page)
+    verifier(valeur(f"select statut from public.paiements where id = '{carte['paiement']}'") == 'encaisse', 'impayé encaissé une fois le client a réglé')
+
+    # 4. Annuler une partie de la somme due : avoir
+    await page.get_by_role('tab', name=re.compile('^À encaisser')).click()
+    await page.wait_for_selector(f"#liste-paiements tbody tr:has-text('{du_jour['numero']}')")
+    await ligne_paiement(page, du_jour['numero']).get_by_role('button', name='Annuler la somme').click()
+    f = await fenetre(page)
+    await f.locator('input[name=montant]').fill('2,50')
+    await f.locator('textarea[name=motif]').fill('Attente offerte')
+    await f.get_by_role('button', name='Annuler la somme').click()
+    await fermee(page)
+    reste = valeur(f"select montant from public.paiements where id = '{du_jour['paiement']}'")
+    verifier(round(float(reste), 2) == round(float(du_jour['montant']) - 2.5, 2)
+             and valeur(f"select count(*) from public.avoirs where paiement_id = '{du_jour['paiement']}' and montant_ttc = 2.50") == '1',
+             f'annulation partielle : 2,50 € retirés (reste {reste} €), avoir émis')
+
+    # 5. Encaissés du mois : liste, export, remboursement par carte
+    await page.get_by_role('tab', name=re.compile('^Encaissés')).click()
+    await page.wait_for_selector('#paiements-periode')
+    encaisses = valeur("""select count(*) from public.paiements where statut in ('encaisse', 'rembourse')
+                          and encaisse_le >= date_trunc('month', now() at time zone 'Europe/Paris') at time zone 'Europe/Paris'""")
+    await page.wait_for_function(f"document.getElementById('resume-paiements').textContent.includes('{encaisses} paiement')")
+    verifier(await page.input_value('#paiements-periode') == 'mois', f'encaissés de ce mois-ci : {encaisses} paiements')
+    async with page.expect_download() as telechargement:
+        await page.get_by_role('button', name='Exporter (CSV)').click()
+    contenu = open(await (await telechargement.value).path(), encoding='utf-8-sig').read()
+    verifier(contenu.startswith('Encaissé le;Course;') and contenu.count('\n') == int(encaisses),
+             'export des encaissés : en-têtes, une ligne par paiement')
+    await ligne_paiement(page, carte['numero']).get_by_role('button', name='Rembourser').click()
+    f = await fenetre(page)
+    verifier(await f.locator('select[name=mode]').input_value() == 'carte', 'remboursement d\'une carte : sur la carte par défaut')
+    await f.locator('input[name=montant]').fill('1,50')
+    await f.locator('textarea[name=motif]').fill('Détour non prévu')
+    await f.get_by_role('button', name='Rembourser').click()
+    await fermee(page)
+    verifier(valeur(f"""select r.mode || ' ' || r.montant || ' ' || a.numero from public.remboursements r
+                        join public.avoirs a on a.remboursement_id = r.id where r.paiement_id = '{carte['paiement']}'""").startswith('carte 1.50 AV-'),
+             'remboursement : 1,50 € sur la carte, avoir émis')
+    await page.screenshot(path=f'{CAPTURES}/admin-finances-encaissements.png', full_page=True)
+
+    # 6. Espèces des chauffeurs : remise au bureau, puis annulation
+    await page.get_by_role('tab', name='Espèces des chauffeurs').click()
+    await page.wait_for_selector('#liste-chauffeurs tbody tr')
+    detenu = json.loads(appel_rpc('admin_especes_chauffeurs', {}, ADMIN)[1])
+    paul = next(c for c in detenu['chauffeurs'] if c['chauffeur_id'] == CHAUFFEUR)
+    ligne_paul = page.locator('#liste-chauffeurs tbody tr', has_text='Paul Bernard')
+    verifier(f"{paul['a_remettre']:.2f}".replace('.', ',') in (await ligne_paul.inner_text()).replace(' ', ''),
+             f"Paul : {paul['a_remettre']} € à remettre, comme la base")
+    await ligne_paul.get_by_role('button', name='Enregistrer une remise').click()
+    f = await fenetre(page)
+    await f.locator('input[name=note]').fill('Enveloppe du navigateur')
+    await f.get_by_role('button', name='Enregistrer la remise').click()
+    await fermee(page)
+    remise = valeur("select numero || '|' || montant from public.remises_especes where note = 'Enveloppe du navigateur' order by cree_le desc limit 1").split('|')
+    verifier(remise[0].startswith('RE-') and float(remise[1]) == float(paul['a_remettre']),
+             f'remise enregistrée : reçu {remise[0]}, tout ce que Paul détenait')
+    await page.wait_for_selector(f"#liste-remises tbody tr:has-text('{remise[0]}')")
+    await page.locator('#liste-remises tbody tr', has_text=remise[0]).get_by_role('button', name='Annuler').click()
+    f = await fenetre(page)
+    await f.locator('textarea[name=motif]').fill('Montant à recompter')
+    await f.get_by_role('button', name='Annuler la remise').click()
+    await fermee(page)
+    verifier(valeur(f"select motif_annulation from public.remises_especes where numero = '{remise[0]}'") == 'Montant à recompter'
+             and 'Annulée' in await page.locator('#liste-remises tbody tr', has_text=remise[0]).inner_text(),
+             'remise annulée : motif conservé, ligne barrée et visible')
+    await page.screenshot(path=f'{CAPTURES}/admin-finances-especes.png', full_page=True)
+
+    # 7. Factures et avoirs : registre, continuité, export, pièces imprimables
+    await page.get_by_role('tab', name='Factures et avoirs').click()
+    await page.wait_for_selector('#liste-registre tbody tr')
+    pieces = valeur("""select (select count(*) from public.factures where date_emission >= date_trunc('month', now() at time zone 'Europe/Paris'))
+                            + (select count(*) from public.avoirs where date_emission >= date_trunc('month', now() at time zone 'Europe/Paris'))""")
+    verifier(f'{pieces} pièce' in await page.inner_text('#resume-registre'), f'registre du mois : {pieces} factures et avoirs')
+    verifier('aucun numéro manquant' in await page.inner_text('.continuite'), 'numérotation continue contrôlée : aucun numéro manquant')
+    async with page.expect_download() as telechargement:
+        await page.get_by_role('button', name='Exporter (CSV)').click()
+    registre = open(await (await telechargement.value).path(), encoding='utf-8-sig', newline='').read().split('\r\n')
+    verifier(registre[0].startswith('Date;Pièce;Type;') and len(registre) - 1 == int(pieces)
+             and any(';Avoir;' in l and ';-' in l for l in registre),
+             'export du registre : une ligne par pièce, avoirs en montants négatifs')
+    avoir = valeur(f"select a.id || '|' || a.numero from public.avoirs a join public.remboursements r on r.id = a.remboursement_id where r.paiement_id = '{carte['paiement']}'").split('|')
+    await page.goto(SITE + f'admin/finances/?avoir={avoir[0]}')
+    await page.wait_for_selector('.doc')
+    doc = await page.inner_text('.doc')
+    facture_carte = valeur(f"select numero from public.factures where course_id = '{carte['id']}'")
+    verifier('AVOIR' in doc.upper() and avoir[1] in doc and facture_carte in doc and 'Détour non prévu' in doc
+             and 'sur la carte de paiement' in doc, 'avoir imprimable : numéro, facture corrigée, motif, remboursement sur la carte')
+    await page.screenshot(path=f'{CAPTURES}/admin-avoir-ecran.png', full_page=True)
+    await page.get_by_role('link', name=facture_carte).click()
+    await page.wait_for_selector('.doc')
+    doc = await page.inner_text('.doc')
+    verifier('FACTURE' in doc.upper() and facture_carte in doc and 'Transport de personnes en VTC' in doc and 'Détail du prix (TTC)' in doc
+             and 'Majoration de nuit (+30 %)' in doc and 'Total TTC' in doc and 'ACQUITTÉE' in doc.upper() and 'LOC RÉACTION S.A.S' in doc,
+             'facture imprimable : désignation, détail du prix (majoration de nuit), totaux, acquittée')
+    verifier(avoir[1] in await page.inner_text('.carte-admin.non-imprimable'), 'facture : ses avoirs signalés à l\'écran (jamais imprimés)')
+    await page.screenshot(path=f'{CAPTURES}/admin-facture-ecran.png', full_page=True)
+    await page.emulate_media(media='print')
+    verifier(not await page.locator('#admin-menu').is_visible() and not await page.locator('.barre-document').is_visible()
+             and not await page.locator('.carte-admin.non-imprimable').is_visible(), 'impression : seulement la facture')
+    await page.pdf(path=f'{CAPTURES}/admin-facture.pdf', format='A4', print_background=True, prefer_css_page_size=True)
+    await page.emulate_media(media='screen')
+
+    # 8. Remboursements du mois
+    await page.goto(SITE + 'admin/finances/?vue=remboursements')
+    await page.wait_for_selector('#liste-remboursements tbody tr')
+    nb_remb = int(valeur("select count(*) from public.remboursements where cree_le >= date_trunc('month', now() at time zone 'Europe/Paris') at time zone 'Europe/Paris'"))
+    verifier(await page.locator('#liste-remboursements tbody tr').count() == min(nb_remb, 50)
+             and await page.locator(f'#liste-remboursements a:text("{avoir[1]}")').count() == 1,
+             f'remboursements du mois : {nb_remb}, avec le lien vers leur avoir')
+
+    # 9. TVA et dossier pour l'expert-comptable
+    await page.goto(SITE + 'admin/finances/?vue=tva')
+    await page.wait_for_selector('#tableau-tva tbody tr')
+    verifier(await page.locator('#tableau-tva tbody tr').count() == 17, 'TVA : 12 mois, 4 trimestres, l\'année')
+    annee = int(valeur("select extract(year from now() at time zone 'Europe/Paris')"))
+    tva = json.loads(appel_rpc('admin_tva', {'p_annee': annee}, ADMIN)[1])
+    mois_courant = valeur("select to_char(now() at time zone 'Europe/Paris', 'YYYY-MM')")
+    exigible = next(m for m in tva['mois'] if m['periode'] == mois_courant)['tva_exigible']
+    nom_mois = valeur("select (array['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'])[extract(month from now() at time zone 'Europe/Paris')]")
+    ligne_mois = (await page.locator('#tableau-tva tbody tr', has_text=f'{nom_mois} {annee}').inner_text()).replace(' ', '')
+    verifier(f'{exigible:.2f}'.replace('.', ',') in ligne_mois, f'TVA sur encaissements du mois : {exigible} €, comme la base')
+    await page.select_option('#dossier-periode', 'mois')
+    async with page.expect_download() as telechargement:
+        await page.get_by_role('button', name=re.compile('^Télécharger le dossier')).click()
+    import zipfile
+    archive = zipfile.ZipFile(await (await telechargement.value).path())
+    noms = [n.split('/')[-1] for n in archive.namelist()]
+    verifier(archive.testzip() is None and 'LISEZ-MOI.txt' in noms and '1-registre-factures-et-avoirs.csv' in noms
+             and '2-journal-des-encaissements.csv' in noms and '4-remises-especes-des-chauffeurs.csv' in noms
+             and any(n.startswith('6-sommes-dues-au-') for n in noms),
+             f'dossier ZIP : archive valable, {len(noms)} fichiers (LISEZ-MOI, registre, encaissements, remises, sommes dues…)')
+    registre_zip = archive.read(next(n for n in archive.namelist() if n.endswith('1-registre-factures-et-avoirs.csv'))).decode('utf-8-sig')
+    verifier(registre_zip.count('\r\n') == int(pieces), 'dossier ZIP : le registre du mois, une ligne par pièce')
+    await page.screenshot(path=f'{CAPTURES}/admin-finances-tva.png', full_page=True)
+
+    # 10. Fiche de la course : factures et avoirs, avec leurs liens
+    await page.goto(SITE + f"admin/courses/?id={du_jour['id']}")
+    await page.wait_for_selector('#titre-paiements')
+    verifier(await page.locator('#vue-fiche a[href*="finances/?avoir="]').count() == 1
+             and await page.locator('#vue-fiche a[href*="finances/?facture="]').count() == 1,
+             'fiche de la course : facture et avoir, chacun ouvrant sa pièce imprimable')
+    await ctx.close()
+
+    # Téléphone
+    ctx, page, _ = await entrer(nav, mobile=True)
+    for vue, attente, capture in [('a_encaisser', '#liste-paiements tbody tr', 'admin-finances-telephone'),
+                                  ('especes', '#liste-chauffeurs tbody tr', 'admin-finances-especes-telephone'),
+                                  ('factures', '#liste-registre tbody tr', 'admin-finances-factures-telephone'),
+                                  ('tva', '#tableau-tva tbody tr', 'admin-finances-tva-telephone')]:
+        await page.goto(SITE + f'admin/finances/?vue={vue}')
+        await page.wait_for_selector(attente)
+        verifier(await page.evaluate('document.documentElement.scrollWidth <= screen.width'),
+                 f'téléphone : « {vue} » sans défilement horizontal de la page')
+        await page.screenshot(path=f'{CAPTURES}/{capture}.png', full_page=True)
+    id_facture = valeur(f"select id from public.factures where course_id = '{carte['id']}'")
+    await page.goto(SITE + f'admin/finances/?facture={id_facture}')
+    await page.wait_for_selector('.doc')
+    verifier(await page.evaluate('document.documentElement.scrollWidth <= screen.width'), 'téléphone : facture sans défilement de la page')
+    await page.screenshot(path=f'{CAPTURES}/admin-facture-telephone.png', full_page=True)
+    await ctx.close()
+
+
 ETAPES = {'porte': porte, 'tableau': tableau_de_bord, 'dispatch': dispatch, 'courses': courses,
-          'clients': clients, 'entreprises': entreprises,
+          'clients': clients, 'entreprises': entreprises, 'finances': finances,
           'chauffeurs': chauffeurs, 'flotte': flotte, 'tarifs': tarifs, 'parametres': parametres}
 
 

@@ -131,6 +131,15 @@
    « tabulaires », sont réservés aux colonnes des tableaux) */
 .chiffre-cle dd, .chiffre-cle .valeur { margin: 0; font-family: var(--police-titre); font-weight: 700; font-size: 28px; line-height: 1.1; overflow-wrap: anywhere; font-variant-numeric: normal; }
 .chiffre-cle dd.detail, .chiffre-cle .detail { font-family: var(--police); font-weight: 500; font-size: 14px; line-height: 1.35; color: var(--gris); margin-top: 4px; }
+/* Accent rouge (retard, impayé, compte bloqué) ou or (à encaisser, à remettre) */
+.chiffre-cle.chiffre-rouge { border-left: 4px solid var(--rouge); }
+.chiffre-cle.chiffre-rouge .valeur { color: var(--rouge); }
+.chiffre-cle.chiffre-or { border-left: 4px solid var(--or); }
+/* Case de chiffre qui mène à la liste correspondante */
+a.chiffre-lien { display: grid; color: inherit; text-decoration: none; border-radius: 14px; }
+a.chiffre-lien .chiffre-cle { height: 100%; }
+a.chiffre-lien:hover .chiffre-cle, a.chiffre-lien:focus-visible .chiffre-cle { border-color: var(--nuit-2); background: #F6F8FB; }
+a.chiffre-lien[aria-current='true'] .chiffre-cle { border-color: var(--nuit); box-shadow: inset 0 0 0 1px var(--nuit); }
 
 /* Liste de définitions (fiches) */
 .fiche-donnees { display: grid; grid-template-columns: minmax(120px, max-content) 1fr; gap: 6px 16px; margin: 0; font-size: 16px; }

@@ -171,6 +171,15 @@ export const MODES_PAIEMENT = {
   especes: 'Espèces', carte: 'Carte au terminal', solde: 'Solde', facture_mensuelle: 'Facture mensuelle'
 };
 
+// Paiements : statut, nature ; moyens de remboursement
+export const STATUTS_PAIEMENT = {
+  a_encaisser: { libelle: 'À encaisser', ton: 'or' }, encaisse: { libelle: 'Encaissé', ton: 'vert' },
+  echoue: { libelle: 'Impayé', ton: 'rouge' }, rembourse: { libelle: 'Remboursé', ton: 'gris' }, annule: { libelle: 'Annulé', ton: 'gris' }
+};
+export const NATURES_PAIEMENT = { course: 'Course', pourboire: 'Pourboire', frais_annulation: 'Frais d\'annulation' };
+export const MODES_REMBOURSEMENT = { virement: 'Virement', carte: 'Sur la carte', especes: 'Espèces' };
+export const ORIGINES_AVOIR = { remboursement: 'Remboursement', annulation: 'Somme annulée' };
+
 export const TYPES_COURSE = { immediate: 'Immédiate', planifiee: 'Réservation', mise_a_disposition: 'Mise à disposition' };
 
 // Pièces des chauffeurs et des véhicules
@@ -193,6 +202,48 @@ export function badge(texte, ton = 'gris') {
 export function badgeCourse(statut) {
   const s = STATUTS_COURSE[statut] || { libelle: statut, ton: 'gris' };
   return badge(s.libelle, s.ton);
+}
+
+export function badgePaiement(statut) {
+  const s = STATUTS_PAIEMENT[statut] || { libelle: statut, ton: 'gris' };
+  return badge(s.libelle, s.ton);
+}
+
+// ---------------------------------------------------------------------------
+// Petits éléments des pages : bouton d'action, case de chiffre, ligne de
+// fiche, pluriel, mois en toutes lettres
+// ---------------------------------------------------------------------------
+// Bouton qui se désactive le temps de l'action (pas de double envoi)
+export function boutonAction(texte, action, classe = 'bouton-secondaire') {
+  const b = el('button', { type: 'button', classe: `bouton ${classe} bouton-petit`, texte });
+  b.addEventListener('click', async () => { b.disabled = true; try { await action(); } finally { b.disabled = false; } });
+  return b;
+}
+
+// Case de chiffre clé : libellé, valeur, détail ; ton : rouge (retard,
+// impayé) ou or (à encaisser, à remettre)
+export function tuile(libelle, valeur, detail = null, ton = null) {
+  return el('div', { classe: `chiffre-cle${ton ? ` chiffre-${ton}` : ''}` },
+    el('span', { classe: 'libelle', texte: libelle }),
+    el('span', { classe: 'valeur', texte: valeur }),
+    detail ? el('span', { classe: 'detail', texte: detail }) : null);
+}
+
+// Ligne de fiche (terme, valeur) ; rien si la valeur est vide
+export function ligne(libelle, valeur) {
+  if (valeur === null || valeur === undefined || valeur === '' || valeur === false) return [];
+  return [el('dt', { texte: libelle }), el('dd', {}, valeur)];
+}
+
+// « 1 course », « 3 courses »
+export function pluriel(n, un, plusieurs) {
+  return `${n} ${Number(n) > 1 ? plusieurs : un}`;
+}
+
+// « 2026-10 » → « octobre 2026 »
+export function moisLisible(mois) {
+  return new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+    .format(new Date(`${mois}-15T12:00:00Z`));
 }
 
 // ---------------------------------------------------------------------------
@@ -464,21 +515,29 @@ export function nombreCsv(valeur) {
   return String(valeur).replace('.', ',');
 }
 
-export function exporterCsv(nomFichier, colonnes, lignes) {
+// Contenu d'un fichier CSV (texte, avec la marque UTF-8 en tête)
+export function contenuCsv(colonnes, lignes) {
   const echapper = (v) => {
     const s = v === null || v === undefined ? '' : String(v);
     return /[";\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
-  const contenu = [
+  return '﻿' + [
     colonnes.map((c) => echapper(c.titre)).join(';'),
     ...lignes.map((l) => colonnes.map((c) => echapper(c.csv(l))).join(';'))
   ].join('\r\n');
-  const fichier = new Blob(['﻿' + contenu], { type: 'text/csv;charset=utf-8' });
+}
+
+// Fait télécharger un fichier préparé dans la page (CSV, ZIP)
+export function telechargerFichier(fichier, nomFichier) {
   const lien = el('a', { href: URL.createObjectURL(fichier), download: nomFichier, hidden: true });
   document.body.append(lien);
   lien.click();
   lien.remove();
   setTimeout(() => URL.revokeObjectURL(lien.href), 2000);
+}
+
+export function exporterCsv(nomFichier, colonnes, lignes) {
+  telechargerFichier(new Blob([contenuCsv(colonnes, lignes)], { type: 'text/csv;charset=utf-8' }), nomFichier);
 }
 
 // ---------------------------------------------------------------------------
@@ -599,7 +658,8 @@ export const JOURNAL_TABLES = {
   profils: 'Comptes (rôles, blocages, coordonnées)', comptes_pro: 'Comptes professionnels', comptes_pro_membres: 'Membres des comptes pro',
   paiements: 'Paiements', remboursements: 'Remboursements', factures: 'Factures', salaries: 'Salariés', contrats: 'Contrats',
   constantes_paie: 'Constantes de paie', parametres_paie: 'Taux de cotisation', bulletins: 'Bulletins de paie', absences: 'Absences',
-  temps_travail: 'Temps de travail', releves_plateformes: 'Relevés des plateformes', campagnes: 'Campagnes'
+  temps_travail: 'Temps de travail', releves_plateformes: 'Relevés des plateformes', campagnes: 'Campagnes',
+  avoirs: 'Avoirs', remises_especes: 'Remises d\'espèces'
 };
 export const JOURNAL_ACTIONS = {
   INSERT: 'Création', UPDATE: 'Modification', DELETE: 'Suppression',
@@ -616,7 +676,9 @@ const CHAMPS_JOURNAL = {
   tva_intracommunautaire: 'TVA intracommunautaire', email_facturation: 'E-mail de facturation', plafond_mensuel: 'Plafond mensuel',
   delai_paiement_jours: 'Délai de règlement (jours)', reservations_annulees: 'Réservations annulées', profil_id: 'Compte',
   compte_pro_id: 'Compte professionnel', telephone: 'Téléphone', prenom: 'Prénom', reference: 'Référence', siret: 'SIRET',
-  iban: 'IBAN', bic: 'BIC'
+  iban: 'IBAN', bic: 'BIC', especes_chauffeur_id: 'Espèces chez le chauffeur', encaisse_par: 'Encaissé par',
+  encaisse_le: 'Encaissé le', reference_externe: 'Référence', motif_annulation: 'Motif de l\'annulation', annulee_le: 'Annulée le',
+  annulee_par: 'Annulée par', recue_par: 'Reçue par', montant_ttc: 'Montant TTC', montant_ht: 'Montant HT', montant_tva: 'TVA'
 };
 
 export function valeurJournal(v) {

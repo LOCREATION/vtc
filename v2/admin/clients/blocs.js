@@ -2,8 +2,8 @@
 // LOC RÉACTION S.A.S — Version 2
 // Administration : clients et entreprises — éléments communs aux deux fiches
 // -----------------------------------------------------------------------------
-//   - boutons d'action (désactivés pendant l'opération) ;
-//   - cases de chiffres, étoiles, lignes de fiche, mois en toutes lettres ;
+//   - boutons d'action, cases de chiffres, lignes de fiche, mois en toutes
+//     lettres (repris du module commun), étoiles ;
 //   - montant à retenir pour une course ;
 //   - téléphone saisi « à la française » converti au format international ;
 //   - notes internes (lecture, ajout, retrait des siennes) ;
@@ -12,44 +12,18 @@
 // =============================================================================
 import { supabase } from '../../commun/supabase.js';
 import { el, afficherMessage, telephoneInternational } from '../../commun/outils.js';
-import { dateCourte, heure, tableau, confirmer, messageErreurAdmin, COLONNES_JOURNAL } from '../commun/composants.js';
+import {
+  dateCourte, heure, tableau, confirmer, messageErreurAdmin, COLONNES_JOURNAL, boutonAction, tuile, ligne, pluriel, moisLisible
+} from '../commun/composants.js';
 
-// Bouton qui se désactive le temps de l'action (pas de double envoi)
-export function boutonAction(texte, action, classe = 'bouton-secondaire') {
-  const b = el('button', { type: 'button', classe: `bouton ${classe} bouton-petit`, texte });
-  b.addEventListener('click', async () => { b.disabled = true; try { await action(); } finally { b.disabled = false; } });
-  return b;
-}
+// Bouton d'action, case de chiffre, ligne de fiche, pluriel, mois en toutes
+// lettres : éléments communs à toute l'administration (composants.js)
+export { boutonAction, tuile, ligne, pluriel, moisLisible };
 
-// Case de chiffre clé : libellé, valeur, détail
-export function tuile(libelle, valeur, detail = null, ton = null) {
-  return el('div', { classe: `chiffre-cle${ton ? ` chiffre-${ton}` : ''}` },
-    el('span', { classe: 'libelle', texte: libelle }),
-    el('span', { classe: 'valeur', texte: valeur }),
-    detail ? el('span', { classe: 'detail', texte: detail }) : null);
-}
-
-// « ★★★★☆ » lisible par les lecteurs d'écran (« 4 sur 5 »)
+// « ★★★★☆ » lisible par les lecteurs d'écran (« 4 sur 5 »)
 export function etoiles(note) {
   const n = Math.round(Number(note) || 0);
   return el('span', { classe: 'etoiles', 'aria-label': `${n} sur 5`, texte: '★'.repeat(n) + '☆'.repeat(5 - n) });
-}
-
-// Ligne de fiche (terme, valeur) ; rien si la valeur est vide
-export function ligne(libelle, valeur) {
-  if (valeur === null || valeur === undefined || valeur === '' || valeur === false) return [];
-  return [el('dt', { texte: libelle }), el('dd', {}, valeur)];
-}
-
-// « 2026-10 » → « octobre 2026 »
-export function moisLisible(mois) {
-  return new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' })
-    .format(new Date(`${mois}-15T12:00:00Z`));
-}
-
-// « 1 course », « 3 courses »
-export function pluriel(n, un, plusieurs) {
-  return `${n} ${Number(n) > 1 ? plusieurs : un}`;
 }
 
 // Montant à retenir pour une course : payé (terminée), frais (annulée), annoncé (sinon)
