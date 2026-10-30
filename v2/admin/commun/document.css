@@ -54,7 +54,9 @@
 .doc-table tr.doc-ligne-avoir td:first-child { padding-left: 18px; }
 .doc-numero { white-space: nowrap; }
 .doc-detail { display: block; color: var(--gris); font-size: 12.5px; white-space: normal; }
-.doc-glisser { display: none; color: var(--gris); font-size: 14px; margin: 0 0 -8px; }
+/* Conseil sur téléphone, au-dessus du tableau : jamais recouvert par lui,
+   même sur deux lignes (la colonne figée du tableau a un fond opaque) */
+.doc-glisser { display: none; color: var(--gris); font-size: 14px; margin: 0; }
 @media (max-width: 759px) { .doc-glisser { display: block; } }
 .barre-document { justify-content: flex-start; }
 
