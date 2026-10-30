@@ -9,18 +9,20 @@
 //   - la fiche (?id=…) : tout sur une course, en une lecture
 //     (admin_fiche_course), mise à jour en temps réel, avec les actions de
 //     correction : attribuer, relancer, retirer le chauffeur, faire avancer
-//     une étape (téléphone du chauffeur en panne), modifier, annuler,
-//     confirmer un encaissement, rembourser.
+//     une étape (téléphone du chauffeur en panne), modifier, annuler ;
+//     paiements : confirmer un encaissement, déclarer impayé, annuler la
+//     somme due ou rembourser (avoir automatique), comme dans Finances.
 // =============================================================================
 import { supabase } from '../../commun/supabase.js';
 import { el, euros, nombre, afficherMessage, apresPause } from '../../commun/outils.js';
 import { ouvrirAdministration, lienAdmin } from '../commun/admin.js';
 import {
-  badgeCourse, badge, dateCourte, heure, jourHeure, dateHeureComplete, valeurParis, instantParis,
-  MODES_PAIEMENT, TYPES_COURSE, tableau, exporterCsv, nombreCsv, boutonExporter, fenetreFormulaire,
-  confirmer, messageErreurAdmin, jourParis, nomComplet, lienTelephone, telephoneLisible
+  badgeCourse, badge, badgePaiement, dateCourte, heure, jourHeure, dateHeureComplete, valeurParis, instantParis,
+  MODES_PAIEMENT, NATURES_PAIEMENT, MODES_REMBOURSEMENT, ORIGINES_AVOIR, TYPES_COURSE, tableau, exporterCsv, nombreCsv,
+  boutonExporter, fenetreFormulaire, confirmer, messageErreurAdmin, jourParis, nomComplet, lienTelephone, telephoneLisible
 } from '../commun/composants.js';
 import { fenetreAttribution, relancerRecherche, retirerChauffeur, annulerCourse } from '../commun/actions-course.js';
+import { actionsPaiement } from '../commun/actions-paiement.js';
 
 const $ = (id) => document.getElementById(id);
 const PAR_PAGE = 50;
@@ -202,6 +204,9 @@ const ETAPES = {
   desistement_chauffeur: 'Désistement du chauffeur',
   chauffeur_retire: 'Chauffeur retiré par l\'administration',
   paiement_encaisse: 'Paiement encaissé',
+  paiement_impaye: 'Paiement déclaré impayé',
+  paiement_annule: 'Somme annulée',
+  remboursement: 'Remboursement',
   pourboire: 'Pourboire laissé par le client'
 };
 const ROLES = { admin: 'administration', chauffeur: 'chauffeur', client: 'client' };
@@ -209,11 +214,6 @@ const ROLES = { admin: 'administration', chauffeur: 'chauffeur', client: 'client
 const AUTOMATIQUES = ['proposee', 'aucun_chauffeur_disponible', 'demande_expiree', 'recherche_automatique'];
 const ANNULEE_PAR = { client: 'le client', chauffeur: 'le chauffeur', admin: 'l\'administration', systeme: 'le système' };
 const ATTRIBUTION = { automatique: 'Recherche automatique', manuelle: 'À la main', prise_directe: 'Prise par le chauffeur (réservations libres)' };
-const STATUTS_PAIEMENT = {
-  a_encaisser: { libelle: 'À encaisser', ton: 'or' }, encaisse: { libelle: 'Encaissé', ton: 'vert' },
-  echoue: { libelle: 'Échoué', ton: 'rouge' }, rembourse: { libelle: 'Remboursé', ton: 'gris' }, annule: { libelle: 'Annulé', ton: 'gris' }
-};
-const NATURES = { course: 'Course', pourboire: 'Pourboire', frais_annulation: 'Frais d\'annulation' };
 const PROPOSITIONS = {
   envoyee: { libelle: 'En attente', ton: 'or' }, acceptee: { libelle: 'Acceptée', ton: 'vert' },
   refusee: { libelle: 'Refusée', ton: 'rouge' }, expiree: { libelle: 'Sans réponse', ton: 'gris' }, annulee: { libelle: 'Retirée', ton: 'gris' }
@@ -325,35 +325,43 @@ function afficherFiche(f) {
       ...ligne('Pourboire', Number(c.pourboire) > 0 ? euros(c.pourboire) : null),
       ...ligne('Paiement', MODES_PAIEMENT[c.mode_paiement] || c.mode_paiement)));
 
-  // Paiements et factures
+  // Paiements, remboursements, factures et avoirs
   const paiements = el('section', { classe: 'carte-admin', 'aria-labelledby': 'titre-paiements' },
     el('h2', { id: 'titre-paiements', texte: 'Paiements' }),
     tableau({
       colonnes: [
-        { titre: 'Nature', valeur: (p) => NATURES[p.nature] || p.nature },
-        { titre: 'Montant', droite: true, valeur: (p) => el('span', {}, euros(p.montant), Number(p.rembourse) > 0 ? el('span', { classe: 'secondaire', texte: `dont ${euros(p.rembourse)} remboursé` }) : null) },
-        { titre: 'Mode', valeur: (p) => MODES_PAIEMENT[p.mode] || p.mode },
-        { titre: 'Statut', valeur: (p) => { const s = STATUTS_PAIEMENT[p.statut] || { libelle: p.statut, ton: 'gris' }; return badge(s.libelle, s.ton); } },
-        { titre: 'Encaissé', valeur: (p) => (p.encaisse_le ? `${jourHeure(p.encaisse_le)}${p.encaisse_par ? ` par ${p.encaisse_par}` : ''}` : '—') },
-        { titre: '', valeur: (p) => actionsPaiement(p, recharger) }
+        { titre: 'Nature', valeur: (p) => NATURES_PAIEMENT[p.nature] || p.nature },
+        { titre: 'Montant', droite: true, valeur: (p) => el('span', {}, euros(p.montant),
+          Number(p.rembourse) > 0 ? el('span', { classe: 'secondaire', texte: `dont ${euros(p.rembourse)} remboursé` }) : null,
+          Number(p.annule) > 0 && p.statut !== 'annule' ? el('span', { classe: 'secondaire', texte: `${euros(p.annule)} déjà annulés` }) : null) },
+        { titre: 'Mode', valeur: (p) => el('span', {}, MODES_PAIEMENT[p.mode] || p.mode,
+          p.mode === 'especes' && ['encaisse', 'rembourse'].includes(p.statut)
+            ? el('span', { classe: 'secondaire', texte: p.especes_chez ? `chez ${p.especes_chez} (à remettre)` : 'reçues au bureau' }) : null) },
+        { titre: 'Statut', valeur: (p) => el('span', {}, badgePaiement(p.statut), p.motif ? el('span', { classe: 'secondaire', texte: p.motif }) : null) },
+        { titre: 'Encaissé', valeur: (p) => (p.encaisse_le ? `${jourHeure(p.encaisse_le)}${p.encaisse_par_nom ? ` par ${p.encaisse_par_nom}` : ''}` : '—') },
+        { titre: '', valeur: (p) => { const a = actionsPaiement(p, recharger); return a.length ? el('div', { classe: 'actions-ligne' }, ...a) : el('span'); } }
       ],
       lignes: f.paiements, vide: c.statut === 'terminee' ? 'Aucun paiement (course gratuite).' : 'Le paiement est créé à la fin de la course.'
     }),
     f.remboursements.length ? el('div', {}, el('h3', { classe: 'sous-section', texte: 'Remboursements' }),
       el('ul', { classe: 'liste-simple' }, ...f.remboursements.map((r) => el('li', {},
-        el('strong', { texte: euros(r.montant) }), ` le ${dateHeureComplete(r.cree_le)}${r.cree_par ? ` par ${r.cree_par}` : ''} : ${r.motif}`)))) : null,
-    el('h3', { classe: 'sous-section', texte: 'Factures' }),
+        el('strong', { texte: euros(r.montant) }),
+        ` ${(MODES_REMBOURSEMENT[r.mode] || r.mode).toLowerCase()}, le ${dateHeureComplete(r.cree_le)}${r.cree_par ? ` par ${r.cree_par}` : ''} : ${r.motif}`,
+        r.avoir_id ? el('span', { classe: 'secondaire' }, 'Avoir ', el('a', { href: lienAdmin(`finances/?avoir=${r.avoir_id}`), texte: r.avoir_numero })) : null)))) : null,
+    el('h3', { classe: 'sous-section', texte: 'Factures et avoirs' }),
     tableau({
       colonnes: [
-        { titre: 'Numéro', valeur: (x) => x.numero },
-        { titre: 'Nature', valeur: (x) => (x.nature === 'course' ? 'Course' : 'Frais d\'annulation') },
+        { titre: 'Numéro', valeur: (x) => el('a', { href: lienAdmin(x.type === 'avoir' ? `finances/?avoir=${x.id}` : `finances/?facture=${x.id}`), texte: x.numero }) },
+        { titre: 'Pièce', valeur: (x) => (x.type === 'avoir'
+          ? el('span', {}, `Avoir sur ${x.facture_numero}`, el('span', { classe: 'secondaire', texte: `${ORIGINES_AVOIR[x.origine] || x.origine} : ${x.motif}` }))
+          : (x.nature === 'course' ? 'Facture de la course' : 'Facture des frais d\'annulation')) },
         { titre: 'Date', valeur: (x) => dateCourte(x.date_emission) },
-        { titre: 'HT', droite: true, valeur: (x) => euros(x.montant_ht) },
-        { titre: `TVA`, droite: true, valeur: (x) => `${euros(x.montant_tva)} (${nombre(x.taux_tva, 2)} %)` },
-        { titre: 'TTC', droite: true, valeur: (x) => euros(x.montant_ttc) },
-        { titre: 'Statut', valeur: (x) => (x.statut === 'emise' ? badge('Émise', 'vert') : badge('Annulée', 'gris')) }
+        { titre: 'HT', droite: true, valeur: (x) => (x.type === 'avoir' ? `− ${euros(x.montant_ht)}` : euros(x.montant_ht)) },
+        { titre: 'TVA', droite: true, valeur: (x) => `${x.type === 'avoir' ? '− ' : ''}${euros(x.montant_tva)} (${nombre(x.taux_tva, 2)} %)` },
+        { titre: 'TTC', droite: true, valeur: (x) => (x.type === 'avoir' ? el('span', { classe: 'texte-rouge', texte: `− ${euros(x.montant_ttc)}` }) : euros(x.montant_ttc)) }
       ],
-      lignes: f.factures, vide: 'Aucune facture : elle est émise automatiquement à la fin de la course (ou pour des frais d\'annulation).'
+      lignes: [...f.factures.map((x) => ({ ...x, type: 'facture' })), ...f.avoirs.map((x) => ({ ...x, type: 'avoir' }))],
+      vide: 'Aucune facture : elle est émise automatiquement à la fin de la course (ou pour des frais d\'annulation).'
     }));
 
   // Étapes horodatées
@@ -403,7 +411,13 @@ function detailEtape(e) {
   if (e.type === 'proposee' && d.distance_km !== undefined) return `chauffeur à ${nombre(d.distance_km, 1)} km`;
   if (e.type === 'annulee') return `par ${ANNULEE_PAR[d.par] || d.par || '—'}${Number(d.frais) > 0 ? `, frais ${euros(d.frais)}` : ''}`;
   if ((e.type === 'desistement_chauffeur' || e.type === 'chauffeur_retire') && d.motif) return `motif : ${d.motif}`;
-  if (e.type === 'paiement_encaisse') return `${euros(d.montant)} · ${MODES_PAIEMENT[d.mode] || d.mode || ''}`;
+  if (e.type === 'paiement_encaisse') {
+    return `${euros(d.montant)} · ${MODES_PAIEMENT[d.mode] || d.mode || ''}${d.au_bureau === true ? ', reçues au bureau' : d.au_bureau === false ? ', gardées par le chauffeur' : ''}`
+      + `${d.releve ? `, relevé ${d.releve}` : ''}`;
+  }
+  if (e.type === 'paiement_impaye') return `${euros(d.montant)} · ${d.motif || ''}`;
+  if (e.type === 'paiement_annule') return `${euros(d.montant)}${d.avoir ? `, avoir ${d.avoir}` : ''} · ${d.motif || ''}`;
+  if (e.type === 'remboursement') return `${euros(d.montant)} · ${(MODES_REMBOURSEMENT[d.mode] || d.mode || '').toLowerCase()}${d.avoir ? `, avoir ${d.avoir}` : ''}`;
   if (e.type === 'pourboire') return euros(d.montant);
   if (e.type === 'commande' && d.prix_total !== undefined) return `prix annoncé ${euros(d.prix_total)}`;
   return '';
@@ -495,44 +509,6 @@ async function modifier(c, recharger) {
     }
   });
   if (fait === 'modifiee') { afficherMessage(`${c.numero} modifiée.`, 'succes'); await recharger(); }
-}
-
-function actionsPaiement(p, recharger) {
-  const actions = [];
-  if (p.statut === 'a_encaisser') {
-    actions.push(boutonAction('Confirmer l\'encaissement', async () => {
-      const ok = await confirmer({
-        titre: `Confirmer l'encaissement de ${euros(p.montant)} ?`,
-        texte: `${MODES_PAIEMENT[p.mode] || p.mode} : confirmez seulement si l'argent a bien été reçu.`, libelle: 'Confirmer'
-      });
-      if (!ok) return;
-      const { error } = await supabase.rpc('confirmer_encaissement', { p_paiement: p.id });
-      if (error) { afficherMessage(messageErreurAdmin(error), 'erreur'); return; }
-      afficherMessage('Encaissement confirmé.', 'succes');
-      await recharger();
-    }));
-  }
-  const reste = Math.round((Number(p.montant) - Number(p.rembourse)) * 100) / 100;
-  if (['encaisse', 'rembourse'].includes(p.statut) && reste > 0) {
-    actions.push(boutonAction('Rembourser', async () => {
-      const fait = await fenetreFormulaire({
-        titre: 'Rembourser le client',
-        intro: `Paiement de ${euros(p.montant)} (${NATURES[p.nature] || p.nature}) : au plus ${euros(reste)} à rembourser.`,
-        champs: [
-          { nom: 'montant', libelle: 'Montant à rembourser (€)', type: 'nombre', requis: true, min: 0.01, max: reste, pas: '0.01', plein: true },
-          { nom: 'motif', libelle: 'Motif, transmis au client', type: 'zone', requis: true, longueur: 500, plein: true }
-        ],
-        valeurs: { montant: reste },
-        libelle: 'Rembourser',
-        enregistrer: async (v) => {
-          const { error } = await supabase.rpc('rembourser', { p_paiement: p.id, p_montant: v.montant, p_motif: v.motif });
-          if (error) throw error;
-        }
-      });
-      if (fait) { afficherMessage('Remboursement enregistré. Le client est prévenu.', 'succes'); await recharger(); }
-    }));
-  }
-  return actions.length ? el('div', { classe: 'actions-ligne' }, ...actions) : '';
 }
 
 // ---------------------------------------------------------------------------

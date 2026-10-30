@@ -1,0 +1,75 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Administration : finances
+   -----------------------------------------------------------------------------
+   Encaissements, espèces des chauffeurs, factures et avoirs, remboursements,
+   TVA et export. Les factures et avoirs imprimables suivent la mise en page
+   commune des documents (../commun/document.css).
+   ============================================================================= */
+
+.contenu-finances { display: grid; gap: 16px; min-width: 0; }
+.contenu-finances .carte-admin { align-content: start; }
+/* Éléments de grille : jamais plus larges que l'écran (un tableau large
+   défile dans son propre cadre, la page jamais) */
+.contenu-finances > *, .contenu-finances .carte-admin > * { min-width: 0; }
+
+/* ---------- Listes ---------- */
+.rechargement { opacity: 0.55; transition: opacity 0.15s ease; }
+.tableau .secondaire .badge { margin-top: 4px; }
+.tableau .actions-ligne { gap: 6px; }
+.tableau .actions-ligne .bouton { min-height: 38px; padding: 0 12px; font-size: 14px; }
+/* Numéros de reçu et téléphones : sur une seule ligne */
+.tableau .mono, .tableau a[href^='tel:'] { white-space: nowrap; }
+.sous-section { font-size: 17px; font-weight: 600; margin-top: 6px; }
+.liste-simple { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+.liste-simple .secondaire { display: block; color: var(--gris); font-size: 14px; }
+.aide-module { color: var(--gris); font-size: 15px; margin: 0; }
+
+/* Listes de l'onglet Encaissements : choix segmenté, avec le nombre de chacune */
+.sous-onglets { display: flex; flex-wrap: wrap; gap: 6px; }
+.sous-onglets .onglet { min-height: 38px; padding: 0 14px; font-size: 15px; }
+
+/* Résumé d'une liste : nombre, total, répartition par mode */
+.resume-liste { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; color: var(--gris); font-size: 15px; margin: 0; }
+.resume-liste strong { color: var(--nuit); font-size: 17px; font-variant-numeric: tabular-nums; }
+
+/* Période : choix rapide et dates */
+.barre-outils .champ-periode { flex: 2 1 200px; }
+
+/* ---------- Contrôle de la numérotation continue ---------- */
+.continuite { display: grid; gap: 4px; padding: 12px 14px; border-radius: var(--rayon-champ); border-left: 4px solid var(--vert); background: #E3F2E8; }
+.continuite[data-etat='anomalie'] { border-left-color: var(--rouge); background: #FCEDEC; }
+.continuite strong { font-weight: 600; }
+.continuite p { margin: 0; font-size: 15px; }
+.numero-piece { white-space: nowrap; }
+
+/* ---------- TVA : tableau de chiffres (défile dans son cadre sur téléphone) ---------- */
+.table-tva tbody th { text-align: left; font-size: 14px; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--nuit);
+  padding: 7px 8px; border-bottom: 1px solid var(--trait); white-space: nowrap; }
+.table-tva tbody tr.ligne-trimestre th, .table-tva tbody tr.ligne-trimestre td { background: #F3F6FA; font-weight: 600; }
+.table-tva tbody tr.ligne-annee th { background: #E8EEF8; font-weight: 700; border-top: 1.5px solid var(--nuit); }
+.table-tva tbody tr.ligne-annee td { background: #E8EEF8; font-weight: 700; border-top: 1.5px solid var(--nuit); }
+.table-tva tbody tr.mois-vide th, .table-tva tbody tr.mois-vide td { color: var(--gris); }
+.table-tva .colonne-cle { background: #FFFBEF; }
+/* Téléphone : la colonne des périodes reste visible quand le tableau défile */
+.table-tva th:first-child { position: sticky; left: 0; z-index: 1; background: var(--blanc); }
+.table-tva tbody tr.ligne-trimestre th:first-child { background: #F3F6FA; }
+.table-tva tbody tr.ligne-annee th:first-child { background: #E8EEF8; }
+.table-tva tbody tr.ligne-trimestre td.colonne-cle, .table-tva tbody tr.ligne-annee td.colonne-cle { background: #FBF3DC; }
+.explication { display: grid; gap: 6px; font-size: 15px; color: var(--gris); }
+.explication p { margin: 0; }
+.explication strong { color: var(--nuit); font-weight: 600; }
+
+/* ---------- Dossier pour l'expert-comptable ---------- */
+.contenu-dossier { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 15px; }
+.contenu-dossier .secondaire { display: block; color: var(--gris); font-size: 14px; }
+.boutons-export { display: flex; flex-wrap: wrap; gap: 8px; }
+.boutons-export .bouton { min-height: 42px; }
+
+/* ---------- Espèces : détail d'un chauffeur ---------- */
+.reste-partiel { color: var(--gris); font-size: 14px; }
+
+/* Choix de l'année, à droite du titre */
+.champ-mois { min-width: 0; display: flex; align-items: center; gap: 8px; }
+.champ-mois label { margin: 0; color: var(--gris); font-weight: 500; }
+.champ-mois .saisie { min-height: 42px; width: auto; }

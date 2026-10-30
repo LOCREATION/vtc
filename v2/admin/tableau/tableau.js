@@ -18,9 +18,10 @@ const $ = (id) => document.getElementById(id);
 const etat = { carte: null, calques: null, premiereVue: true, serie: [] };
 
 // Pages vers lesquelles mènent les alertes (modules construits)
+// (une alerte peut aussi porter son propre lien, vers la bonne liste)
 const PAGES = {
   dispatch: 'dispatch/', courses: 'courses/', clients: 'clients/?vue=entreprises', chauffeurs: 'chauffeurs/',
-  flotte: 'flotte/', tarifs: 'tarifs/', parametres: 'parametres/'
+  flotte: 'flotte/', tarifs: 'tarifs/', finances: 'finances/', parametres: 'parametres/'
 };
 
 ouvrirAdministration({ module: 'tableau' }).then(async () => {
@@ -119,7 +120,7 @@ function afficherAlertes(alertes) {
   $('alertes').replaceChildren(...alertes.map((a) => el('li', { classe: 'alerte-admin', dataset: { niveau: a.niveau } },
     el('span', { classe: 'alerte-niveau', texte: NIVEAUX[a.niveau] || a.niveau }),
     el('strong', { texte: a.titre }),
-    PAGES[a.module] ? el('a', { href: lienAdmin(PAGES[a.module]), texte: 'Ouvrir' }) : null,
+    a.lien || PAGES[a.module] ? el('a', { href: lienAdmin(a.lien || PAGES[a.module]), texte: 'Ouvrir' }) : null,
     el('p', { texte: a.detail }))));
 }
 
