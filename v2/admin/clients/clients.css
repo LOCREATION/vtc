@@ -1,0 +1,149 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Administration : clients et entreprises
+   -----------------------------------------------------------------------------
+   Listes, fiches (client, entreprise), notes internes, historique, et le
+   relevé mensuel imprimable : à l'écran un document lisible sur téléphone,
+   à l'impression une page A4 sans le menu ni les boutons.
+   ============================================================================= */
+
+.contenu-clients { display: grid; gap: 16px; min-width: 0; }
+/* Deux rubriques côte à côte ont la même hauteur, mais leur contenu reste
+   calé en haut (sans espace réparti entre les lignes ni bouton étiré) */
+.contenu-clients .carte-admin { align-content: start; }
+.tableau-repliable { display: grid; gap: 10px; min-width: 0; }
+
+/* ---------- Listes ---------- */
+.rechargement { opacity: 0.55; transition: opacity 0.15s ease; }
+.trajet-court { display: block; max-width: 340px; }
+.tableau .secondaire .badge { margin-top: 4px; }
+.badges-ligne { display: flex; flex-wrap: wrap; gap: 4px 6px; }
+.resultats-comptes { display: grid; gap: 10px; }
+
+/* Cases de chiffres : accent rouge (retard, compte bloqué) ou or (à encaisser) */
+.chiffre-cle.chiffre-rouge { border-left: 4px solid var(--rouge); }
+.chiffre-cle.chiffre-rouge .valeur { color: var(--rouge); }
+.chiffre-cle.chiffre-or { border-left: 4px solid var(--or); }
+
+/* ---------- Fiches ---------- */
+.pile { display: grid; gap: 16px; align-content: start; min-width: 0; }
+.sous-section { font-size: 17px; font-weight: 600; margin-top: 6px; }
+.liste-simple { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+.liste-simple .secondaire { display: block; color: var(--gris); font-size: 14px; }
+.liste-simple .badge { vertical-align: middle; }
+.etoiles { color: #A8882B; letter-spacing: 0.08em; }
+.texte-long { white-space: pre-wrap; font-weight: 400; margin: 0; }
+.repli[open] { display: grid; gap: 10px; }
+.carte-attention { border-left: 4px solid var(--or); }
+.montant-solde { font-family: var(--police-titre); font-size: 24px; font-weight: 700; }
+.liste-mouvements { padding-left: 0; list-style: none; }
+.liste-mouvements li { padding-bottom: 8px; border-bottom: 1px dashed var(--trait); }
+.liste-mouvements li:last-child { border-bottom: 0; padding-bottom: 0; }
+
+/* Choix du mois du relevé, à droite du titre */
+.champ-mois { min-width: 0; display: flex; align-items: center; gap: 8px; }
+.champ-mois label { margin: 0; color: var(--gris); font-weight: 500; }
+.champ-mois .saisie { min-height: 42px; width: auto; }
+.totaux-releve dd strong { font-size: 18px; }
+
+/* ---------- Notes internes ---------- */
+.liste-notes { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.liste-notes li { background: #FFFBEF; border: 1px solid #EFE2B8; border-radius: var(--rayon-champ); padding: 10px 12px; display: grid; gap: 6px; }
+.note-pied { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; }
+.note-pied .secondaire { color: var(--gris); font-size: 14px; }
+.note-pied .bouton-texte { min-height: 32px; padding: 0 4px; font-size: 15px; color: var(--rouge); }
+.formulaire-note { display: grid; gap: 8px; }
+.formulaire-note label { font-weight: 600; }
+
+/* ---------- Historique (replié tant qu'on ne l'ouvre pas) ---------- */
+.repli-historique > summary { font-family: var(--police-titre); font-size: 21px; }
+.repli-historique[open] > summary { margin-bottom: 4px; }
+
+/* =============================================================================
+   Relevé mensuel imprimable
+   ============================================================================= */
+.releve-document {
+  background: var(--blanc); border: 1px solid var(--trait); border-radius: 14px;
+  padding: 20px 16px; display: grid; gap: 18px; width: 100%; max-width: 920px; min-width: 0;
+  font-size: 15px; line-height: 1.4;
+}
+@media (min-width: 760px) { .releve-document { padding: 32px 36px; } }
+
+.releve-entete { display: grid; gap: 16px; }
+@media (min-width: 640px) { .releve-entete { grid-template-columns: 1.3fr 1fr; align-items: start; } }
+.releve-emetteur { display: grid; gap: 1px; color: var(--gris); font-size: 14px; }
+.releve-logo { width: 72px; height: 36px; margin-bottom: 6px; }
+.releve-raison { color: var(--nuit); font-family: var(--police-titre); font-size: 20px; font-weight: 700; }
+.releve-titre { display: grid; gap: 4px; }
+@media (min-width: 640px) { .releve-titre { text-align: right; justify-items: end; } }
+.releve-titre h2 { font-size: 26px; text-transform: uppercase; letter-spacing: 0.04em; }
+.releve-mois { font-family: var(--police-titre); font-size: 20px; font-weight: 600; margin: 0; }
+.releve-provisoire { margin: 0; color: var(--rouge); font-weight: 600; }
+.releve-titre dl { display: grid; grid-template-columns: auto auto; gap: 2px 10px; margin: 6px 0 0; font-size: 15px; }
+.releve-titre dt { color: var(--gris); }
+.releve-titre dd { margin: 0; font-weight: 600; }
+
+.releve-client { display: grid; gap: 1px; padding: 12px 14px; border: 1px solid var(--trait); border-radius: var(--rayon-champ); background: #F8FAFC; }
+@media (min-width: 640px) { .releve-client { width: min(100%, 420px); justify-self: end; } }
+.releve-etiquette { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gris); }
+.releve-client strong { font-size: 17px; }
+
+/* Tableau du relevé : toujours un vrai tableau (jamais en fiches), qui défile
+   horizontalement dans son cadre sur téléphone */
+.releve-defilement { overflow-x: auto; min-width: 0; }
+.releve-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.releve-defilement .releve-table { min-width: 720px; }
+.releve-table th { text-align: left; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--gris);
+  padding: 6px 8px; border-bottom: 1.5px solid var(--nuit); white-space: nowrap; }
+.releve-table td { padding: 7px 8px; border-bottom: 1px solid var(--trait); vertical-align: top; }
+.releve-table .droite { text-align: right; white-space: nowrap; }
+.releve-numero { white-space: nowrap; }
+.releve-detail { display: block; color: var(--gris); font-size: 12.5px; white-space: normal; }
+.releve-glisser { display: none; color: var(--gris); font-size: 14px; margin: 0 0 -8px; }
+@media (max-width: 759px) { .releve-glisser { display: block; } }
+.barre-releve { justify-content: flex-start; }
+
+.releve-bloc { display: grid; gap: 8px; }
+.releve-bloc h3 { font-size: 17px; }
+.releve-totaux { display: grid; justify-items: end; }
+.releve-totaux dl { display: grid; grid-template-columns: auto auto; gap: 4px 18px; margin: 0; min-width: min(100%, 360px); }
+.releve-totaux dt { color: var(--gris); }
+.releve-totaux dd { margin: 0; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.releve-totaux .releve-trait { grid-column: 1 / -1; border-top: 1.5px solid var(--nuit); margin-top: 2px; }
+.releve-totaux .releve-reste { color: var(--nuit); font-size: 18px; font-weight: 700; }
+.releve-iban { font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 15px; letter-spacing: 0.03em; overflow-wrap: anywhere; }
+.releve-reglement p { margin: 0; }
+.releve-mentions { white-space: pre-wrap; color: var(--gris); font-size: 13px; }
+
+/* Impression : seule la page du relevé, au format A4 */
+@media print {
+  @page { size: A4; margin: 12mm 12mm 14mm; }
+  html, body, body.admin { background: #FFFFFF !important; }
+  .admin-menu, .admin-entete, .admin-voile, .onglets, .non-imprimable, .zone-messages, .porte { display: none !important; }
+  .admin-cadre, .admin-zone, .admin-page, .contenu-clients { display: block !important; min-height: 0; padding: 0 !important; }
+  .releve-document { border: 0; border-radius: 0; padding: 0; max-width: none; gap: 10px; font-size: 9.5pt; color: #000000; }
+  .releve-logo { width: 56px; height: 28px; margin-bottom: 2px; }
+  .releve-raison { font-size: 14pt; }
+  .releve-emetteur { font-size: 8.5pt; }
+  .releve-titre h2 { font-size: 17pt; }
+  .releve-mois { font-size: 13pt; }
+  .releve-titre dl { font-size: 9.5pt; }
+  .releve-client { padding: 8px 10px; }
+  .releve-client strong { font-size: 11pt; }
+  .releve-bloc h3 { font-size: 10.5pt; }
+  .releve-totaux .releve-reste { font-size: 12pt; }
+  .releve-entete { grid-template-columns: 1.3fr 1fr; }
+  .releve-titre { text-align: right; justify-items: end; }
+  .releve-client { width: 360px; justify-self: end; background: none; }
+  .releve-defilement { overflow: visible; }
+  .releve-defilement .releve-table { min-width: 0; }
+  .releve-table { font-size: 8.5pt; }
+  .releve-table td { padding: 4px 6px; }
+  .releve-table th { padding: 4px 6px; }
+  .releve-table thead { display: table-header-group; }
+  .releve-table tr { break-inside: avoid; }
+  .releve-detail { font-size: 7.5pt; }
+  .releve-totaux { break-inside: avoid; }
+  .releve-reglement h3 { break-after: avoid; }
+  a { color: inherit; text-decoration: none; }
+}

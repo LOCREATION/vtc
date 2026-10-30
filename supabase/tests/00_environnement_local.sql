@@ -63,6 +63,7 @@ create table auth.users (
   updated_at           timestamptz default now(),
   phone                text unique default null,
   phone_confirmed_at   timestamptz,
+  last_sign_in_at      timestamptz,
   is_anonymous         boolean not null default false
 );
 grant select, insert, update, delete on auth.users to supabase_auth_admin;
