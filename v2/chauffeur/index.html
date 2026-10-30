@@ -1,0 +1,96 @@
+<!doctype html>
+<!-- =============================================================================
+     LOC RÉACTION S.A.S — Version 2
+     Espace chauffeur : accueil
+     En ligne / hors ligne, chiffres du jour, courses attribuées, filtre de
+     destination, réservations à prendre, demande entrante en plein écran.
+     ============================================================================= -->
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Espace chauffeur, LOC RÉACTION</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0A1A38">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="icon" href="../commun/img/icone.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../commun/img/icone-192.png">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="../commun/styles.css">
+  <link rel="stylesheet" href="chauffeur.css">
+  <script type="module" src="chauffeur.js"></script>
+</head>
+<body class="theme-nuit">
+  <header class="barre">
+    <a class="marque" href="../">
+      <img src="../commun/img/logo.svg" alt="" width="56" height="28">
+      <span>LOC RÉACTION</span>
+    </a>
+    <p class="pastille-etat" id="pastille-etat" data-en-ligne="false">Hors ligne</p>
+  </header>
+
+  <main>
+    <p class="alerte contenu" id="acces-refuse" hidden>
+      Cet espace est réservé aux chauffeurs validés par LOC RÉACTION.
+      <a href="../">Retour à l'accueil</a>
+    </p>
+
+    <div class="espace-chauffeur" id="espace" hidden>
+      <div class="carte" id="carte" role="img" aria-label="Carte : ma position"></div>
+
+      <section class="panneau" aria-labelledby="titre-service">
+        <h1 class="visuellement-cache" id="titre-service">Mon service</h1>
+        <button type="button" class="bouton bouton-principal bouton-large bouton-en-ligne" id="bascule-en-ligne" data-en-ligne="false">Passer en ligne</button>
+        <p class="aide" id="aide-en-ligne">Gardez l'application ouverte, écran allumé : les demandes arrivent ici avec un son et une vibration.</p>
+        <p class="alerte" id="erreur-en-ligne" role="alert" hidden></p>
+        <button type="button" class="bouton bouton-secondaire bouton-large" id="activer-son" hidden>Activer le son des demandes</button>
+        <dl class="chiffres">
+          <div><dt>Courses aujourd'hui</dt><dd id="courses-jour">0</dd></div>
+          <div><dt>Chiffre du jour</dt><dd id="ca-jour">0,00 €</dd></div>
+          <div><dt>Note</dt><dd id="note">—</dd></div>
+          <div><dt>Acceptation</dt><dd id="acceptation">—</dd></div>
+        </dl>
+      </section>
+
+      <section class="panneau" id="bloc-mes-courses" hidden aria-labelledby="titre-mes-courses">
+        <h2 id="titre-mes-courses">Mes courses</h2>
+        <ul class="liste-courses" id="mes-courses"></ul>
+      </section>
+
+      <section class="panneau" aria-labelledby="titre-filtre">
+        <h2 id="titre-filtre">Filtre de destination</h2>
+        <label class="case">
+          <input type="checkbox" id="filtre-actif">
+          <span>Ne recevoir que les courses qui me rapprochent de cette adresse</span>
+        </label>
+        <div class="point-saisie" style="padding-left:0">
+          <input id="filtre-adresse" class="saisie" type="text" placeholder="Adresse de destination (domicile, dépôt…)" aria-label="Adresse de destination du filtre">
+        </div>
+      </section>
+
+      <section class="panneau" aria-labelledby="titre-reservations">
+        <h2 id="titre-reservations">Réservations disponibles</h2>
+        <ul class="liste-courses" id="reservations"></ul>
+        <p class="vide" id="aucune-reservation" hidden>Aucune réservation libre pour le moment.</p>
+      </section>
+    </div>
+  </main>
+
+  <!-- Demande entrante -->
+  <div class="demande" id="demande" hidden role="alertdialog" aria-modal="true" aria-labelledby="demande-titre" aria-describedby="demande-prix">
+    <div class="demande-contenu">
+      <p class="demande-titre" id="demande-titre">Nouvelle demande</p>
+      <div class="decompte" aria-hidden="true"><span id="decompte-barre"></span></div>
+      <p class="demande-prix" id="demande-prix"></p>
+      <p class="demande-approche" id="demande-approche"></p>
+      <ol class="demande-trajet" id="demande-trajet"></ol>
+      <p class="demande-infos" id="demande-infos"></p>
+      <div class="demande-actions">
+        <button type="button" class="bouton bouton-secondaire" id="refuser">Refuser</button>
+        <button type="button" class="bouton bouton-principal" id="accepter">Accepter</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

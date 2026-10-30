@@ -382,6 +382,12 @@ export function langueActive() {
   return langue;
 }
 
+// Espaces en français seulement (chauffeur, administration) : la langue est imposée
+export function imposerLangue(langueImposee) {
+  langue = langueImposee;
+  document.documentElement.lang = langue;
+}
+
 // Langue du profil (après connexion), sauf si le lien en impose une autre
 export function adopterLangueProfil(langueProfil) {
   if (new URLSearchParams(location.search).get('lang')) return;

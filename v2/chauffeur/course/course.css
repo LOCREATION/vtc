@@ -1,0 +1,38 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Espace chauffeur : course en cours (complète chauffeur.css)
+   ============================================================================= */
+.lien-retour-nuit { color: var(--blanc); text-decoration: none; font-weight: 600; min-height: 44px; display: inline-flex; align-items: center; margin-right: auto; }
+.etape-titre { font-family: var(--police-titre); font-weight: 700; font-size: clamp(28px, 7vw, 36px); line-height: 1.1; }
+.etape-texte { color: var(--texte-2); }
+.navigation { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.client { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 12px; border-top: 1px solid var(--ligne); }
+.client strong { font-size: 20px; }
+.etiquette-nuit { color: var(--texte-2); margin-right: 6px; }
+.bouton-etape { min-height: 64px; font-size: 21px; }
+.attente { font-family: var(--police-titre); font-size: 24px; font-weight: 600; }
+.attente[data-payante='true'] { color: var(--or); }
+.montant-encaisser { font-family: var(--police-titre); font-weight: 700; font-size: 44px; line-height: 1; }
+.etat-ok { color: #4ADE80; font-weight: 600; }
+.etoiles { display: flex; gap: 4px; }
+.etoile { width: 48px; height: 48px; display: inline-grid; place-items: center; background: none; border: none; cursor: pointer; color: var(--ligne); border-radius: 8px; }
+.etoile svg { width: 34px; height: 34px; }
+.etoile[aria-pressed='true'] { color: var(--or); }
+.trajet-chauffeur { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.trajet-chauffeur li { display: grid; gap: 4px; padding-left: 22px; position: relative; }
+.trajet-chauffeur li::before { content: ''; position: absolute; left: 2px; top: 8px; width: 9px; height: 9px; border: 2.5px solid var(--blanc); border-radius: 50%; }
+.trajet-chauffeur li:last-child::before { border-radius: 0; background: var(--blanc); }
+.liens-nav { display: flex; gap: 14px; font-size: 15px; }
+.infos-course { margin: 0; display: grid; gap: 8px; }
+.infos-course div { display: grid; grid-template-columns: minmax(120px, 40%) 1fr; gap: 12px; }
+.infos-course dt { color: var(--texte-2); }
+.infos-course dd { margin: 0; font-weight: 500; }
+.feuille-de-route summary { font-family: var(--police-titre); font-weight: 600; font-size: 22px; cursor: pointer; min-height: 44px; display: flex; align-items: center; }
+.desister { color: #FF9F97; justify-self: start; }
+.dialogue-nuit { border: none; border-radius: var(--rayon-feuille); padding: 0; width: min(92vw, 460px); background: var(--surface); color: var(--blanc); }
+.dialogue-nuit::backdrop { background: rgba(4, 10, 24, 0.75); }
+.dialogue-nuit .dialogue-contenu { display: grid; gap: 14px; padding: 22px; }
+.dialogue-nuit h2 { font-size: 26px; font-weight: 700; }
+.actions-dialogue { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.repere { width: 18px; height: 18px; border: 4px solid var(--blanc); background: var(--nuit); border-radius: 50%; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4); }
+.repere-arrivee { border-radius: 3px; background: var(--blanc); border-color: var(--nuit); }
