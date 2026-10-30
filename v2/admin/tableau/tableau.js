@@ -19,7 +19,7 @@ const etat = { carte: null, calques: null, premiereVue: true, serie: [] };
 
 // Pages vers lesquelles mènent les alertes (modules construits)
 const PAGES = {
-  dispatch: 'dispatch/', courses: 'courses/', chauffeurs: 'chauffeurs/',
+  dispatch: 'dispatch/', courses: 'courses/', clients: 'clients/?vue=entreprises', chauffeurs: 'chauffeurs/',
   flotte: 'flotte/', tarifs: 'tarifs/', parametres: 'parametres/'
 };
 

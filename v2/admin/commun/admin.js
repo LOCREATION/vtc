@@ -29,6 +29,7 @@ export const MODULES = [
   { code: 'tableau',    dossier: '',            titre: 'Tableau de bord', icone: 'M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-3H4zM14 7h6V4h-6z' },
   { code: 'dispatch',   dossier: 'dispatch/',   titre: 'Dispatch',        icone: 'M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21zM12 12.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6z' },
   { code: 'courses',    dossier: 'courses/',    titre: 'Courses',         icone: 'M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01' },
+  { code: 'clients',    dossier: 'clients/',    titre: 'Clients et entreprises', icone: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75' },
   { code: 'chauffeurs', dossier: 'chauffeurs/', titre: 'Chauffeurs',      icone: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0' },
   { code: 'flotte',     dossier: 'flotte/',     titre: 'Flotte',          icone: 'M5 16l1.6-5.2A2 2 0 0 1 8.5 9.4h7a2 2 0 0 1 1.9 1.4L19 16M4 16h16v3H4zM7 19v2M17 19v2' },
   { code: 'tarifs',     dossier: 'tarifs/',     titre: 'Tarifs et zones', icone: 'M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8zM7.5 7.5h.01' },

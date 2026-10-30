@@ -255,9 +255,13 @@ export function confirmer({ titre, texte, libelle = 'Confirmer', danger = false,
 // Formulaires décrits par une liste de champs
 // ---------------------------------------------------------------------------
 // Champ : { nom, libelle, type, requis, min, max, pas, options, aide, plein,
-//           majuscules, motif, messageMotif, placeholder, longueur }
+//           majuscules, motif, messageMotif, placeholder, longueur,
+//           normaliser, controle }
 //   type : texte | nombre | date | heure | dateheure | case | choix | zone | email | tel
 //   (« dateheure » : valeur « AAAA-MM-JJTHH:MM », lue telle quelle)
+//   normaliser(valeur) : nettoie la saisie avant contrôle (ex. retirer les
+//   espaces d'un SIRET) ; controle(valeur) : renvoie un message d'erreur
+//   précis, ou null (ex. clé de contrôle d'un SIRET ou d'un IBAN).
 // La valeur lue est typée : nombre → Number, case → booléen, champ vide → null.
 let compteurChamps = 0;
 
@@ -320,6 +324,10 @@ export function construireChamps(champs, valeurs = {}) {
       let brut = saisie.value.trim();
       let message = null;
       let valeur = brut === '' ? null : brut;
+      if (valeur !== null && champ.normaliser) {
+        valeur = champ.normaliser(valeur) || null;
+        brut = valeur ?? '';
+      }
       if (valeur === null && champ.requis) message = 'Champ obligatoire.';
       if (valeur !== null && champ.type === 'nombre') {
         const nettoye = brut.replace(/[\s\u00a0\u202f]/g, '').replace(',', '.');
@@ -331,6 +339,7 @@ export function construireChamps(champs, valeurs = {}) {
       }
       if (valeur !== null && champ.type === 'email' && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(valeur)) message = 'Adresse e-mail invalide.';
       if (valeur !== null && champ.motif && !champ.motif.test(valeur)) message = champ.messageMotif || 'Format invalide.';
+      if (valeur !== null && !message && champ.controle) message = champ.controle(valeur);
       if (valeur !== null && champ.type === 'heure') valeur = brut.slice(0, 5);
       if (erreur) {
         erreur.textContent = message || '';
@@ -496,3 +505,156 @@ export async function ouvrirPiece(dossier, chemin) {
 export function boutonExporter(action) {
   return el('button', { type: 'button', classe: 'bouton bouton-secondaire bouton-petit', texte: 'Exporter (CSV)', onclick: action });
 }
+
+// ---------------------------------------------------------------------------
+// Identifiants des entreprises : contrôle des clés, mise en forme
+// ---------------------------------------------------------------------------
+// Une faute de frappe dans un SIRET, un numéro de TVA ou un IBAN se voit
+// tout de suite grâce à leur clé de contrôle : la saisie est refusée avec un
+// message précis plutôt que d'imprimer un numéro faux sur une facture.
+
+// Formule de Luhn (SIREN, SIRET)
+function luhnValide(chiffres) {
+  let somme = 0;
+  [...chiffres].reverse().forEach((c, i) => {
+    let n = Number(c);
+    if (i % 2 === 1) { n *= 2; if (n > 9) n -= 9; }
+    somme += n;
+  });
+  return somme % 10 === 0;
+}
+
+// Sans espaces, points ni tirets, lettres en majuscules (« 999 999 998 00019 »
+// ou « fr 11 999 999 998 » saisis tels qu'ils sont imprimés)
+export function sansEspaces(valeur) {
+  return String(valeur || '').replace(/[\s.\-  ]/g, '').toUpperCase();
+}
+
+// Message d'erreur, ou null si le SIRET est valable. Les établissements de La
+// Poste (SIREN 356 000 000) suivent une autre règle de clé.
+export function erreurSiret(siret) {
+  if (!/^\d{14}$/.test(siret)) return 'SIRET invalide : 14 chiffres.';
+  if (siret.startsWith('356000000')) return null;
+  if (!luhnValide(siret.slice(0, 9))) return 'SIRET invalide : les 9 premiers chiffres (le SIREN) ne forment pas un numéro possible. Vérifiez la saisie.';
+  if (!luhnValide(siret)) return 'SIRET invalide : la clé de contrôle ne correspond pas. Vérifiez les 5 derniers chiffres.';
+  return null;
+}
+
+export function erreurSiren(siren) {
+  if (!/^\d{9}$/.test(siren)) return 'SIREN invalide : 9 chiffres.';
+  if (siren !== '356000000' && !luhnValide(siren)) return 'SIREN invalide : la clé de contrôle ne correspond pas. Vérifiez la saisie.';
+  return null;
+}
+
+// Numéro de TVA intracommunautaire : format européen ; pour la France, la
+// clé (2 chiffres) se calcule à partir du SIREN.
+export function erreurTva(tva, siren = null) {
+  if (!/^[A-Z]{2}[0-9A-Z]{2,13}$/.test(tva)) return 'N° de TVA invalide : 2 lettres du pays puis le numéro (ex. FR11999999998).';
+  if (tva.startsWith('FR')) {
+    if (!/^FR[0-9A-Z]{2}\d{9}$/.test(tva)) return 'N° de TVA français invalide : FR, 2 caractères de clé, puis les 9 chiffres du SIREN.';
+    const sirenTva = tva.slice(4);
+    if (siren && sirenTva !== siren) return 'Le n° de TVA ne reprend pas le SIREN du SIRET : vérifiez les deux numéros.';
+    const cle = tva.slice(2, 4);
+    if (/^\d{2}$/.test(cle) && Number(cle) !== (12 + 3 * (Number(sirenTva) % 97)) % 97) {
+      return 'N° de TVA invalide : la clé ne correspond pas au SIREN. Vérifiez la saisie.';
+    }
+  }
+  return null;
+}
+
+// IBAN : longueur et clé (méthode « modulo 97 » de la norme ISO 13616)
+export function erreurIban(iban) {
+  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(iban)) return 'IBAN invalide : 2 lettres du pays, 2 chiffres de clé, puis le numéro du compte.';
+  if (iban.startsWith('FR') && iban.length !== 27) return 'IBAN français invalide : 27 caractères (FR76 …).';
+  const reordonne = iban.slice(4) + iban.slice(0, 4);
+  let reste = 0;
+  for (const c of reordonne) {
+    const valeur = /\d/.test(c) ? c : String(c.charCodeAt(0) - 55);
+    for (const chiffre of valeur) reste = (reste * 10 + Number(chiffre)) % 97;
+  }
+  return reste === 1 ? null : 'IBAN invalide : la clé de contrôle ne correspond pas. Vérifiez la saisie.';
+}
+
+export function erreurBic(bic) {
+  return /^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/.test(bic) ? null : 'BIC invalide : 8 ou 11 caractères (ex. BNPAFRPPXXX).';
+}
+
+// Mises en forme lisibles : « 999 999 998 00019 », « FR76 3000 … »
+export function siretLisible(siret) {
+  const s = String(siret || '');
+  return /^\d{14}$/.test(s) ? `${s.slice(0, 3)} ${s.slice(3, 6)} ${s.slice(6, 9)} ${s.slice(9)}` : s;
+}
+
+export function ibanLisible(iban) {
+  return String(iban || '').replace(/(.{4})/g, '$1 ').trim();
+}
+
+// ---------------------------------------------------------------------------
+// Journal des modifications : libellés et détail lisible d'une entrée
+// ---------------------------------------------------------------------------
+export const JOURNAL_TABLES = {
+  courses: 'Courses', tarifs: 'Tarifs', majorations: 'Majorations', jours_feries: 'Jours fériés', zones: 'Lieux',
+  forfaits: 'Forfaits', categories: 'Catégories', codes_promo: 'Codes promo', societe: 'Entreprise', parametres: 'Réglages',
+  vehicules: 'Véhicules', entretiens: 'Entretiens', chauffeurs: 'Chauffeurs', documents: 'Documents', candidatures: 'Candidatures',
+  profils: 'Comptes (rôles, blocages, coordonnées)', comptes_pro: 'Comptes professionnels', comptes_pro_membres: 'Membres des comptes pro',
+  paiements: 'Paiements', remboursements: 'Remboursements', factures: 'Factures', salaries: 'Salariés', contrats: 'Contrats',
+  constantes_paie: 'Constantes de paie', parametres_paie: 'Taux de cotisation', bulletins: 'Bulletins de paie', absences: 'Absences',
+  temps_travail: 'Temps de travail', releves_plateformes: 'Relevés des plateformes', campagnes: 'Campagnes'
+};
+export const JOURNAL_ACTIONS = {
+  INSERT: 'Création', UPDATE: 'Modification', DELETE: 'Suppression',
+  attribution_manuelle: 'Attribution à la main', annulation_admin: 'Annulation par l\'administration',
+  retrait_chauffeur: 'Course retirée au chauffeur', relance_recherche: 'Recherche relancée',
+  validation_chauffeur: 'Chauffeur validé', refus_candidature: 'Candidature refusée', affectation_vehicule: 'Véhicule affecté',
+  suspension_chauffeur: 'Chauffeur suspendu', reactivation_chauffeur: 'Chauffeur réactivé', nomination_admin: 'Administrateur nommé',
+  blocage_compte: 'Compte bloqué', deblocage_compte: 'Compte débloqué', encaissement_releve: 'Relevé mensuel encaissé'
+};
+export const JOURNAL_ROLES = { admin: 'administration', chauffeur: 'chauffeur', client: 'client' };
+
+// Noms de colonnes lisibles (les plus fréquents) ; les autres : « Raison sociale »
+const CHAMPS_JOURNAL = {
+  tva_intracommunautaire: 'TVA intracommunautaire', email_facturation: 'E-mail de facturation', plafond_mensuel: 'Plafond mensuel',
+  delai_paiement_jours: 'Délai de règlement (jours)', reservations_annulees: 'Réservations annulées', profil_id: 'Compte',
+  compte_pro_id: 'Compte professionnel', telephone: 'Téléphone', prenom: 'Prénom', reference: 'Référence', siret: 'SIRET',
+  iban: 'IBAN', bic: 'BIC'
+};
+
+export function valeurJournal(v) {
+  if (v === null || v === undefined) return '—';
+  if (typeof v === 'boolean') return v ? 'oui' : 'non';
+  if (typeof v === 'object') return JSON.stringify(v);
+  const texte = String(v);
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(texte)) return `${dateCourte(texte)} ${heure(texte)}`;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(texte)) return dateCourte(texte);
+  return texte.length > 120 ? `${texte.slice(0, 117)}…` : texte;
+}
+
+export function champJournal(cle) {
+  if (CHAMPS_JOURNAL[cle]) return CHAMPS_JOURNAL[cle];
+  const texte = cle.replace(/_/g, ' ');
+  return texte.charAt(0).toUpperCase() + texte.slice(1);
+}
+
+// Détail d'une entrée : « avant → après » pour une modification, sinon les
+// principales valeurs de la ligne créée, supprimée, ou de l'action nommée
+export function detailsJournal(entree) {
+  const ignorer = ['maj_le', 'cree_le'];
+  if (entree.action === 'UPDATE' && entree.apres) {
+    return el('div', { classe: 'diff' }, ...Object.keys(entree.apres).filter((k) => !ignorer.includes(k)).map((k) => el('span', {},
+      `${champJournal(k)} : `, el('del', { texte: valeurJournal((entree.avant || {})[k]) }), ' → ', el('ins', { texte: valeurJournal(entree.apres[k]) }))));
+  }
+  const source = entree.action === 'DELETE' ? entree.avant : entree.apres;
+  if (!source || typeof source !== 'object') return '';
+  const cles = Object.keys(source).filter((k) => !ignorer.includes(k) && source[k] !== null && k !== 'id').slice(0, 8);
+  return el('div', { classe: 'diff' }, ...cles.map((k) => el('span', { texte: `${champJournal(k)} : ${valeurJournal(source[k])}` })));
+}
+
+// Colonnes du tableau du journal (paramètres et fiches)
+export const COLONNES_JOURNAL = [
+  { titre: 'Date', valeur: (j) => el('span', {}, dateCourte(j.cree_le), el('span', { classe: 'secondaire', texte: heure(j.cree_le) })) },
+  { titre: 'Auteur', valeur: (j) => el('span', {}, j.acteur_nom || (j.acteur_id ? 'Compte' : 'Automatique'),
+    j.acteur_role ? el('span', { classe: 'secondaire', texte: JOURNAL_ROLES[j.acteur_role] || j.acteur_role }) : null) },
+  { titre: 'Action', valeur: (j) => el('span', {}, JOURNAL_ACTIONS[j.action] || champJournal(j.action),
+    el('span', { classe: 'secondaire', texte: JOURNAL_TABLES[j.table_cible] || j.table_cible || '' })) },
+  { titre: 'Détail', valeur: (j) => detailsJournal(j) }
+];

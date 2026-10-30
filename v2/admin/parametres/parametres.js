@@ -18,8 +18,10 @@ import { supabase } from '../../commun/supabase.js';
 import { el, afficherMessage } from '../../commun/outils.js';
 import { ouvrirAdministration } from '../commun/admin.js';
 import {
-  badge, dateCourte, heure, dateHeureComplete, jourParis, tableau, exporterCsv, boutonExporter, fenetreFormulaire,
-  confirmer, ouvrirFenetre, messageErreurAdmin, nomComplet, telephoneLisible
+  badge, dateCourte, heure, jourParis, tableau, exporterCsv, boutonExporter, fenetreFormulaire,
+  confirmer, ouvrirFenetre, messageErreurAdmin, nomComplet, telephoneLisible,
+  sansEspaces, erreurSiren, erreurSiret, erreurTva, erreurIban, erreurBic, siretLisible, ibanLisible,
+  JOURNAL_TABLES, JOURNAL_ACTIONS, COLONNES_JOURNAL
 } from '../commun/composants.js';
 
 const $ = (id) => document.getElementById(id);
@@ -67,14 +69,15 @@ const GROUPES_SOCIETE = [
       aide: 'Exactement comme sur le Kbis : reprise sur tous les documents.' },
     { nom: 'forme_juridique', libelle: 'Forme juridique', type: 'texte', longueur: 80 },
     { nom: 'capital', libelle: 'Capital (€)', type: 'nombre', min: 0, pas: '0.01', format: (v) => `${new Intl.NumberFormat('fr-FR').format(v)} €` },
-    { nom: 'siren', libelle: 'SIREN', type: 'texte', longueur: 9, motif: /^[0-9]{9}$/, messageMotif: '9 chiffres, sans espace.' },
-    { nom: 'siret', libelle: 'SIRET du siège', type: 'texte', longueur: 14, motif: /^[0-9]{14}$/, messageMotif: '14 chiffres, sans espace.',
-      aide: 'Obligatoire sur les factures et les bulletins de paie.' },
+    { nom: 'siren', libelle: 'SIREN', type: 'texte', longueur: 11, normaliser: sansEspaces, controle: erreurSiren,
+      format: (v) => `${v.slice(0, 3)} ${v.slice(3, 6)} ${v.slice(6)}` },
+    { nom: 'siret', libelle: 'SIRET du siège', type: 'texte', longueur: 17, normaliser: sansEspaces, controle: erreurSiret,
+      aide: 'Obligatoire sur les factures et les bulletins de paie. Espaces acceptés.', format: siretLisible },
     { nom: 'rcs', libelle: 'RCS', type: 'texte', longueur: 80 },
     { nom: 'code_ape', libelle: 'Code APE (NAF)', type: 'texte', longueur: 6, majuscules: true, motif: /^[0-9]{2}\.?[0-9]{2}[A-Z]$/,
       messageMotif: 'Format : 4932Z ou 49.32Z.' },
     { nom: 'tva_intracommunautaire', libelle: 'N° de TVA intracommunautaire', type: 'texte', longueur: 20, majuscules: true,
-      motif: /^FR[0-9A-Z]{2}[0-9]{9}$/, messageMotif: 'Format : FR suivi de 11 caractères (ex. FR12100052570).' },
+      normaliser: sansEspaces, controle: (v) => erreurTva(v) },
     { nom: 'numero_urssaf', libelle: 'N° URSSAF', type: 'texte', longueur: 30, aide: 'Repris sur les bulletins de paie.' },
     { nom: 'registre_vtc_numero', libelle: 'N° d\'inscription au registre des exploitants VTC', type: 'texte', longueur: 40,
       aide: 'Obligatoire sur chaque feuille de route.' }
@@ -95,7 +98,10 @@ const GROUPES_SOCIETE = [
     { nom: 'email', libelle: 'E-mail', type: 'email', longueur: 120 },
     { nom: 'site_web', libelle: 'Site internet', type: 'texte', longueur: 120 }
   ] },
-  { titre: 'Factures', champs: [
+  { titre: 'Factures et règlement', champs: [
+    { nom: 'iban', libelle: 'IBAN', type: 'texte', longueur: 42, majuscules: true, normaliser: sansEspaces, controle: erreurIban,
+      plein: true, format: ibanLisible, aide: 'Imprimé sur les relevés mensuels des comptes professionnels (règlement par virement).' },
+    { nom: 'bic', libelle: 'BIC', type: 'texte', longueur: 11, majuscules: true, normaliser: sansEspaces, controle: erreurBic },
     { nom: 'mentions_factures', libelle: 'Mentions en pied de facture', type: 'zone', longueur: 1000, plein: true,
       aide: 'Ex. conditions de paiement, pénalités de retard, indemnité forfaitaire de recouvrement.' }
   ] }
@@ -127,6 +133,11 @@ async function modifierEntreprise() {
     intro: 'Vérifiez sur le Kbis et les courriers officiels. Chaque changement est inscrit au journal.',
     enregistrer: async (v) => {
       if (v.siren && v.siret && !v.siret.startsWith(v.siren)) throw new Error('Le SIRET doit commencer par les 9 chiffres du SIREN.');
+      const sirenReference = v.siren || (v.siret ? v.siret.slice(0, 9) : null);
+      if (v.tva_intracommunautaire && sirenReference) {
+        const probleme = erreurTva(v.tva_intracommunautaire, sirenReference);
+        if (probleme) throw new Error(probleme);
+      }
       const ligne = { ...v, code_ape: v.code_ape ? v.code_ape.replace('.', '') : null };
       const { error } = await supabase.from('societe').update(ligne).eq('id', 1);
       if (error) throw error;
@@ -293,63 +304,18 @@ async function changerTelephone(application) {
 // #############################################################################
 // Onglet « Journal des modifications »
 // #############################################################################
-const TABLES = {
-  courses: 'Courses', tarifs: 'Tarifs', majorations: 'Majorations', jours_feries: 'Jours fériés', zones: 'Lieux',
-  forfaits: 'Forfaits', categories: 'Catégories', codes_promo: 'Codes promo', societe: 'Entreprise', parametres: 'Réglages',
-  vehicules: 'Véhicules', entretiens: 'Entretiens', chauffeurs: 'Chauffeurs', documents: 'Documents', candidatures: 'Candidatures',
-  profils: 'Comptes (rôles et blocages)', comptes_pro: 'Comptes professionnels', comptes_pro_membres: 'Membres des comptes pro',
-  paiements: 'Paiements', remboursements: 'Remboursements', factures: 'Factures', salaries: 'Salariés', contrats: 'Contrats',
-  constantes_paie: 'Constantes de paie', parametres_paie: 'Taux de cotisation', bulletins: 'Bulletins de paie', absences: 'Absences',
-  temps_travail: 'Temps de travail', releves_plateformes: 'Relevés des plateformes', campagnes: 'Campagnes'
-};
-const ACTIONS = {
-  INSERT: 'Création', UPDATE: 'Modification', DELETE: 'Suppression',
-  attribution_manuelle: 'Attribution à la main', annulation_admin: 'Annulation par l\'administration',
-  retrait_chauffeur: 'Course retirée au chauffeur', relance_recherche: 'Recherche relancée',
-  validation_chauffeur: 'Chauffeur validé', refus_candidature: 'Candidature refusée', affectation_vehicule: 'Véhicule affecté',
-  suspension_chauffeur: 'Chauffeur suspendu', reactivation_chauffeur: 'Chauffeur réactivé', nomination_admin: 'Administrateur nommé'
-};
-const ROLES = { admin: 'administration', chauffeur: 'chauffeur', client: 'client' };
-
-function valeurLisible(v) {
-  if (v === null || v === undefined) return '—';
-  if (typeof v === 'boolean') return v ? 'oui' : 'non';
-  if (typeof v === 'object') return JSON.stringify(v);
-  const texte = String(v);
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(texte)) return `${dateCourte(texte)} ${heure(texte)}`;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(texte)) return dateCourte(texte);
-  return texte.length > 120 ? `${texte.slice(0, 117)}…` : texte;
-}
-
-function champLisible(cle) {
-  const texte = cle.replace(/_/g, ' ');
-  return texte.charAt(0).toUpperCase() + texte.slice(1);
-}
-
-function details(entree) {
-  const ignorer = ['maj_le', 'cree_le'];
-  if (entree.action === 'UPDATE' && entree.apres) {
-    return el('div', { classe: 'diff' }, ...Object.keys(entree.apres).filter((k) => !ignorer.includes(k)).map((k) => el('span', {},
-      `${champLisible(k)} : `, el('del', { texte: valeurLisible((entree.avant || {})[k]) }), ' → ', el('ins', { texte: valeurLisible(entree.apres[k]) }))));
-  }
-  const source = entree.action === 'DELETE' ? entree.avant : entree.apres;
-  if (!source || typeof source !== 'object') return '';
-  const cles = Object.keys(source).filter((k) => !ignorer.includes(k) && source[k] !== null && k !== 'id').slice(0, 8);
-  return el('div', { classe: 'diff' }, ...cles.map((k) => el('span', { texte: `${champLisible(k)} : ${valeurLisible(source[k])}` })));
-}
-
 async function afficherJournal() {
   const choix = el('select', { id: 'journal-table', classe: 'saisie' },
     el('option', { value: '', texte: 'Toutes les tables' }),
-    ...Object.entries(TABLES).sort((a, b) => a[1].localeCompare(b[1], 'fr')).map(([valeur, libelle]) => el('option', { value: valeur, texte: libelle })));
+    ...Object.entries(JOURNAL_TABLES).sort((a, b) => a[1].localeCompare(b[1], 'fr')).map(([valeur, libelle]) => el('option', { value: valeur, texte: libelle })));
   choix.value = etat.tableJournal;
   choix.addEventListener('change', () => { etat.tableJournal = choix.value; chargerJournal(true); });
   const exporter = boutonExporter(() => exporterCsv(`journal-loc-reaction-${jourParis()}.csv`, [
     { titre: 'Date', csv: (j) => `${dateCourte(j.cree_le)} ${heure(j.cree_le)}` },
     { titre: 'Auteur', csv: (j) => j.acteur_nom || (j.acteur_id ? 'Compte' : 'Automatique') },
     { titre: 'Rôle', csv: (j) => j.acteur_role || '' },
-    { titre: 'Action', csv: (j) => ACTIONS[j.action] || j.action },
-    { titre: 'Table', csv: (j) => TABLES[j.table_cible] || j.table_cible },
+    { titre: 'Action', csv: (j) => JOURNAL_ACTIONS[j.action] || j.action },
+    { titre: 'Table', csv: (j) => JOURNAL_TABLES[j.table_cible] || j.table_cible },
     { titre: 'Ligne', csv: (j) => j.ligne_id },
     { titre: 'Avant', csv: (j) => (j.avant ? JSON.stringify(j.avant) : '') },
     { titre: 'Après', csv: (j) => (j.apres ? JSON.stringify(j.apres) : '') }
@@ -370,17 +336,7 @@ async function chargerJournal(depuisDebut) {
   if (error) { $('journal-liste').replaceChildren(el('p', { classe: 'alerte', texte: messageErreurAdmin(error) })); return; }
   etat.journal = etat.journal.concat(data);
   etat.finJournal = data.length < 50;
-  $('journal-liste').replaceChildren(tableau({
-    colonnes: [
-      { titre: 'Date', valeur: (j) => el('span', {}, dateCourte(j.cree_le), el('span', { classe: 'secondaire', texte: heure(j.cree_le) })) },
-      { titre: 'Auteur', valeur: (j) => el('span', {}, j.acteur_nom || (j.acteur_id ? 'Compte' : 'Automatique'),
-        j.acteur_role ? el('span', { classe: 'secondaire', texte: ROLES[j.acteur_role] || j.acteur_role }) : null) },
-      { titre: 'Action', valeur: (j) => el('span', {}, ACTIONS[j.action] || champLisible(j.action),
-        el('span', { classe: 'secondaire', texte: TABLES[j.table_cible] || j.table_cible || '' })) },
-      { titre: 'Détail', valeur: (j) => details(j) }
-    ],
-    lignes: etat.journal, vide: 'Aucune modification enregistrée.'
-  }));
+  $('journal-liste').replaceChildren(tableau({ colonnes: COLONNES_JOURNAL, lignes: etat.journal, vide: 'Aucune modification enregistrée.' }));
   const suite = el('button', { type: 'button', classe: 'bouton bouton-secondaire bouton-petit', texte: 'Voir les modifications plus anciennes' });
   suite.addEventListener('click', () => chargerJournal(false));
   $('journal-suite').replaceChildren(...(etat.finJournal ? [] : [suite]));

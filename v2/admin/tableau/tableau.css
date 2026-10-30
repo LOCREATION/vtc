@@ -6,12 +6,17 @@
 .maj { margin-left: auto; }
 @media (max-width: 1023px) { .admin-entete .maj { color: #B6C4DC; font-size: 14px; width: 100%; } }
 
-/* Courses par statut : six cases cliquables vers le dispatch */
+/* Courses par statut : six cases cliquables vers le dispatch.
+   Les cases d'une même ligne gardent la même hauteur, même quand un libellé
+   passe sur deux lignes (« Recherche en cours » sur téléphone) : la case
+   (li) est une grille dont le lien occupe toute la hauteur, et le contenu du
+   lien reste calé en haut. */
 .statuts { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 @media (min-width: 700px) { .statuts { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (min-width: 1200px) { .statuts { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.statut { display: grid; }
 .statut a {
-  display: grid; gap: 2px; padding: 12px 14px; border-radius: var(--rayon-champ);
+  display: grid; gap: 2px; align-content: start; padding: 12px 14px; border-radius: var(--rayon-champ);
   text-decoration: none; color: var(--nuit); background: var(--bitume); border-left: 4px solid #B8C2D3;
 }
 .statut[data-ton='rouge'] a { background: #FCEDEC; border-left-color: var(--rouge); }
