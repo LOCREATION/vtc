@@ -1,6 +1,6 @@
 // =============================================================================
 // LOC RÉACTION S.A.S — Version 2
-// Administration : finances — choix d'une période
+// Administration : choix d'une période (commun aux modules)
 // -----------------------------------------------------------------------------
 // Raccourcis (aujourd'hui, ce mois-ci, mois dernier, ce trimestre, trimestre
 // dernier, cette année, année dernière) ou dates libres, toujours en jours de
@@ -9,7 +9,7 @@
 // sinon « Dates choisies ».
 // =============================================================================
 import { el, afficherMessage } from '../../commun/outils.js';
-import { jourParis, ajouterJours, dateCourte } from '../commun/composants.js';
+import { jourParis, ajouterJours, dateCourte } from './composants.js';
 
 export const PERIODES = [
   { code: 'jour', libelle: 'Aujourd\'hui' },

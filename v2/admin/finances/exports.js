@@ -9,7 +9,9 @@
 //   3. remboursements ;
 //   4. remises d'espèces des chauffeurs ;
 //   5. TVA par mois ;
-//   6. sommes encore dues (à encaisser et impayés) le jour de l'export.
+//   6. sommes encore dues (à encaisser et impayés) le jour de l'export ;
+//   7. relevés des plateformes (Bolt, Uber, Heetch) de la période (colonnes
+//      communes avec le module Plateformes).
 // « dossierComptable » rassemble ces fichiers, avec un LISEZ-MOI, dans une
 // archive ZIP préparée dans la page.
 // =============================================================================
@@ -19,8 +21,9 @@ import {
   ORIGINES_AVOIR, siretLisible, jourParis
 } from '../commun/composants.js';
 import { creerZip } from '../commun/zip.js';
-import { chargerTout, nomFichier } from './listes.js';
-import { periodeLisible } from './periode.js';
+import { chargerTout, nomFichier } from '../commun/listes.js';
+import { periodeLisible } from '../commun/periode.js';
+import { COLONNES_RELEVES, relevesChronologiques } from '../commun/releves-plateformes.js';
 
 const jourEtHeure = (instant) => (instant ? `${dateCourte(instant)} ${heure(instant)}` : '');
 const signe = (ligne, montant) => (ligne.type === 'avoir' ? -Number(montant) : Number(montant));
@@ -172,14 +175,15 @@ export async function tvaDesMois(du, au) {
 // ---------------------------------------------------------------------------
 export async function dossierComptable(du, au) {
   const periode = { p_debut: du, p_fin: au };
-  const [registre, encaisses, remboursements, remises, aEncaisser, impayes, tva] = await Promise.all([
+  const [registre, encaisses, remboursements, remises, aEncaisser, impayes, tva, releves] = await Promise.all([
     chargerTout('admin_lister_factures', { p_type: 'tout', ...periode }),
     chargerTout('admin_lister_paiements', { p_vue: 'encaisses', ...periode }),
     chargerTout('admin_lister_remboursements', periode),
     supabase.rpc('admin_lister_remises', periode).then(({ data, error }) => { if (error) throw error; return data; }),
     chargerTout('admin_lister_paiements', { p_vue: 'a_encaisser' }),
     chargerTout('admin_lister_paiements', { p_vue: 'impayes' }),
-    tvaDesMois(du, au)
+    tvaDesMois(du, au),
+    supabase.rpc('admin_lister_releves', periode).then(({ data, error }) => { if (error) throw error; return data; })
   ]);
   const aujourdhui = jourParis();
   const dossier = nomFichier('dossier-comptable-loc-reaction', du, au);
@@ -189,8 +193,10 @@ export async function dossierComptable(du, au) {
     { nom: '3-remboursements.csv', colonnes: COLONNES_REMBOURSEMENTS, lignes: [...remboursements.lignes].reverse() },
     { nom: '4-remises-especes-des-chauffeurs.csv', colonnes: COLONNES_REMISES, lignes: [...remises.lignes].reverse() },
     ...(tva.length ? [{ nom: '5-tva-par-mois.csv', colonnes: COLONNES_TVA, lignes: tva }] : []),
-    { nom: `6-sommes-dues-au-${aujourdhui}.csv`, colonnes: COLONNES_PAIEMENTS, lignes: [...aEncaisser.lignes, ...impayes.lignes] }
+    { nom: `6-sommes-dues-au-${aujourdhui}.csv`, colonnes: COLONNES_PAIEMENTS, lignes: [...aEncaisser.lignes, ...impayes.lignes] },
+    { nom: '7-releves-des-plateformes.csv', colonnes: COLONNES_RELEVES, lignes: relevesChronologiques(releves.lignes) }
   ];
+  const rp = releves.totaux;
   const t = registre.totaux;
   const lisezMoi = [
     'LOC RÉACTION S.A.S — dossier pour l\'expert-comptable',
@@ -208,11 +214,16 @@ export async function dossierComptable(du, au) {
       ? `5. TVA par mois : ${tva.length} mois entier${tva.length > 1 ? 's' : ''} de la période. TVA facturée (factures moins avoirs) et TVA sur les encaissements (sommes encaissées moins remboursées).`
       : '5. TVA par mois : non jointe, la période ne contient aucun mois entier (la TVA se calcule par mois).',
     `6. Sommes encore dues le ${dateCourte(aujourdhui)} : paiements à encaisser et impayés, toutes dates confondues.`,
+    `7. Relevés des plateformes (Bolt, Uber, Heetch) qui se terminent dans la période : ${releves.total} relevé${releves.total > 1 ? 's' : ''},`,
+    `   ${montantCsv(rp.trajets)} € de trajets payés par les passagers (TTC), ${montantCsv(rp.frais)} € de frais de service retenus,`,
+    `   ${montantCsv(rp.especes)} € d'espèces collectées par les chauffeurs, ${montantCsv(rp.virement)} € virés par les plateformes.`,
     '',
     'À savoir :',
     '- Transport de personnes : TVA à 10 %. Pour une prestation de services, la TVA est due à l\'encaissement,',
     '  sauf option pour les débits : la colonne « TVA sur encaissements » est celle qui se déclare d\'ordinaire.',
     '- Pourboires : hors TVA, reversés intégralement aux chauffeurs.',
+    '- Courses des plateformes : chiffre d\'affaires de l\'entreprise au même titre que les courses en direct ;',
+    '  les frais de service sont la commission retenue par la plateforme (traitement de la TVA à confirmer).',
     '- Numérotation : factures FA-AAAA-NNNNNN et avoirs AV-AAAA-NNNNNN, continues par année (contrôlées par la plateforme).',
     '- Un autre format (fichier des écritures comptables, plan de comptes particulier) peut être préparé sur demande.'
   ].join('\r\n');

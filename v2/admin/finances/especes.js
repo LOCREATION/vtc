@@ -21,8 +21,8 @@ import {
   tableau, tuile, pluriel, dateCourte, jourHeure, depuis, badge, boutonAction, fenetreFormulaire, ouvrirFenetre,
   lienTelephone, exporterCsv, messageErreurAdmin, NATURES_PAIEMENT
 } from '../commun/composants.js';
-import { champsPeriode, bornes, periodeValable, periodeLisible } from './periode.js';
-import { ecrireAdresse, lireDate, nomFichier } from './listes.js';
+import { champsPeriode, bornes, periodeValable, periodeLisible } from '../commun/periode.js';
+import { ecrireAdresse, lireDate, nomFichier } from '../commun/listes.js';
 import { COLONNES_REMISES } from './exports.js';
 
 const $ = (id) => document.getElementById(id);

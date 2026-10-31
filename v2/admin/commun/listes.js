@@ -1,6 +1,6 @@
 // =============================================================================
 // LOC RÉACTION S.A.S — Version 2
-// Administration : finances — outils des listes
+// Administration : outils des listes (communs aux modules)
 // -----------------------------------------------------------------------------
 //   - filtres gardés dans l'adresse de la page (retour arrière et
 //     rechargement les conservent) ;

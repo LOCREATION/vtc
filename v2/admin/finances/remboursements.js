@@ -16,8 +16,8 @@ import {
   tableau, tuile, pluriel, dateCourte, jourHeure, badge, boutonExporter, exporterCsv, messageErreurAdmin,
   MODES_PAIEMENT, NATURES_PAIEMENT, MODES_REMBOURSEMENT
 } from '../commun/composants.js';
-import { champsPeriode, bornes, periodeValable, periodeLisible, periodeCourte } from './periode.js';
-import { ecrireAdresse, lireDate, lirePage, pagination, chargerTout, nomFichier } from './listes.js';
+import { champsPeriode, bornes, periodeValable, periodeLisible, periodeCourte } from '../commun/periode.js';
+import { ecrireAdresse, lireDate, lirePage, pagination, chargerTout, nomFichier } from '../commun/listes.js';
 import { COLONNES_REMBOURSEMENTS } from './exports.js';
 
 const $ = (id) => document.getElementById(id);

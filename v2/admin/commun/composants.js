@@ -333,8 +333,13 @@ export function construireChamps(champs, valeurs = {}) {
       continue;
     }
     if (champ.type === 'choix') {
+      // Choix obligatoire avec « vide » : invite non sélectionnable tant que
+      // rien n'est choisi (« Choisir… »), plutôt qu'une liste vide
+      const vide = champ.requis
+        ? (champ.vide ? [el('option', { value: '', texte: champ.vide, disabled: true })] : [])
+        : [el('option', { value: '', texte: champ.vide || '—' })];
       saisie = el('select', { classe: 'saisie', id, name: champ.nom },
-        ...(champ.requis ? [] : [el('option', { value: '', texte: champ.vide || '—' })]),
+        ...vide,
         ...champ.options.map((o) => el('option', { value: o.valeur, texte: o.libelle })));
       saisie.value = valeur === null || valeur === undefined ? '' : String(valeur);
     } else if (champ.type === 'zone') {
