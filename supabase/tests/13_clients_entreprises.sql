@@ -378,12 +378,17 @@ select test.verifier((select count(*) from public.evenements_course
 select test.verifier(exists (select 1 from public.journal_lister('comptes_pro', :'compte')
                              where action = 'encaissement_releve' and apres ->> 'reference' = 'VIR-ESSAI-001'),
                      'encaissement du relevé inscrit au journal');
-select test.doit_echouer(format('select public.admin_encaisser_releve(%L, %L, 0)', :'compte', :'aujourdhui'), 'Rien à encaisser');
+-- « d'avril », « d'août », « d'octobre » : « de » élidé devant une voyelle
+select test.doit_echouer(format('select public.admin_encaisser_releve(%L, %L, 0)', :'compte', :'aujourdhui'),
+                         'Rien à encaisser sur le relevé ' || case when to_char(:'aujourdhui'::date, 'MM') in ('04', '08', '10') then 'd''' else 'de ' end);
 select test.verifier((public.admin_releve_compte_pro(:'compte', :'aujourdhui') -> 'totaux' ->> 'reste_a_payer')::numeric = 0,
                      'relevé après encaissement : plus rien à payer');
 call test.connexion(:'client1');
 select test.verifier(exists (select 1 from public.notifications where titre = 'Relevé réglé' and message like '%Atelier Lumière SARL%'),
                      'gestionnaire prévenue du règlement du relevé');
+select test.verifier(exists (select 1 from public.notifications where titre = 'Relevé réglé'
+                             and message like 'Le relevé ' || case when to_char(:'aujourdhui'::date, 'MM') in ('04', '08', '10') then 'd''' else 'de ' end || '%'),
+                     'message du règlement : « Le relevé d''octobre », « de novembre » (élision)');
 call test.connexion(:'client2');
 select test.verifier(not exists (select 1 from public.notifications where titre = 'Relevé réglé'),
                      'simple membre : pas de message sur le règlement');

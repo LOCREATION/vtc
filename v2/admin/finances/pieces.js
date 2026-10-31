@@ -20,7 +20,7 @@ import { supabase } from '../../commun/supabase.js';
 import { el, euros, nombre } from '../../commun/outils.js';
 import { lienAdmin } from '../commun/admin.js';
 import {
-  dateCourte, dateHeureComplete, messageErreurAdmin, siretLisible, ibanLisible, moisLisible, MODES_PAIEMENT,
+  dateCourte, dateHeureComplete, messageErreurAdmin, siretLisible, ibanLisible, moisLisible, avecDe, MODES_PAIEMENT,
   ORIGINES_AVOIR, badgePaiement
 } from '../commun/composants.js';
 import {
@@ -174,7 +174,7 @@ function documentFacture(d) {
   if (!p) {
     reglement.push(el('p', { texte: 'Rien à régler.' }));
   } else if (p.mode === 'facture_mensuelle') {
-    reglement.push(el('p', { texte: `Facture récapitulée sur le relevé mensuel de ${moisLisible(f.date_emission.slice(0, 7))}${p.echeance ? `, à régler par virement au plus tard le ${dateCourte(p.echeance)}` : ''}.` }));
+    reglement.push(el('p', { texte: `Facture récapitulée sur le relevé mensuel ${avecDe(moisLisible(f.date_emission.slice(0, 7)))}${p.echeance ? `, à régler par virement au plus tard le ${dateCourte(p.echeance)}` : ''}.` }));
     if (!acquittee && s.iban) {
       reglement.push(el('p', { classe: 'doc-iban' }, el('strong', { texte: 'IBAN ' }), ibanLisible(s.iban), s.bic ? el('span', {}, el('strong', { texte: '  BIC ' }), s.bic) : null));
     }

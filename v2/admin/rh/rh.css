@@ -1,0 +1,119 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Administration : RH et paie
+   -----------------------------------------------------------------------------
+   Préparation d'un bulletin (variables et aperçu), contrôles, relevé de
+   temps, contrat de travail et bulletin de paie imprimables. Les règles des
+   pages à onglets et des documents sont communes (../commun/admin.css,
+   ../commun/document.css).
+   ============================================================================= */
+
+/* ---------- Préparation d'un bulletin : variables à gauche, aperçu à droite ---------- */
+.preparation { display: grid; gap: 16px; align-items: start; min-width: 0; }
+.preparation > * { min-width: 0; }
+@media (min-width: 1100px) {
+  .preparation { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+  .apercu-colonne { position: sticky; top: 12px; }
+}
+.bloc-variables { border: 1px solid var(--trait); border-radius: 12px; padding: 12px 14px 14px; margin: 0; display: grid; gap: 10px; min-width: 0; }
+.bloc-variables legend { font-weight: 600; padding: 0 6px; }
+.bloc-variables .aide { margin: 0; color: var(--gris); font-size: 14px; }
+.bloc-variables > .bouton { justify-self: start; }
+.lignes-variables { display: grid; gap: 8px; }
+.ligne-variable { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; padding-bottom: 8px; border-bottom: 1px dashed var(--trait); }
+@media (min-width: 560px) {
+  .ligne-variable { grid-template-columns: minmax(0, 1fr) 150px auto; align-items: center; padding-bottom: 0; border-bottom: 0; }
+}
+.ligne-variable-nombre { display: flex; align-items: center; gap: 6px; color: var(--gris); }
+.saisie-nombre { text-align: right; font-variant-numeric: tabular-nums; }
+@media (min-width: 560px) { .grille-champs-2 { grid-template-columns: 1fr 1fr; } }
+.suggestion { display: grid; gap: 6px; padding: 10px 12px; border-radius: var(--rayon-champ); background: #F3F6FA; font-size: 15px; }
+.suggestion p { margin: 0; }
+.suggestion .bouton { justify-self: start; }
+.liste-semaines { margin: 0; padding-left: 20px; color: var(--gris); font-size: 14px; }
+.apercu-bulletin { display: grid; gap: 14px; min-width: 0; }
+.apercu-bulletin .chiffres-cles { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.apercu-bulletin .fiche-donnees { font-size: 15px; }
+
+/* ---------- Contrôles d'un bulletin et points des paramètres ---------- */
+.liste-controles { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.liste-controles li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; align-items: baseline;
+  padding: 8px 12px; border-radius: 10px; border-left: 4px solid var(--nuit-2); background: #E8EEF8; font-size: 15px; }
+.liste-controles li[data-niveau='bloquant'] { border-left-color: var(--rouge); background: #FCEDEC; }
+.liste-controles li[data-niveau='attention'] { border-left-color: var(--or); background: #FBF3DC; }
+.controle-niveau { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--nuit-2); }
+.liste-controles li[data-niveau='bloquant'] .controle-niveau { color: var(--rouge); }
+.liste-controles li[data-niveau='attention'] .controle-niveau { color: #6E5200; }
+
+/* ---------- Temps de travail : une carte par semaine, sept jours ---------- */
+.semaines { display: grid; gap: 12px; }
+.semaine { border: 1px solid var(--trait); border-radius: 12px; padding: 12px; display: grid; gap: 10px; min-width: 0; }
+.semaine-entete { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.jours-temps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+@media (min-width: 560px) { .jours-temps { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 900px) { .jours-temps { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
+.jour-temps { display: grid; gap: 4px; align-content: start; }
+.jour-temps label { font-size: 14px; font-weight: 600; color: var(--gris); }
+.jour-ferie label, .jour-absence label { color: #6E5200; }
+.saisie-heures { text-align: right; font-variant-numeric: tabular-nums; }
+.saisie-heures:disabled { background: #F3F6FA; color: var(--gris); }
+.jour-note { font-size: 13px; color: var(--gris); line-height: 1.25; }
+.semaine-total { margin: 0; color: var(--gris); font-size: 15px; }
+.semaine-total strong { color: var(--nuit); }
+
+/* ---------- Contrat de travail imprimable ---------- */
+.contrat { gap: 14px; }
+.contrat-entete { display: grid; gap: 4px; justify-items: center; text-align: center; padding-bottom: 6px; border-bottom: 1.5px solid var(--nuit); }
+.contrat-entete h2 { font-size: 24px; text-transform: uppercase; letter-spacing: 0.04em; }
+.contrat-parties { display: grid; gap: 6px; }
+.contrat-parties p, .contrat-article p, .contrat-signatures p { margin: 0; text-align: justify; hyphens: auto; }
+.contrat-designation { font-style: italic; color: var(--gris); }
+.contrat-article { display: grid; gap: 6px; }
+.contrat-article h3 { font-size: 17px; }
+.contrat-objet { white-space: pre-wrap; padding: 10px 12px; border-left: 3px solid var(--or); background: #FBF8EE; }
+.contrat-signatures { display: grid; gap: 14px; margin-top: 8px; }
+.contrat-signataires { display: grid; gap: 18px; }
+@media (min-width: 640px) { .contrat-signataires { grid-template-columns: 1fr 1fr; } }
+.contrat-signataires > div { display: grid; gap: 2px; min-height: 130px; align-content: start; }
+.contrat-mention { color: var(--gris); font-size: 13px; font-style: italic; }
+
+/* ---------- Bulletin de paie imprimable ---------- */
+.bulletin { position: relative; }
+.bulletin-filigrane { margin: 0; padding: 8px 12px; border: 2px dashed var(--rouge); border-radius: 10px; color: var(--rouge);
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; text-align: center; }
+@media (min-width: 640px) { .bulletin-salarie { width: min(100%, 520px); } }
+.doc-table tr.bulletin-section td { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--nuit);
+  background: #F3F6FA; padding-top: 6px; padding-bottom: 6px; }
+.bulletin-nets { display: grid; gap: 8px; }
+.bulletin-nets dl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; margin: 0; font-variant-numeric: tabular-nums; }
+.bulletin-nets dd { margin: 0; text-align: right; font-weight: 600; }
+.bulletin-ligne-forte dt, .bulletin-ligne-forte dd { font-weight: 700; color: var(--nuit); }
+.bulletin-ligne dt { color: var(--gris); }
+.bulletin-pas { display: grid; gap: 4px; padding: 8px 12px; border: 1px solid var(--trait); border-radius: var(--rayon-champ); }
+.bulletin-pas dl { grid-template-columns: minmax(0, 1fr) auto; }
+.bulletin-pas dt { color: var(--gris); }
+.bulletin-net { padding: 10px 12px; border-radius: var(--rayon-champ); background: var(--nuit); color: var(--blanc); }
+.bulletin-net dt, .bulletin-net dd { font-family: var(--police-titre); font-size: 20px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+.bulletin-employeur dl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 16px; margin: 0; font-size: 14px; color: var(--gris);
+  font-variant-numeric: tabular-nums; }
+.bulletin-employeur dd { margin: 0; text-align: right; font-weight: 600; color: var(--nuit); }
+.bulletin-mentions p { margin: 0 0 4px; }
+
+/* ---------- Impression : une page A4, sans les éléments d'écran ---------- */
+@media print {
+  .contrat { font-size: 9.5pt; gap: 8px; }
+  .contrat-entete h2 { font-size: 14pt; }
+  .contrat-article h3 { font-size: 10.5pt; break-after: avoid; }
+  .contrat-article { break-inside: avoid; }
+  .contrat-signataires { grid-template-columns: 1fr 1fr; }
+  .contrat-signatures { break-inside: avoid; }
+  .bulletin { font-size: 8.5pt; gap: 6px; }
+  .bulletin-filigrane { padding: 4px; }
+  .bulletin-salarie { width: 100%; padding: 6px 8px; }
+  .bulletin-nets, .bulletin-employeur, .bulletin-mentions { break-inside: avoid; }
+  .bulletin-net { background: none; color: #000000; border: 1.5px solid #000000; padding: 4px 8px; }
+  .bulletin-net dt, .bulletin-net dd { font-size: 11pt; }
+  .doc-table tr.bulletin-section td { background: none; padding-top: 4px; padding-bottom: 2px; }
+  .bulletin-pas { padding: 4px 8px; }
+  .bulletin-mentions { font-size: 7.5pt; }
+}

@@ -34,7 +34,7 @@ export function afficherRentabilite({ parametres }) {
   $('entete-actions').replaceChildren(boutonExporter(exporter));
 
   const formulaire = el('form', { classe: 'barre-outils' },
-    ...champsPeriode({ prefixe: 'rentabilite', du: filtres.du, au: filtres.au, changer: ({ du, au }) => { filtres.du = du; filtres.au = au; charger(); } }));
+    ...champsPeriode({ prefixe: 'rentabilite', du: filtres.du, au: filtres.au, prefere: 'trimestre', changer: ({ du, au }) => { filtres.du = du; filtres.au = au; charger(); } }));
   formulaire.addEventListener('submit', (e) => e.preventDefault());
 
   $('contenu').replaceChildren(
@@ -66,7 +66,7 @@ async function charger() {
   if (error) { zone.replaceChildren(el('p', { classe: 'alerte', texte: messageErreurAdmin(error) })); return; }
   etat.donnees = data;
   const t = data.totaux;
-  const periode = periodeCourte(filtres.du, filtres.au);
+  const periode = periodeCourte(filtres.du, filtres.au, 'trimestre');
 
   $('chiffres-rentabilite').replaceChildren(
     tuile('Chiffre d\'affaires HT', euros(t.ca_ht),

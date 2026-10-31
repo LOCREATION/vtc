@@ -499,9 +499,15 @@ call test.connexion(:'admin', 'aal2');
 insert into public.salaries (profil_id, matricule, civilite, prenom, nom, type_contrat, date_entree, salaire_base_mensuel)
 values (:'chauffeur1', 'S0001', 'Monsieur', 'Paul', 'Bernard', 'CDI', date '2026-09-01', 1801.80)
 returning id as salarie_id \gset
+-- Bulletin écrit comme le font les fonctions de paie (depuis la migration 16,
+-- l'application n'écrit plus directement dans la table des bulletins)
+call test.systeme();
 insert into public.bulletins (salarie_id, periode, brut, net_a_payer)
 values (:'salarie_id', date '2026-10-01', 1801.80, 1410.00)
 returning id as bulletin_id \gset
+call test.connexion(:'admin', 'aal2');
+select test.doit_echouer(format('insert into public.bulletins (salarie_id, periode) values (%L, %L)', :'salarie_id', '2026-11-01'),
+                         'permission denied');
 insert into storage.objects (bucket_id, name, owner) values ('paie', :'salarie_id' || '/bulletin-2026-10.pdf', auth.uid());
 
 call test.connexion(:'chauffeur1');
@@ -512,8 +518,8 @@ insert into public.absences (salarie_id, type, debut, fin, jours) values (:'sala
 select test.doit_echouer(format('insert into public.absences (salarie_id, type, debut, fin, jours, statut) values (%L, %L, %L, %L, 1, %L)',
                                 :'salarie_id', 'conges_payes', '2026-12-28', '2026-12-28', 'validee'), 'row-level security');
 
-call test.connexion(:'admin', 'aal2');
-update public.bulletins set statut = 'valide', valide_par = auth.uid(), valide_le = now() where id = :'bulletin_id';
+call test.systeme();
+update public.bulletins set statut = 'valide', valide_par = :'admin', valide_le = now() where id = :'bulletin_id';
 call test.connexion(:'chauffeur1');
 select test.verifier((select count(*) from public.bulletins) = 1, 'paie : bulletin validé visible par le salarié');
 call test.connexion(:'client1');

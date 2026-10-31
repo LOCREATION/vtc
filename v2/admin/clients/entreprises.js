@@ -22,7 +22,7 @@ import { lienAdmin } from '../commun/admin.js';
 import {
   badge, badgeCourse, dateCourte, jourHeure, MODES_PAIEMENT, tableau, exporterCsv, nombreCsv,
   boutonExporter, fenetreFormulaire, confirmer, ouvrirFenetre, messageErreurAdmin, jourParis, nomComplet,
-  lienTelephone, telephoneLisible, sansEspaces, erreurSiret, erreurTva, siretLisible, ibanLisible
+  lienTelephone, telephoneLisible, sansEspaces, erreurSiret, erreurTva, siretLisible, ibanLisible, avecDe
 } from '../commun/composants.js';
 import {
   boutonAction, tuile, ligne, moisLisible, pluriel, montantCourse, normaliserTelephone, erreurTelephone, section,
@@ -444,8 +444,8 @@ async function dessinerReleve(c, mois, recharger) {
   // (éléments absents filtrés : replaceChildren écrirait « null »)
   corps.replaceChildren(...[
     el('p', { classe: 'sous-titre', texte: r.provisoire
-      ? `Relevé provisoire : le mois de ${r.mois_lisible} n'est pas terminé. Les courses à venir s'y ajouteront.`
-      : `Relevé de ${r.mois_lisible}, établi le ${dateCourte(r.date_releve)} · échéance le ${dateCourte(r.echeance)}.` }),
+      ? `Relevé provisoire : le mois ${avecDe(r.mois_lisible)} n'est pas terminé. Les courses à venir s'y ajouteront.`
+      : `Relevé ${avecDe(r.mois_lisible)}, établi le ${dateCourte(r.date_releve)} · échéance le ${dateCourte(r.echeance)}.` }),
     el('dl', { classe: 'fiche-donnees totaux-releve' },
       ...ligne('Factures du mois', `${pluriel(r.lignes.length, 'facture', 'factures')} · ${euros(t.factures_ttc)} TTC`),
       ...ligne('Avoirs', nbAvoirs ? `− ${euros(t.avoirs_ttc)} (${pluriel(nbAvoirs, 'avoir', 'avoirs')}, sous la facture qu'ils corrigent)` : null),
@@ -481,7 +481,7 @@ async function dessinerReleve(c, mois, recharger) {
 async function encaisser(c, r, recharger) {
   const reste = Number(r.totaux.reste_a_payer);
   const fait = await fenetreFormulaire({
-    titre: `Encaisser le relevé de ${r.mois_lisible}`,
+    titre: `Encaisser le relevé ${avecDe(r.mois_lisible)}`,
     intro: `Virement de ${euros(reste)} reçu de ${c.raison_sociale} ? Les ${r.totaux.paiements_a_encaisser} paiements de ce relevé passent « encaissés », à votre nom. Les gestionnaires du compte sont prévenus.`,
     champs: [{ nom: 'reference', libelle: 'Référence du virement', type: 'texte', longueur: 120, plein: true,
       aide: 'Lue sur le relevé de banque : elle permet de retrouver le virement.' }],
@@ -493,7 +493,7 @@ async function encaisser(c, r, recharger) {
       if (error) throw error;
     }
   });
-  if (fait) { afficherMessage(`Relevé de ${r.mois_lisible} encaissé : ${euros(reste)}.`, 'succes'); await recharger(); }
+  if (fait) { afficherMessage(`Relevé ${avecDe(r.mois_lisible)} encaissé : ${euros(reste)}.`, 'succes'); await recharger(); }
 }
 
 function exporterReleve(c, r) {
@@ -557,7 +557,7 @@ export async function ouvrirReleve(id, mois) {
   const c = r.compte;
   const s = r.societe || {};
   document.title = `Relevé ${r.mois_lisible} · ${c.raison_sociale}`;
-  $('titre-page').textContent = `Relevé de ${r.mois_lisible}`;
+  $('titre-page').textContent = `Relevé ${avecDe(r.mois_lisible)}`;
   const barre = barreDocument(boutonAction('Exporter (CSV)', async () => exporterReleve(c, r)));
 
   // Mentions manquantes : signalées à l'écran seulement (jamais imprimées)
@@ -566,7 +566,7 @@ export async function ouvrirReleve(id, mois) {
     !s.iban || !s.bic ? 'l\'IBAN et le BIC (règlement par virement)' : null
   ].filter(Boolean));
   const provisoire = r.provisoire
-    ? el('p', { classe: 'alerte non-imprimable', texte: `Le mois de ${r.mois_lisible} n'est pas terminé : ce relevé est provisoire (il porte la mention « provisoire » une fois imprimé).` })
+    ? el('p', { classe: 'alerte non-imprimable', texte: `Le mois ${avecDe(r.mois_lisible)} n'est pas terminé : ce relevé est provisoire (il porte la mention « provisoire » une fois imprimé).` })
     : null;
 
   $('contenu').replaceChildren(...[barre, avertissement, provisoire, documentReleve(r)].filter(Boolean));
@@ -642,7 +642,7 @@ function documentReleve(r) {
     el('p', { classe: 'doc-detail', texte: 'Chaque course fait l\'objet d\'une facture numérotée, disponible sur demande ; ce relevé les récapitule pour un règlement unique. Un avoir corrige la facture sous laquelle il figure.' }),
     s.mentions_factures ? el('p', { classe: 'doc-mentions', texte: s.mentions_factures }) : null);
 
-  return el('article', { classe: 'doc', 'aria-label': `Relevé de factures de ${r.mois_lisible}` },
+  return el('article', { classe: 'doc', 'aria-label': `Relevé de factures ${avecDe(r.mois_lisible)}` },
     entete, client, ...tableauDefilant(tableLignes), pourboires, totaux, reglementBloc);
 }
 

@@ -19,7 +19,7 @@ import { supabase } from '../../commun/supabase.js';
 import { el, euros, afficherMessage } from '../../commun/outils.js';
 import { lienAdmin } from './admin.js';
 import {
-  fenetreFormulaire, confirmer, messageErreurAdmin, MODES_PAIEMENT, NATURES_PAIEMENT, MODES_REMBOURSEMENT, dateCourte
+  fenetreFormulaire, confirmer, messageErreurAdmin, MODES_PAIEMENT, NATURES_PAIEMENT, MODES_REMBOURSEMENT, dateCourte, avecDe
 } from './composants.js';
 
 const centimes = (x) => Math.round(Number(x || 0) * 100);
@@ -53,7 +53,7 @@ export function actionsPaiement(p, recharger) {
   if (du && p.mode === 'facture_mensuelle') {
     if (p.compte_pro_id) {
       actions.push(el('a', { classe: 'bouton bouton-secondaire bouton-petit', href: lienAdmin(`clients/?entreprise=${p.compte_pro_id}`),
-        texte: p.releve_mois ? `Relevé de ${moisLisible(p.releve_mois)}` : 'Relevé de l\'entreprise' }));
+        texte: p.releve_mois ? `Relevé ${avecDe(moisLisible(p.releve_mois))}` : 'Relevé de l\'entreprise' }));
     }
   } else if (du) {
     actions.push(bouton(p.statut === 'echoue' ? 'Encaisser (réglé depuis)' : 'Confirmer l\'encaissement',

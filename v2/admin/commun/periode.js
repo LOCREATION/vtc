@@ -50,10 +50,17 @@ export function bornes(code, aujourdhui = jourParis()) {
   }
 }
 
-// Raccourci correspondant à des dates (« libre » sinon)
-export function codePeriode(du, au) {
-  const trouve = PERIODES.find((p) => { const b = bornes(p.code); return b && b.du === du && b.au === au; });
-  return trouve ? trouve.code : 'libre';
+// Raccourci correspondant à des dates (« libre » sinon). Plusieurs peuvent
+// donner les mêmes dates : le 1er du mois, « aujourd'hui » et « ce mois-ci » ;
+// le premier jour d'un trimestre, aussi « ce trimestre » ; le 1er janvier,
+// aussi « cette année ». Le raccourci « prefere » (celui de la page) l'emporte
+// alors, sinon « ce mois-ci », puis le plus large ; « aujourd'hui » en dernier.
+const ORDRE_AMBIGU = ['mois', 'trimestre', 'annee', 'jour'];
+export function codePeriode(du, au, prefere = null) {
+  const trouves = PERIODES.filter((p) => { const b = bornes(p.code); return b && b.du === du && b.au === au; }).map((p) => p.code);
+  if (!trouves.length) return 'libre';
+  if (prefere && trouves.includes(prefere)) return prefere;
+  return ORDRE_AMBIGU.find((code) => trouves.includes(code)) || trouves[0];
 }
 
 // « octobre 2026 », « du 01/10/2026 au 30/10/2026 », « le 30/10/2026 »
@@ -68,8 +75,8 @@ export function periodeLisible(du, au) {
 }
 
 // « ce mois-ci », « mois dernier », « aujourd'hui »… ou les dates
-export function periodeCourte(du, au) {
-  const code = codePeriode(du, au);
+export function periodeCourte(du, au, prefere = null) {
+  const code = codePeriode(du, au, prefere);
   if (code !== 'libre') return PERIODES.find((p) => p.code === code).libelle.toLowerCase();
   return periodeLisible(du, au);
 }
@@ -80,13 +87,15 @@ export function periodeValable(du, au) {
 }
 
 // Champs d'une barre de filtres : raccourci, puis « Du » et « Au ».
-// changer({ du, au }) est appelé à chaque période valable choisie.
-export function champsPeriode({ prefixe, du, au, changer }) {
+// changer({ du, au }) est appelé à chaque période valable choisie ; prefere :
+// raccourci de la page par défaut, affiché quand plusieurs donnent les mêmes
+// dates (voir codePeriode).
+export function champsPeriode({ prefixe, du, au, changer, prefere = null }) {
   const choix = el('select', { id: `${prefixe}-periode`, classe: 'saisie' },
     ...PERIODES.map((p) => el('option', { value: p.code, texte: p.libelle })));
   const saisieDu = el('input', { id: `${prefixe}-du`, classe: 'saisie', type: 'date', value: du });
   const saisieAu = el('input', { id: `${prefixe}-au`, classe: 'saisie', type: 'date', value: au });
-  choix.value = codePeriode(du, au);
+  choix.value = codePeriode(du, au, prefere);
 
   choix.addEventListener('change', () => {
     const b = bornes(choix.value);
@@ -98,7 +107,7 @@ export function champsPeriode({ prefixe, du, au, changer }) {
   const datesSaisies = () => {
     if (!saisieDu.value || !saisieAu.value) return;
     if (saisieAu.value < saisieDu.value) { afficherMessage('La date de fin est avant la date de début.', 'erreur'); return; }
-    choix.value = codePeriode(saisieDu.value, saisieAu.value);
+    choix.value = codePeriode(saisieDu.value, saisieAu.value, prefere);
     changer({ du: saisieDu.value, au: saisieAu.value });
   };
   saisieDu.addEventListener('change', datesSaisies);

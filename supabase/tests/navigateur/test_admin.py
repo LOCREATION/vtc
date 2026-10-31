@@ -159,7 +159,7 @@ async def tableau_de_bord(nav):
     verifier('€' in await page.inner_text('.bulle-graphique'), 'graphique : infobulle au survol')
     await page.click('#voir-tableau')
     verifier(await page.locator('#tableau-serie tbody tr').count() == 14, 'graphique : les mêmes chiffres en tableau')
-    verifier(await page.locator('.admin-lien').count() == 10, 'menu : dix modules')
+    verifier(await page.locator('.admin-lien').count() == 11, 'menu : onze modules')
     verifier(await page.get_attribute('.admin-lien[data-module="tableau"]', 'aria-current') == 'page', 'menu : module actif signalé')
     await page.screenshot(path=f'{CAPTURES}/admin-tableau-ordinateur.png', full_page=True)
     await ctx.close()
@@ -544,7 +544,8 @@ async def tarifs(nav):
     await page.locator('dialog.fenetre').get_by_role('button', name='Créer le tarif').click()
     await page.wait_for_selector('dialog.fenetre', state='detached')
     await page.wait_for_timeout(500)
-    verifier(valeur("select prix_heure_mad || ' ' || (valide_du = current_date + 1) from public.tarifs order by valide_du desc limit 1") == '45.00 true',
+    # « Demain » à l'heure de Paris (la base locale compte en temps universel : entre minuit et 1 h, ce n'est pas le même jour)
+    verifier(valeur("select prix_heure_mad || ' ' || (valide_du = (now() at time zone 'Europe/Paris')::date + 1) from public.tarifs order by valide_du desc limit 1") == '45.00 true',
              'nouveau tarif créé à partir de demain (mise à disposition 45 €/h)')
     verifier('À partir du' in await page.inner_text('#contenu'), 'tarif à venir signalé')
 
@@ -916,8 +917,16 @@ async def entreprises(nav):
     await page.locator('dialog.fenetre input[name=reference]').fill('VIR-NAVIGATEUR-002')
     await page.locator('dialog.fenetre').get_by_role('button', name=re.compile('^Encaisser ')).click()
     await page.wait_for_selector('dialog.fenetre', state='detached')
-    await page.wait_for_selector('#releve >> text=Payé')
+    # Le relevé se recharge : l'ancien affichage (qui a déjà des lignes « Payé »)
+    # reste visible le temps de la lecture ; on attend la ligne de la nouvelle
+    # course passée « Payé » dans le nouvel affichage
+    await page.wait_for_function("""(numero) => [...document.querySelectorAll('#releve tbody tr')]
+        .some((tr) => tr.innerText.includes(numero) && tr.innerText.includes('Payé'))""", arg=course['numero'])
     verifier(await page.get_by_role('button', name=re.compile('^Encaisser le relevé')).count() == 0, 'relevé encaissé : plus rien à payer')
+    verifier(await page.locator('#releve .sous-titre').inner_text()
+             == await page.evaluate("""() => { const m = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric', timeZone: 'Europe/Paris' }).format(new Date());
+                                               return `Relevé provisoire : le mois ${/^[aeiouyàâéèêîôû]/i.test(m) ? "d'" + m : 'de ' + m} n'est pas terminé. Les courses à venir s'y ajouteront.`; }"""),
+             'relevé du mois en cours : « le mois d\'octobre », « de novembre » (élision)')
     verifier(valeur(f"select count(*) from public.paiements where reference_externe = 'VIR-NAVIGATEUR-002' and statut = 'encaisse'") != '0',
              'paiements encaissés avec la référence du virement')
     await page.screenshot(path=f'{CAPTURES}/admin-fiche-entreprise.png', full_page=True)
@@ -1212,6 +1221,17 @@ async def finances(nav):
     await ctx.close()
 
 
+def euros_fr(v):
+    """« 1549.49 » → « 1 549,49 € » (affichage français, espaces ordinaires)."""
+    entier, _, decimales = f'{float(v):.2f}'.partition('.')
+    groupes = []
+    while len(entier) > 3:
+        groupes.insert(0, entier[-3:])
+        entier = entier[:-3]
+    groupes.insert(0, entier)
+    return f"{' '.join(groupes)},{decimales} €"
+
+
 def texte(s):
     """Texte affiché, espaces insécables remplacées (montants en euros à la française)."""
     return s.replace(' ', ' ').replace(' ', ' ')
@@ -1373,8 +1393,208 @@ async def plateformes(nav):
     await ctx.close()
 
 
+async def rh(nav):
+    print('RH et paie')
+    from banc import FICHIERS_DEPOSES
+    nadia = valeur("select id from public.salaries where matricule = 'S0002'")
+    paul = valeur("select id from public.salaries where matricule = 'S0001'")
+    karim = valeur("select id from public.salaries where matricule = 'S0003'")
+    ctx, page, _ = await entrer(nav, mobile=False)
+
+    # 1. Salariés : liste et chiffres conformes à la base
+    await page.goto(SITE + 'admin/rh/')
+    await page.wait_for_selector('#liste-salaries tbody tr')
+    verifier(await page.inner_text('.admin-titre') == 'RH et paie'
+             and await page.get_attribute('.admin-lien[data-module="rh"]', 'aria-current') == 'page'
+             and await page.locator('.onglet[role=tab]').count() == 5,
+             'module RH et paie ouvert, signalé dans le menu, cinq onglets')
+    nombre = int(valeur("select count(*) from public.salaries"))
+    verifier(await page.locator('#liste-salaries tbody tr').count() == nombre, f'une ligne par salarié ({nombre})')
+    tuiles = [texte(t) for t in await page.locator('#chiffres-salaries .chiffre-cle').all_inner_texts()]
+    verifier(len(tuiles) == 4 and 'Demandes de congés' in tuiles[3], 'quatre chiffres clés, dont les demandes de congés')
+
+    # 2. Nouvelle fiche : contrôle du n° de Sécurité sociale, puis création
+    await page.get_by_role('button', name='Ajouter un salarié').click()
+    f = await fenetre(page)
+    verifier(await f.locator('textarea[name=repartition_horaire]').is_hidden(), 'fiche : répartition des heures masquée pour un temps plein')
+    await f.locator('select[name=civilite]').select_option('Monsieur')
+    await f.locator('input[name=prenom]').fill('Yanis')
+    await f.locator('input[name=nom]').fill('Durand')
+    await f.locator('input[name=date_naissance]').fill('1990-04-15')
+    await f.locator('input[name=lieu_naissance]').fill('Creil')
+    await f.locator('input[name=nationalite]').fill('Française')
+    await f.locator('input[name=numero_securite_sociale]').fill('1 90 04 60 159 001 00')
+    await f.locator('input[name=adresse]').fill('5 rue de la Gare')
+    await f.locator('input[name=code_postal]').fill('60100')
+    await f.locator('input[name=ville]').fill('Creil')
+    await f.locator('input[name=qualification]').fill('Employé')
+    await f.locator('input[name=lieu_travail]').fill('Île-de-France, au départ du dépôt de Chaumontel')
+    await f.locator('input[name=date_entree]').fill('2026-10-01')
+    await f.locator('input[name=salaire_base_mensuel]').fill('2 100')
+    await f.get_by_role('button', name='Créer la fiche').click()
+    verifier('La clé ne correspond pas' in await f.inner_text(), 'fiche : n° de Sécurité sociale avec une clé fausse refusé à la saisie')
+    cle = 97 - (1900460159001 % 97)
+    await f.locator('input[name=numero_securite_sociale]').fill(f'1 90 04 60 159 001 {cle:02d}')
+    await f.get_by_role('button', name='Créer la fiche').click()
+    await fermee(page)
+    yanis = valeur("select id from public.salaries where nom = 'Durand' and prenom = 'Yanis'")
+    verifier(valeur(f"select matricule || '|' || numero_securite_sociale || '|' || salaire_base_mensuel from public.salaries where id = '{yanis}'")
+             == f'S0005|1900460159001{cle:02d}|2100.00',
+             'fiche créée : matricule suivant, n° de Sécurité sociale sans espaces, salaire')
+
+    # 3. Dossier : contrat CDI établi depuis la fiche, sans champ à compléter
+    await page.goto(SITE + f'admin/rh/?salarie={yanis}')
+    await page.wait_for_selector('#titre-contrats')
+    verifier('Pour établir un contrat' not in await page.inner_text('#contenu'), 'dossier : rien ne manque pour établir le contrat')
+    await page.get_by_role('button', name='Établir un contrat ou un avenant').click()
+    f = await fenetre(page)
+    verifier(await f.locator('input[name=essai]').input_value() == '2026-11-30', 'période d\'essai proposée à sa durée maximale (2 mois)')
+    await f.get_by_role('button', name='Établir le contrat').click()
+    await page.wait_for_url(re.compile(r'rh/\?contrat='))
+    await page.wait_for_selector('article.contrat')
+    contrat = texte(await page.inner_text('article.contrat'))
+    # Taux exact : 4 décimales ne suffisent pas (151,67 × 13,8458 = 2 099,99 €), il en faut 5
+    taux = '13,84585'
+    open(f'{CAPTURES}/contrat-essai.txt', 'w', encoding='utf-8').write(contrat)
+    verifier('contrat de travail à durée indéterminée' in contrat.lower() and 'LOC RÉACTION S.A.S' in contrat,
+             'contrat imprimable : titre et employeur')
+    verifier('période d\'essai de deux mois, soit jusqu\'au 30 novembre 2026' in contrat, 'contrat : période d\'essai de deux mois, date de fin')
+    verifier('35 heures par semaine' in contrat and f'taux horaire brut de {taux} €' in contrat,
+             f'contrat : 35 heures, taux horaire exact ({taux} €)')
+    verifier('carte professionnelle de conducteur de VTC' in contrat and 'L. 121-6 du Code de la route' in contrat, 'contrat : clauses propres à la conduite de VTC')
+    verifier('compléter' not in contrat.lower(), 'contrat : aucun champ à compléter')
+    verifier('en qualité de conducteur de VTC' in contrat, 'contrat : emploi en minuscule au fil du texte, sigle conservé')
+    await page.screenshot(path=f'{CAPTURES}/admin-rh-contrat-ordinateur.png', full_page=True)
+    await page.goto(SITE + f'admin/rh/?salarie={yanis}')
+    await page.wait_for_selector('#titre-contrats')
+    await page.get_by_role('button', name='Remis pour signature').click()
+    await page.wait_for_selector('text=Remis pour signature >> nth=1')
+    await page.get_by_role('button', name='Classer le PDF signé').click()
+    await fenetre(page)
+    await page.set_input_files('#contrat-pdf', files=[{'name': 'contrat-signe.pdf', 'mimeType': 'application/pdf', 'buffer': b'%PDF-1.4 essai'}])
+    await page.locator('dialog.fenetre').get_by_role('button', name='Classer').click()
+    await fermee(page)
+    signe = valeur(f"select statut || '|' || pdf_chemin from public.contrats where salarie_id = '{yanis}'").split('|')
+    verifier(signe[0] == 'signe' and signe[1].startswith(f'{yanis}/contrats/cdi-2026-10-01') and f'paie/{signe[1]}' in FICHIERS_DEPOSES,
+             'contrat signé : PDF classé dans le dossier privé de la paie')
+
+    # 4. Bulletin d'octobre de Nadia : préparation, aperçu calculé par la base, validation
+    await page.goto(SITE + f'admin/rh/?vue=bulletins&periode=2026-10-01')
+    await page.wait_for_selector('#liste-bulletins tbody tr')
+    ligne_nadia = page.locator('#liste-bulletins tbody tr', has_text='Nadia Moreau')
+    verifier('À établir' in await ligne_nadia.inner_text(), 'bulletins d\'octobre : celui de Nadia est à établir')
+    await ligne_nadia.get_by_role('link', name='Préparer').click()
+    await page.wait_for_selector('.apercu-bulletin .chiffre-cle')
+    brut_base = texte(await page.locator('.apercu-bulletin .chiffre-cle').first.inner_text())
+    verifier('1 900,00 €' in brut_base, f'aperçu : brut d\'un mois complet ({brut_base.splitlines()[1] if len(brut_base.splitlines()) > 1 else brut_base})')
+    bloc_primes = page.locator('fieldset.bloc-variables', has_text='Primes et indemnités soumises')
+    await bloc_primes.get_by_role('button', name='Ajouter une ligne').click()
+    await bloc_primes.locator('.ligne-variable input').first.fill('Prime de qualité')
+    await bloc_primes.locator('.ligne-variable input').nth(1).fill('75')
+    await page.wait_for_function("document.querySelector('.apercu-bulletin .chiffre-cle') && document.querySelector('.apercu-bulletin .chiffre-cle').textContent.replace(/[\\u00a0\\u202f]/g, ' ').includes('1 975,00')")
+    verifier(True, 'aperçu recalculé par la base à la saisie d\'une prime (brut 1 975,00 €)')
+    await page.screenshot(path=f'{CAPTURES}/admin-rh-preparation-ordinateur.png', full_page=True)
+    await page.get_by_role('button', name='Enregistrer et valider').click()
+    f = await fenetre(page)
+    await f.get_by_role('button', name='Valider').click()
+    await page.wait_for_url(re.compile(r'rh/\?bulletin='))
+    await page.wait_for_selector('article.bulletin')
+    b = valeur(f"select statut || '|' || brut || '|' || net_a_payer || '|' || (calcul ->> 'net_a_payer') from public.bulletins where salarie_id = '{nadia}' and periode = '2026-10-01'").split('|')
+    doc = texte(await page.inner_text('article.bulletin'))
+    net = euros_fr(b[2])
+    verifier(b[0] == 'valide' and b[1] == '1975.00' and b[2] == b[3]
+             and 'bulletin de paie' in doc.lower() and 'octobre 2026' in doc and net in doc,
+             f'bulletin validé et imprimable : net à payer {net} identique au calcul de la base')
+    verifier('conservez ce bulletin de paie sans limitation de durée' in doc and 'Montant net social' in doc.replace('MONTANT NET SOCIAL', 'Montant net social')
+             and 'Taux non personnalisé' in doc and 'SIRET 100 052 570 00019' in doc and 'brouillon' not in doc.lower(),
+             'bulletin : mentions obligatoires, taux non personnalisé, identité de l\'employeur')
+    await page.screenshot(path=f'{CAPTURES}/admin-rh-bulletin-ordinateur.png', full_page=True)
+    await page.get_by_role('button', name='Remis au salarié').click()
+    await fenetre(page)
+    await page.locator('dialog.fenetre').get_by_role('button', name='Noter comme remis').click()
+    await fermee(page)
+    verifier(valeur(f"select statut from public.bulletins where salarie_id = '{nadia}' and periode = '2026-10-01'") == 'envoye',
+             'bulletin noté comme remis au salarié')
+
+    # 5. Congés et absences : refus motivé de la demande de Paul
+    await page.goto(SITE + 'admin/rh/?vue=absences')
+    await page.wait_for_selector('#liste-demandes tbody tr')
+    await page.locator('#liste-demandes tbody tr', has_text='Paul').get_by_role('button', name='Refuser').click()
+    f = await fenetre(page)
+    await f.locator('textarea').fill('Période de forte activité : merci de proposer d\'autres dates.')
+    await f.get_by_role('button', name='Refuser').click()
+    await fermee(page)
+    verifier(valeur(f"select statut || '|' || decision_note from public.absences where salarie_id = '{paul}' and debut = '2026-12-21'")
+             == 'refusee|Période de forte activité : merci de proposer d\'autres dates.', 'demande de Paul refusée, motif conservé')
+    await page.get_by_role('button', name='Ajouter une absence').click()
+    f = await fenetre(page)
+    await f.locator('select[name=salarie]').select_option(karim)
+    await f.locator('select[name=type]').select_option('conges_payes')
+    await f.locator('input[name=debut]').fill('2026-11-16')
+    await f.locator('input[name=fin]').fill('2026-11-21')
+    await f.get_by_role('button', name='Ajouter').click()
+    await fermee(page)
+    verifier(valeur(f"select jours || '|' || statut from public.absences where salarie_id = '{karim}' and debut = '2026-11-16'") == '6.0|validee',
+             'congés de Karim du lundi au samedi : 6 jours ouvrables, acceptés')
+
+    # 6. Temps de travail : heures de Karim (temps partiel), heures complémentaires
+    await page.goto(SITE + f'admin/rh/?vue=temps&salarie={karim}&mois=2026-11-01')
+    await page.wait_for_selector('.semaine .saisie-heures')
+    for jour in ('2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05'):
+        await page.fill(f'#temps-{jour}', '6,5')
+    await page.get_by_role('button', name='Enregistrer les heures').click()
+    await page.wait_for_function("document.querySelector('#chiffres-temps') && document.querySelector('#chiffres-temps').textContent.includes('26 h')")
+    verifier(valeur(f"select sum(heures) from public.temps_travail where salarie_id = '{karim}' and jour between '2026-11-02' and '2026-11-08'") == '26.00',
+             'heures de Karim enregistrées : 26 h la semaine du 2 novembre (2 h complémentaires)')
+
+    # 7. Paramètres de paie : 2026 validés, 2027 à mettre à jour puis valider
+    await page.goto(SITE + 'admin/rh/?vue=parametres&annee=2026')
+    await page.wait_for_selector('#titre-validation')
+    verifier('Validés par l\'expert-comptable' in await page.inner_text('#contenu') and await page.locator('#titre-lignes').count() == 1,
+             'paramètres 2026 : validés, lignes de cotisation affichées')
+    await page.goto(SITE + 'admin/rh/?vue=parametres&annee=2027')
+    await page.wait_for_selector('#titre-validation')
+    await page.locator('section', has=page.locator('#titre-constantes')).get_by_role('button', name='Modifier').click()
+    f = await fenetre(page)
+    await f.locator('input[name=plafond_mensuel_ss]').fill('4 120')
+    await f.get_by_role('button', name='Enregistrer').click()
+    await fermee(page)
+    verifier(valeur("select plafond_mensuel_ss from public.constantes_paie where annee = 2027") == '4120.00', 'constantes 2027 modifiées (plafond)')
+    await page.get_by_role('button', name='Valider les paramètres').click()
+    f = await fenetre(page)
+    await f.locator('input[name=note]').fill('Cabinet Exemple Expertise, le 31/10/2026')
+    await f.get_by_role('button', name='Valider').click()
+    await fermee(page)
+    verifier(valeur("select valide_par_comptable::text || '|' || validation_note from public.constantes_paie where annee = 2027")
+             == 'true|Cabinet Exemple Expertise, le 31/10/2026', 'paramètres 2027 validés : qui et quand')
+    await page.wait_for_selector('text=Retirer la validation')
+    verifier(await page.locator('section', has=page.locator('#titre-constantes')).get_by_role('button', name='Modifier').count() == 0,
+             'année validée : plus aucune modification proposée')
+    await ctx.close()
+
+    # Téléphone : aucune page plus large que l'écran
+    ctx, page, _ = await entrer(nav, mobile=True)
+    bulletin = valeur(f"select id from public.bulletins where salarie_id = '{nadia}' and periode = '2026-10-01'")
+    contrat_id = valeur(f"select id from public.contrats where salarie_id = '{yanis}'")
+    for adresse, attente, capture in [('rh/', '#liste-salaries tbody tr', 'admin-rh-salaries-telephone'),
+                                      (f'rh/?salarie={nadia}', '#titre-contrats', 'admin-rh-dossier-telephone'),
+                                      (f'rh/?contrat={contrat_id}', 'article.contrat', 'admin-rh-contrat-telephone'),
+                                      ('rh/?vue=bulletins&periode=2026-10-01', '#liste-bulletins tbody tr', 'admin-rh-bulletins-telephone'),
+                                      (f'rh/?preparer={karim}&periode=2026-10-01', '.apercu-bulletin .chiffre-cle', 'admin-rh-preparation-telephone'),
+                                      (f'rh/?bulletin={bulletin}', 'article.bulletin', 'admin-rh-bulletin-telephone'),
+                                      ('rh/?vue=absences', '#liste-absences tbody tr', 'admin-rh-absences-telephone'),
+                                      (f'rh/?vue=temps&salarie={karim}&mois=2026-11-01', '.semaine', 'admin-rh-temps-telephone'),
+                                      ('rh/?vue=parametres&annee=2026', '#titre-lignes', 'admin-rh-parametres-telephone')]:
+        await page.goto(SITE + 'admin/' + adresse)
+        await page.wait_for_selector(attente)
+        verifier(await page.evaluate('document.documentElement.scrollWidth <= screen.width'),
+                 f'téléphone : {capture.replace("admin-rh-", "").replace("-telephone", "")} sans défilement horizontal de la page')
+        await page.screenshot(path=f'{CAPTURES}/{capture}.png', full_page=True)
+    await ctx.close()
+
+
 ETAPES = {'porte': porte, 'tableau': tableau_de_bord, 'dispatch': dispatch, 'courses': courses,
-          'clients': clients, 'entreprises': entreprises, 'finances': finances, 'plateformes': plateformes,
+          'clients': clients, 'entreprises': entreprises, 'finances': finances, 'plateformes': plateformes, 'rh': rh,
           'chauffeurs': chauffeurs, 'flotte': flotte, 'tarifs': tarifs, 'parametres': parametres}
 
 
