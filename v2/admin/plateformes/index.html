@@ -1,0 +1,46 @@
+<!doctype html>
+<!-- =============================================================================
+     LOC RÉACTION S.A.S — Version 2
+     Administration : plateformes
+     Une seule page, deux vues (choisies par l'adresse) :
+       - Relevés (par défaut) : relevés des plateformes de réservation (Bolt,
+         Uber, Heetch) chauffeur par chauffeur : saisie, correction, PDF du
+         relevé, suppression, export ;
+       - Rentabilité (?vue=rentabilite) : par chauffeur, courses en direct et
+         courses des plateformes, frais de service, coût salarial, marge.
+     ============================================================================= -->
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Plateformes, administration LOC RÉACTION</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0A1A38">
+  <link rel="manifest" href="../../manifest.webmanifest">
+  <link rel="icon" href="../../commun/img/icone.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../../commun/img/icone-192.png">
+  <link rel="stylesheet" href="../../commun/styles.css">
+  <link rel="stylesheet" href="../commun/admin.css">
+  <link rel="stylesheet" href="plateformes.css">
+  <script type="module" src="plateformes.js"></script>
+</head>
+<body class="admin">
+  <section class="porte" id="porte" aria-live="polite"><p class="chargement">Chargement…</p></section>
+
+  <div class="admin-cadre" id="admin-cadre" hidden>
+    <nav class="admin-menu" id="admin-menu" aria-label="Modules de l'administration" data-ouvert="false"></nav>
+    <div class="admin-zone">
+      <header class="admin-entete">
+        <button type="button" class="admin-bouton-menu" id="admin-ouvrir-menu" aria-controls="admin-menu" aria-expanded="false">Menu</button>
+        <h1 class="admin-titre" id="titre-page">Plateformes</h1>
+        <div class="admin-entete-actions" id="entete-actions"></div>
+      </header>
+
+      <main class="admin-page" id="admin-page">
+        <div class="onglets" role="tablist" aria-label="Rubriques" id="onglets" hidden></div>
+        <div class="contenu-module" id="contenu"><p class="chargement">Chargement…</p></div>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

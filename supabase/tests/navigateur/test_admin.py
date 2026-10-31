@@ -159,7 +159,7 @@ async def tableau_de_bord(nav):
     verifier('€' in await page.inner_text('.bulle-graphique'), 'graphique : infobulle au survol')
     await page.click('#voir-tableau')
     verifier(await page.locator('#tableau-serie tbody tr').count() == 14, 'graphique : les mêmes chiffres en tableau')
-    verifier(await page.locator('.admin-lien').count() == 9, 'menu : neuf modules')
+    verifier(await page.locator('.admin-lien').count() == 10, 'menu : dix modules')
     verifier(await page.get_attribute('.admin-lien[data-module="tableau"]', 'aria-current') == 'page', 'menu : module actif signalé')
     await page.screenshot(path=f'{CAPTURES}/admin-tableau-ordinateur.png', full_page=True)
     await ctx.close()
@@ -1177,8 +1177,10 @@ async def finances(nav):
     noms = [n.split('/')[-1] for n in archive.namelist()]
     verifier(archive.testzip() is None and 'LISEZ-MOI.txt' in noms and '1-registre-factures-et-avoirs.csv' in noms
              and '2-journal-des-encaissements.csv' in noms and '4-remises-especes-des-chauffeurs.csv' in noms
-             and any(n.startswith('6-sommes-dues-au-') for n in noms),
-             f'dossier ZIP : archive valable, {len(noms)} fichiers (LISEZ-MOI, registre, encaissements, remises, sommes dues…)')
+             and any(n.startswith('6-sommes-dues-au-') for n in noms) and '7-releves-des-plateformes.csv' in noms,
+             f'dossier ZIP : archive valable, {len(noms)} fichiers (LISEZ-MOI, registre, encaissements, remises, sommes dues, relevés des plateformes…)')
+    lisez_moi = archive.read(next(n for n in archive.namelist() if n.endswith('LISEZ-MOI.txt'))).decode('utf-8-sig')
+    verifier('7. Relevés des plateformes' in lisez_moi, 'LISEZ-MOI : les relevés des plateformes présentés')
     registre_zip = archive.read(next(n for n in archive.namelist() if n.endswith('1-registre-factures-et-avoirs.csv'))).decode('utf-8-sig')
     verifier(registre_zip.count('\r\n') == int(pieces), 'dossier ZIP : le registre du mois, une ligne par pièce')
     await page.screenshot(path=f'{CAPTURES}/admin-finances-tva.png', full_page=True)
@@ -1210,8 +1212,169 @@ async def finances(nav):
     await ctx.close()
 
 
+def texte(s):
+    """Texte affiché, espaces insécables remplacées (montants en euros à la française)."""
+    return s.replace(' ', ' ').replace(' ', ' ')
+
+
+async def plateformes(nav):
+    print('Plateformes')
+    from banc import FICHIERS_DEPOSES, FICHIERS_RETIRES
+    lundi = valeur("select date_trunc('week', now() at time zone 'Europe/Paris')::date::text")
+    s3_debut = valeur(f"select ('{lundi}'::date - 21)::text")
+    s3_fin = valeur(f"select ('{lundi}'::date - 15)::text")
+    du = s3_debut
+    au = valeur("select (now() at time zone 'Europe/Paris')::date::text")
+    ctx, page, _ = await entrer(nav, mobile=False)
+
+    # 1. Relevés de la période : chiffres clés et liste conformes à la base
+    await page.goto(SITE + f'admin/plateformes/?vue=releves&du={du}&au={au}')
+    await page.wait_for_selector('#liste-releves tbody tr')
+    verifier(await page.inner_text('.admin-titre') == 'Plateformes'
+             and await page.get_attribute('.admin-lien[data-module="plateformes"]', 'aria-current') == 'page',
+             'module Plateformes ouvert, signalé dans le menu')
+    attendu = valeur(f"select count(*) || '|' || to_char(sum(montant_trajets), 'FM999990.00') from public.releves_plateformes where fin between '{du}' and '{au}'").split('|')
+    tuiles = [texte(t) for t in await page.locator('#chiffres-releves .chiffre-cle').all_inner_texts()]
+    verifier(len(tuiles) == 4 and attendu[1].replace('.', ',') in tuiles[0].replace(' ', '') and f'{attendu[0]} relevés' in tuiles[0],
+             f'case « Trajets » : {attendu[1]} € sur {attendu[0]} relevés')
+    verifier(await page.locator('#liste-releves tbody tr').count() == int(attendu[0]), 'une ligne par relevé de la période')
+    verifier('Bolt' in await page.inner_text('#resume-releves') and 'Uber' in await page.inner_text('#resume-releves'),
+             'résumé par plateforme (Bolt, Uber)')
+
+    # 2. Ajout d'un relevé Heetch avec son PDF : net et montant viré calculés pendant la saisie
+    await page.get_by_role('button', name='Ajouter un relevé').click()
+    f = await fenetre(page)
+    await f.locator('select[name=plateforme]').select_option('heetch')
+    await f.locator('select[name=chauffeur]').select_option(CHAUFFEUR)
+    await f.locator('input[name=debut]').fill(s3_debut)
+    await f.locator('input[name=fin]').fill(s3_fin)
+    await f.locator('input[name=trajets]').fill('230,40')
+    await f.locator('input[name=frais]').fill('34,56')
+    await f.locator('input[name=especes]').fill('50')
+    await f.locator('input[name=nb_courses]').fill('9')
+    apercu = texte(await f.locator('.apercu-calcul').inner_text())
+    verifier('Net calculé : 195,84 €' in apercu and 'viré : 145,84 €' in apercu and 'frais 15 %' in apercu,
+             f'saisie : net, montant viré et taux des frais recalculés à la frappe ({apercu})')
+    await page.set_input_files('#releve-fichier', files=[{'name': 'releve-heetch.pdf', 'mimeType': 'application/pdf', 'buffer': b'%PDF-1.4 essai'}])
+    await f.get_by_role('button', name='Ajouter le relevé').click()
+    await fermee(page)
+    heetch = valeur(f"select id || '|' || montant_net || '|' || virement || '|' || coalesce(fichier_chemin, '') from public.releves_plateformes where plateforme = 'heetch' and chauffeur_id = '{CHAUFFEUR}' and debut = '{s3_debut}'").split('|')
+    verifier(heetch[1] == '195.84' and heetch[2] == '145.84' and heetch[3].startswith(f'releves/{heetch[0]}/'),
+             'relevé Heetch enregistré : net 195,84 €, viré 145,84 €, PDF joint')
+    verifier(f'administration/{heetch[3]}' in FICHIERS_DEPOSES, 'PDF déposé dans le dossier privé de l\'administration')
+
+    # 3. Second relevé Heetch sur la même semaine : refusé, message exact
+    await page.get_by_role('button', name='Ajouter un relevé').click()
+    f = await fenetre(page)
+    await f.locator('select[name=plateforme]').select_option('heetch')
+    await f.locator('select[name=chauffeur]').select_option(CHAUFFEUR)
+    await f.locator('input[name=debut]').fill(s3_debut)
+    await f.locator('input[name=fin]').fill(s3_fin)
+    await f.locator('input[name=trajets]').fill('10')
+    await f.locator('input[name=frais]').fill('1')
+    await f.get_by_role('button', name='Ajouter le relevé').click()
+    await page.wait_for_selector('dialog.fenetre .alerte:not([hidden])')
+    message = await f.locator('.alerte').inner_text()
+    verifier(message.startswith('Paul Bernard a déjà un relevé Heetch du ') and 'corrigez-le plutôt' in message,
+             f'chevauchement refusé : {message}')
+    await f.get_by_role('button', name='Annuler').click()
+    await fermee(page)
+
+    # 4. Correction : les frais mal recopiés
+    ligne = page.locator('#liste-releves tbody tr', has_text='Heetch')
+    await ligne.get_by_role('button', name='Corriger').click()
+    f = await fenetre(page)
+    await f.locator('input[name=frais]').fill('34,60')
+    verifier('Net calculé : 195,80 €' in texte(await f.locator('.apercu-calcul').inner_text()), 'correction : net recalculé à la frappe')
+    await f.get_by_role('button', name='Enregistrer').click()
+    await fermee(page)
+    verifier(valeur(f"select frais_service || '|' || montant_net from public.releves_plateformes where id = '{heetch[0]}'") == '34.60|195.80',
+             'relevé corrigé dans la base')
+
+    # 5. PDF : consultation par lien signé, puis remplacement (l'ancien est retiré)
+    ligne = page.locator('#liste-releves tbody tr', has_text='Heetch')
+    async with page.expect_popup() as fenetre_pdf:
+        await ligne.get_by_role('button', name='Voir').click()
+    pdf = await fenetre_pdf.value
+    await pdf.wait_for_url(re.compile('object/sign/administration/releves/'))
+    verifier(f'administration/releves/{heetch[0]}/' in pdf.url, 'PDF du relevé ouvert par un lien signé')
+    await pdf.close()
+    await ligne.get_by_role('button', name='Remplacer').click()
+    f = await fenetre(page)
+    await page.set_input_files('#releve-pdf', files=[{'name': 'releve-heetch-v2.pdf', 'mimeType': 'application/pdf', 'buffer': b'%PDF-1.4 essai 2'}])
+    await f.get_by_role('button', name='Joindre').click()
+    await fermee(page)
+    nouveau = valeur(f"select fichier_chemin from public.releves_plateformes where id = '{heetch[0]}'")
+    verifier(nouveau != heetch[3] and f'administration/{heetch[3]}' in FICHIERS_RETIRES, 'PDF remplacé : l\'ancien est retiré du dossier')
+
+    # 6. Export CSV, ordre chronologique
+    async with page.expect_download() as telechargement:
+        await page.get_by_role('button', name='Exporter (CSV)').click()
+    lignes_csv = open(await (await telechargement.value).path(), encoding='utf-8-sig', newline='').read().split('\r\n')
+    nb = int(valeur(f"select count(*) from public.releves_plateformes where fin between '{du}' and '{au}'"))
+    verifier(lignes_csv[0].startswith('Plateforme;Chauffeur;Du;Au;Courses;Trajets TTC;Frais de service;') and len(lignes_csv) == nb + 1
+             and lignes_csv[1].startswith('Heetch;Paul Bernard;'),
+             f'export CSV : en-têtes, {nb} relevés, le plus ancien d\'abord')
+    await page.screenshot(path=f'{CAPTURES}/admin-plateformes-releves.png', full_page=True)
+
+    # 7. Rentabilité : chiffres égaux à ceux de la base
+    await page.get_by_role('tab', name='Rentabilité par chauffeur').click()
+    await page.wait_for_function("location.search.includes('vue=rentabilite')")
+    await page.fill('#rentabilite-du', du)
+    await page.fill('#rentabilite-au', au)
+    await page.locator('#rentabilite-au').dispatch_event('change')
+    await page.wait_for_function(f"location.search.includes('du={du}')")
+    await page.wait_for_selector('#liste-rentabilite tbody tr')
+    renta = json.loads(appel_rpc('admin_rentabilite_chauffeurs', {'p_debut': du, 'p_fin': au}, ADMIN)[1])
+    paul = next(c for c in renta['chauffeurs'] if c['chauffeur_id'] == CHAUFFEUR)
+    ligne = texte(await page.locator('#liste-rentabilite tbody tr', has_text='Paul Bernard').inner_text())
+    marge = f"{paul['marge']:,.2f}".replace(',', ' ').replace('.', ',')
+    verifier(marge in ligne and f"{paul['plateformes']['releves']} relevés" in ligne,
+             f'rentabilité de Paul : marge {marge} € et relevés comme dans la base')
+    tuiles = [texte(t) for t in await page.locator('#chiffres-rentabilite .chiffre-cle').all_inner_texts()]
+    ca = f"{renta['totaux']['ca_ht']:,.2f}".replace(',', ' ').replace('.', ',')
+    verifier(len(tuiles) == 5 and ca in tuiles[0] and '% des trajets' in tuiles[1],
+             f'chiffres clés : chiffre d\'affaires HT {ca} €, taux moyen des frais')
+    async with page.expect_download() as telechargement:
+        await page.get_by_role('button', name='Exporter (CSV)').click()
+    contenu = open(await (await telechargement.value).path(), encoding='utf-8-sig', newline='').read().split('\r\n')
+    verifier(contenu[0].startswith('Chauffeur;Statut;Courses en direct;Direct HT;') and len(contenu) == len(renta['chauffeurs']) + 1,
+             'export de la rentabilité : une ligne par chauffeur')
+    await page.screenshot(path=f'{CAPTURES}/admin-plateformes-rentabilite.png', full_page=True)
+
+    # 8. Suppression d'un relevé : PDF retiré, trace au journal
+    await page.goto(SITE + f'admin/plateformes/?vue=releves&du={du}&au={au}')
+    await page.wait_for_selector('#liste-releves tbody tr')
+    await page.locator('#liste-releves tbody tr', has_text='Heetch').get_by_role('button', name='Supprimer').click()
+    f = await fenetre(page)
+    await f.get_by_role('button', name='Supprimer').click()
+    await fermee(page)
+    verifier(valeur(f"select count(*) from public.releves_plateformes where id = '{heetch[0]}'") == '0'
+             and f'administration/{nouveau}' in FICHIERS_RETIRES
+             and valeur(f"select count(*) from prive.journal where table_cible = 'releves_plateformes' and ligne_id = '{heetch[0]}' and action = 'DELETE'") == '1',
+             'relevé supprimé : PDF retiré du dossier, suppression gardée au journal')
+    await ctx.close()
+
+    # Téléphone : aucune page plus large que l'écran
+    ctx, page, _ = await entrer(nav, mobile=True)
+    for vue, attente, capture in [('releves', '#liste-releves tbody tr', 'admin-plateformes-telephone'),
+                                  ('rentabilite', '#liste-rentabilite tbody tr', 'admin-plateformes-rentabilite-telephone')]:
+        await page.goto(SITE + f'admin/plateformes/?vue={vue}&du={du}&au={au}')
+        await page.wait_for_selector(attente)
+        verifier(await page.evaluate('document.documentElement.scrollWidth <= screen.width'),
+                 f'téléphone : « {vue} » sans défilement horizontal de la page')
+        await page.screenshot(path=f'{CAPTURES}/{capture}.png', full_page=True)
+    await page.goto(SITE + f'admin/plateformes/?vue=releves&du={du}&au={au}')
+    await page.wait_for_selector('#liste-releves tbody tr')
+    await page.get_by_role('button', name='Ajouter un relevé').click()
+    await fenetre(page)
+    verifier(await page.evaluate('document.documentElement.scrollWidth <= screen.width'), 'téléphone : formulaire de saisie sans défilement horizontal')
+    await page.screenshot(path=f'{CAPTURES}/admin-plateformes-saisie-telephone.png')
+    await ctx.close()
+
+
 ETAPES = {'porte': porte, 'tableau': tableau_de_bord, 'dispatch': dispatch, 'courses': courses,
-          'clients': clients, 'entreprises': entreprises, 'finances': finances,
+          'clients': clients, 'entreprises': entreprises, 'finances': finances, 'plateformes': plateformes,
           'chauffeurs': chauffeurs, 'flotte': flotte, 'tarifs': tarifs, 'parametres': parametres}
 
 

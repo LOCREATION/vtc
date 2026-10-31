@@ -1,0 +1,15 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Administration : plateformes
+   -----------------------------------------------------------------------------
+   Relevés des plateformes et rentabilité par chauffeur. Les règles des pages à
+   onglets (contenu, listes, période, explications) sont communes
+   (../commun/admin.css).
+   ============================================================================= */
+
+/* Montants calculés pendant la saisie d'un relevé */
+.apercu-calcul { margin: 0; padding: 10px 14px; border-radius: var(--rayon-champ); background: #F3F6FA; font-size: 15px; color: var(--gris); }
+.apercu-calcul strong { color: var(--nuit); font-variant-numeric: tabular-nums; }
+
+/* Référence du relevé à côté de la plateforme */
+.tableau .secondaire .badge { margin-right: 4px; }

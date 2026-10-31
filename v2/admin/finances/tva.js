@@ -11,7 +11,8 @@
 //      - pourboires, hors TVA.
 // 2. Dossier pour l'expert-comptable : pour la période choisie, une archive
 //    ZIP (registre des factures et avoirs, journal des encaissements,
-//    remboursements, remises d'espèces, TVA par mois, sommes dues, LISEZ-MOI),
+//    remboursements, remises d'espèces, TVA par mois, sommes dues, relevés
+//    des plateformes, LISEZ-MOI),
 //    ou chaque fichier CSV séparément.
 // Lectures : admin_tva, et les listes des autres onglets (exports.js).
 // =============================================================================
@@ -21,8 +22,8 @@ import {
   boutonAction, exporterCsv, telechargerFichier, messageErreurAdmin, moisLisible, jourParis
 } from '../commun/composants.js';
 import { enteteTableau, tableauDefilant } from '../commun/documents.js';
-import { champsPeriode, bornes, periodeValable, periodeLisible } from './periode.js';
-import { ecrireAdresse, lireDate, chargerTout, nomFichier } from './listes.js';
+import { champsPeriode, bornes, periodeValable, periodeLisible } from '../commun/periode.js';
+import { ecrireAdresse, lireDate, chargerTout, nomFichier } from '../commun/listes.js';
 import {
   COLONNES_REGISTRE, COLONNES_PAIEMENTS, COLONNES_REMBOURSEMENTS, COLONNES_REMISES, COLONNES_TVA,
   chronologique, tvaDesMois, moisEntiers, dossierComptable
@@ -125,6 +126,7 @@ function majDossier() {
       ? `${mois.length > 1 ? `${mois.length} mois entiers` : 'le mois entier'} : ${mois.map((m) => moisLisible(m)).join(', ')}`
       : 'non jointe : la période ne contient aucun mois entier' })),
     el('li', {}, 'Sommes encore dues', el('span', { classe: 'secondaire', texte: 'à encaisser et impayés, le jour du téléchargement' })),
+    el('li', {}, 'Relevés des plateformes', el('span', { classe: 'secondaire', texte: 'Bolt, Uber, Heetch : relevés qui se terminent dans la période' })),
     el('li', {}, 'LISEZ-MOI', el('span', { classe: 'secondaire', texte: 'présentation des fichiers et des totaux' })));
   const periode = periodeLisible(etat.du, etat.au);
   $('boutons-dossier').replaceChildren(

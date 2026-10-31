@@ -18,6 +18,7 @@ PNG_GRIS = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUl
 
 # Fichiers déposés pendant les essais (chemins), pour vérification
 FICHIERS_DEPOSES = []
+FICHIERS_RETIRES = []
 
 # Comptes des scénarios de test (11_scenarios.sql)
 ADMIN = 'a0000000-0000-4000-8000-000000000001'
@@ -319,6 +320,15 @@ def routeur(uid, auth=None):
             chemin = urlparse(url).path.split('/storage/v1/object/')[1]
             FICHIERS_DEPOSES.append(chemin)
             return await route.fulfill(status=200, headers=entetes, body=json.dumps({'Key': chemin, 'Id': 'b0000000-0000-4000-8000-000000000001'}))
+        if url.startswith(f'{API}/storage/v1/object/') and rq.method == 'DELETE':
+            # Retrait de fichiers (storage.remove) : corps { prefixes: [chemins] }
+            try:
+                retires = json.loads(rq.post_data or '{}').get('prefixes') or []
+            except ValueError:
+                retires = []
+            seau = urlparse(url).path.split('/storage/v1/object/')[1].strip('/')
+            FICHIERS_RETIRES.extend(f'{seau}/{c}' for c in retires)
+            return await route.fulfill(status=200, headers=entetes, body=json.dumps([{'name': c} for c in retires]))
         if url.startswith(f'{API}/storage/v1/object/sign/'):
             chemin = urlparse(url).path.split('/object/sign/')[1]
             return await route.fulfill(status=200, headers=entetes, body=json.dumps({'signedURL': f'/object/sign/{chemin}?token=essai'}))

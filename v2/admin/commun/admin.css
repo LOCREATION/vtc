@@ -301,3 +301,27 @@ details > summary::before {
   transform: rotate(-45deg); transition: transform 0.15s ease; margin: 0 4px 0 2px;
 }
 details[open] > summary::before { transform: rotate(45deg); }
+
+/* ---------- Pages à onglets : finances, plateformes, RH et paie, support, marketing ---------- */
+.contenu-module { display: grid; gap: 16px; min-width: 0; }
+.contenu-module .carte-admin { align-content: start; }
+/* Éléments de grille : jamais plus larges que l'écran (un tableau large
+   défile dans son propre cadre, la page jamais) */
+.contenu-module > *, .contenu-module .carte-admin > * { min-width: 0; }
+/* Liste en cours de rechargement (filtres changés) */
+.rechargement { opacity: 0.55; transition: opacity 0.15s ease; }
+/* Listes d'un onglet : choix segmenté, avec le nombre de chacune */
+.sous-onglets { display: flex; flex-wrap: wrap; gap: 6px; }
+.sous-onglets .onglet { min-height: 38px; padding: 0 14px; font-size: 15px; }
+/* Résumé d'une liste : nombre, total, répartition */
+.resume-liste { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; color: var(--gris); font-size: 15px; margin: 0; }
+.resume-liste strong { color: var(--nuit); font-size: 17px; font-variant-numeric: tabular-nums; }
+/* Période : choix rapide et dates */
+.barre-outils .champ-periode { flex: 2 1 200px; }
+.aide-module { color: var(--gris); font-size: 15px; margin: 0; }
+.explication { display: grid; gap: 6px; font-size: 15px; color: var(--gris); }
+.explication p { margin: 0; }
+.explication strong { color: var(--nuit); font-weight: 600; }
+/* Boutons d'action dans une ligne de tableau */
+.tableau .actions-ligne { gap: 6px; }
+.tableau .actions-ligne .bouton { min-height: 38px; padding: 0 12px; font-size: 14px; }

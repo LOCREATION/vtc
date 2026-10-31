@@ -22,8 +22,8 @@ import {
   telephoneLisible, exporterCsv, boutonExporter, messageErreurAdmin
 } from '../commun/composants.js';
 import { actionsPaiement } from '../commun/actions-paiement.js';
-import { champsPeriode, bornes, periodeValable, periodeLisible, periodeCourte } from './periode.js';
-import { ecrireAdresse, lireDate, lirePage, pagination, chargerTout, nomFichier } from './listes.js';
+import { champsPeriode, bornes, periodeValable, periodeLisible, periodeCourte } from '../commun/periode.js';
+import { ecrireAdresse, lireDate, lirePage, pagination, chargerTout, nomFichier } from '../commun/listes.js';
 import { COLONNES_PAIEMENTS } from './exports.js';
 
 const $ = (id) => document.getElementById(id);
