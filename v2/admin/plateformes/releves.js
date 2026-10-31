@@ -56,7 +56,7 @@ export function afficherReleves({ parametres }) {
   choixChauffeur.addEventListener('change', () => { filtres.chauffeur = choixChauffeur.value; charger(); });
   choixPlateforme.addEventListener('change', () => { filtres.plateforme = choixPlateforme.value; charger(); });
   const formulaire = el('form', { classe: 'barre-outils' },
-    ...champsPeriode({ prefixe: 'releves', du: filtres.du, au: filtres.au, changer: ({ du, au }) => { filtres.du = du; filtres.au = au; charger(); } }),
+    ...champsPeriode({ prefixe: 'releves', du: filtres.du, au: filtres.au, prefere: 'trimestre', changer: ({ du, au }) => { filtres.du = du; filtres.au = au; charger(); } }),
     el('div', { classe: 'champ' }, el('label', { for: 'releves-chauffeur', texte: 'Chauffeur' }), choixChauffeur),
     el('div', { classe: 'champ' }, el('label', { for: 'releves-plateforme', texte: 'Plateforme' }), choixPlateforme));
   formulaire.addEventListener('submit', (e) => e.preventDefault());
@@ -91,7 +91,7 @@ async function charger() {
   choix.value = data.chauffeurs.some((c) => c.id === filtres.chauffeur) ? filtres.chauffeur : '';
 
   const t = data.totaux;
-  const periode = periodeCourte(filtres.du, filtres.au);
+  const periode = periodeCourte(filtres.du, filtres.au, 'trimestre');
   $('chiffres-releves').replaceChildren(
     tuile('Trajets', euros(t.trajets), `${pluriel(data.total, 'relevé', 'relevés')} · ${pluriel(t.nb_courses, 'course', 'courses')} · ${periode}`),
     tuile('Frais de service', euros(t.frais), t.taux_frais !== null ? `${nombre(t.taux_frais, 1)} % des trajets` : 'aucun trajet', Number(t.frais) > 0 ? 'or' : null),

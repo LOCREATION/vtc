@@ -246,6 +246,12 @@ export function moisLisible(mois) {
     .format(new Date(`${mois}-15T12:00:00Z`));
 }
 
+// « de » élidé devant une voyelle : « d'octobre 2026 », « d'avril 2027 »,
+// mais « de novembre 2026 » (même règle que prive.de_mois côté base)
+export function avecDe(texte) {
+  return /^[aeiouyàâéèêîôû]/i.test(String(texte)) ? `d'${texte}` : `de ${texte}`;
+}
+
 // ---------------------------------------------------------------------------
 // Fenêtres
 // ---------------------------------------------------------------------------

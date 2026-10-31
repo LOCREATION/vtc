@@ -98,6 +98,17 @@ const GROUPES_SOCIETE = [
     { nom: 'email', libelle: 'E-mail', type: 'email', longueur: 120 },
     { nom: 'site_web', libelle: 'Site internet', type: 'texte', longueur: 120 }
   ] },
+  { titre: 'Paie et contrats de travail', champs: [
+    { nom: 'convention_collective', libelle: 'Convention collective', type: 'texte', longueur: 200, plein: true,
+      aide: 'Intitulé et n° IDCC, ou « Aucune convention collective applicable ». Reprise sur les contrats et les bulletins.' },
+    { nom: 'caisse_retraite', libelle: 'Caisse de retraite complémentaire', type: 'texte', longueur: 200, plein: true,
+      aide: 'Groupe Agirc-Arrco auquel l\'entreprise est adhérente.' },
+    { nom: 'organisme_sante', libelle: 'Organisme de complémentaire santé', type: 'texte', longueur: 200, plein: true,
+      aide: 'Mutuelle d\'entreprise obligatoire.' },
+    { nom: 'organisme_prevoyance', libelle: 'Organisme de prévoyance', type: 'texte', longueur: 200, plein: true,
+      aide: 'Obligatoire pour les cadres ; facultatif sinon.' },
+    { nom: 'service_sante_travail', libelle: 'Service de prévention et de santé au travail', type: 'texte', longueur: 200, plein: true }
+  ] },
   { titre: 'Factures et règlement', champs: [
     { nom: 'iban', libelle: 'IBAN', type: 'texte', longueur: 42, majuscules: true, normaliser: sansEspaces, controle: erreurIban,
       plein: true, format: ibanLisible, aide: 'Imprimé sur les relevés mensuels des comptes professionnels (règlement par virement).' },
@@ -111,7 +122,8 @@ async function afficherEntreprise() {
   const { data, error } = await supabase.from('societe').select('*').maybeSingle();
   if (error || !data) { $('contenu').replaceChildren(el('p', { classe: 'alerte', texte: messageErreurAdmin(error || new Error('Identité introuvable.')) })); return; }
   etat.societe = data;
-  const manquants = GROUPES_SOCIETE.flatMap((g) => g.champs).filter((c) => ['siret', 'code_ape', 'tva_intracommunautaire', 'numero_urssaf', 'registre_vtc_numero'].includes(c.nom) && !data[c.nom]);
+  const manquants = GROUPES_SOCIETE.flatMap((g) => g.champs).filter((c) => ['siret', 'code_ape', 'tva_intracommunautaire', 'numero_urssaf',
+    'registre_vtc_numero', 'convention_collective', 'caisse_retraite', 'organisme_sante', 'service_sante_travail'].includes(c.nom) && !data[c.nom]);
   $('contenu').replaceChildren(el('section', { classe: 'carte-admin' },
     el('div', { classe: 'carte-entete' }, el('h2', { texte: data.raison_sociale }), bouton('Modifier', modifierEntreprise, 'bouton-principal')),
     el('p', { classe: 'sous-titre', texte: 'Saisie une seule fois, reprise partout : feuilles de route, factures, bulletins de paie, contrats et pages légales.' }),
