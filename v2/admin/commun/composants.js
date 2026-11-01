@@ -502,8 +502,11 @@ export function tableau({ colonnes, lignes, vide = 'Aucun élément.', clicLigne
   const corps = el('tbody', {}, ...lignes.map((ligne) => {
     const tr = el('tr', {}, ...colonnes.map((c) => {
       const valeur = c.valeur(ligne);
+      // Cellule vide : « — » ; dans une colonne d'actions (sans titre), rien
+      // (sur téléphone, la cellule vide est alors masquée)
+      const vide = valeur === null || valeur === undefined || valeur === '';
       return el('td', { classe: c.droite ? 'droite' : null, 'data-libelle': c.titre },
-        valeur === null || valeur === undefined || valeur === '' ? '—' : valeur);
+        vide ? (c.titre ? '—' : null) : valeur);
     }));
     if (clicLigne) {
       tr.dataset.cliquable = 'true';
