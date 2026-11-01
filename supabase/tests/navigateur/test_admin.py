@@ -159,7 +159,7 @@ async def tableau_de_bord(nav):
     verifier('€' in await page.inner_text('.bulle-graphique'), 'graphique : infobulle au survol')
     await page.click('#voir-tableau')
     verifier(await page.locator('#tableau-serie tbody tr').count() == 14, 'graphique : les mêmes chiffres en tableau')
-    verifier(await page.locator('.admin-lien').count() == 11, 'menu : onze modules')
+    verifier(await page.locator('.admin-lien').count() == 13, 'menu : treize modules')
     verifier(await page.get_attribute('.admin-lien[data-module="tableau"]', 'aria-current') == 'page', 'menu : module actif signalé')
     await page.screenshot(path=f'{CAPTURES}/admin-tableau-ordinateur.png', full_page=True)
     await ctx.close()
@@ -1593,9 +1593,345 @@ async def rh(nav):
     await ctx.close()
 
 
+async def support(nav):
+    print('Support')
+    from banc import FICHIERS_DEPOSES
+    # Une demande toute fraîche de Claire, au sujet de sa dernière course terminée
+    course = valeur(f"select id from public.courses where client_id = '{CLIENT}' and statut = 'terminee' order by terminee_le desc limit 1")
+    numero_course = valeur(f"select numero from public.courses where id = '{course}'")
+    ok, sortie = appel_rpc('ouvrir_demande', {'p_type': 'course', 'p_sujet': 'Chauffeur en retard',
+                                              'p_message': 'Le chauffeur est arrivé avec vingt minutes de retard.', 'p_course': course}, CLIENT)
+    assert ok, sortie
+    demande = valeur("select id from public.demandes where sujet = 'Chauffeur en retard'")
+    numero = valeur(f"select numero from public.demandes where id = '{demande}'")
+    ctx, page, _ = await entrer(nav, mobile=False)
+
+    # 1. File des demandes : ouvertes, celles qui attendent une réponse signalées
+    await page.goto(SITE + 'admin/support/')
+    await page.wait_for_selector('#liste-demandes tbody tr')
+    verifier(await page.inner_text('.admin-titre') == 'Support'
+             and await page.get_attribute('.admin-lien[data-module="support"]', 'aria-current') == 'page'
+             and await page.locator('#onglets .onglet[role=tab]').count() == 3,
+             'module Support ouvert, signalé dans le menu, trois onglets')
+    ouvertes = int(valeur("select count(*) from public.demandes where statut in ('ouverte', 'en_cours')"))
+    verifier(await page.locator('#liste-demandes tbody tr').count() == ouvertes, f'file « à traiter » : une ligne par demande ouverte ({ouvertes})')
+    ligne = page.locator('#liste-demandes tbody tr', has_text=numero)
+    verifier('Attend une réponse' in await ligne.inner_text() and '1 message non lu' in await ligne.inner_text()
+             and numero_course in await ligne.inner_text(),
+             'la nouvelle demande : elle attend une réponse, un message non lu, sa course')
+    await page.fill('#demandes-texte', '06 11 11 11 11')
+    await page.click('#filtres-demandes button[type=submit]')
+    await page.wait_for_function("location.search.includes('q=06')")
+    claire = int(valeur(f"select count(*) from public.demandes where auteur_id = '{CLIENT}' and statut in ('ouverte', 'en_cours')"))
+    await page.wait_for_function(f"document.querySelectorAll('#liste-demandes tbody tr').length === {claire}")
+    verifier(texte(await page.inner_text('#resume-demandes')).startswith(f'{claire} demande'),
+             f'recherche par téléphone saisi avec espaces : les demandes ouvertes de Claire ({claire}), gardée dans l\'adresse')
+    await page.screenshot(path=f'{CAPTURES}/admin-support-demandes-ordinateur.png', full_page=True)
+
+    # 2. Fil : message lu à l'ouverture, réponse avec pièce jointe et résolution
+    await page.click(f'#liste-demandes a:has-text("{numero}")')
+    await page.wait_for_selector('#titre-demande')
+    verifier(await page.inner_text('.admin-titre') == numero and 'Chauffeur en retard' in await page.inner_text('#titre-demande')
+             and numero_course in await page.inner_text('#titre-course'),
+             'fil : numéro, sujet, course concernée')
+    verifier(valeur(f"select count(*) from public.messages where demande_id = '{demande}' and lu_le is null") == '0',
+             'fil ouvert : le message de Claire passe « lu »')
+    verifier('mailto:client1@exemple.test?subject=' in await page.get_attribute('section[aria-labelledby=titre-auteur] a[href^="mailto:"]', 'href'),
+             'auteur : e-mail prêt à envoyer, objet rempli')
+    await page.fill('#reponse-texte', 'Bonjour Claire, toutes nos excuses pour ce retard : un geste commercial vous est accordé.')
+    await page.set_input_files('#reponse-fichier', files=[{'name': 'geste-commercial.pdf', 'mimeType': 'application/pdf', 'buffer': b'%PDF-1.4 essai'}])
+    await page.check('#reponse-cloturer')
+    await page.get_by_role('button', name='Envoyer la réponse').click()
+    await page.wait_for_selector('text=Rouvrir la demande')
+    verifier(valeur(f"select statut || '|' || (assignee_a = '{ADMIN}')::text || '|' || (cloturee_le is not null)::text from public.demandes where id = '{demande}'")
+             == 'resolue|true|true', 'réponse envoyée : demande résolue, à mon nom, date de clôture')
+    chemin = valeur(f"select piece_jointe_chemin from public.messages where demande_id = '{demande}' and auteur_id = '{ADMIN}'")
+    verifier(chemin.startswith(f'{demande}/') and chemin.endswith('-geste-commercial.pdf') and f'support/{chemin}' in FICHIERS_DEPOSES,
+             'pièce jointe rangée dans le dossier privé « support » de la demande')
+    verifier(await page.locator('.fil-messages .fil-message-admin').count() == 1
+             and 'Ouvrir la pièce jointe' in await page.inner_text('.fil-messages .fil-message-admin'),
+             'fil : la réponse de l\'administration, avec sa pièce jointe')
+    verifier(valeur(f"select count(*) from public.notifications where destinataire_id = '{CLIENT}' and titre = 'Réponse du support' "
+                    f"and message like '{numero} · Chauffeur en retard : Bonjour Claire%(demande résolue)'") == '1',
+             'Claire prévenue dans l\'application : réponse et résolution')
+    await page.get_by_role('button', name='Rouvrir la demande').click()
+    await page.wait_for_selector('text=Fermer sans suite')
+    verifier(valeur(f"select statut || '|' || (cloturee_le is null)::text from public.demandes where id = '{demande}'") == 'en_cours|true',
+             'demande rouverte : date de clôture retirée')
+    await page.select_option('#demande-assignee', '')
+    await page.wait_for_function("document.getElementById('demande-assignee') && document.getElementById('demande-assignee').value === '' "
+                                 "&& !document.getElementById('demande-assignee').disabled")
+    await page.wait_for_timeout(300)
+    verifier(valeur(f"select assignee_a is null from public.demandes where id = '{demande}'") == 't', 'attribution retirée depuis le fil')
+    await page.get_by_role('button', name='Fermer sans suite').click()
+    f = await fenetre(page)
+    await f.get_by_role('button', name='Fermer la demande').click()
+    verifier('Indiquez le motif' in await f.inner_text(), 'fermer sans suite : motif obligatoire')
+    await f.locator('#fenetre-motif').fill('Geste commercial accordé : rien d\'autre à faire.')
+    await f.get_by_role('button', name='Fermer la demande').click()
+    await fermee(page)
+    await page.wait_for_selector('text=Rouvrir la demande')
+    verifier(valeur(f"select statut from public.demandes where id = '{demande}'") == 'fermee'
+             and valeur(f"select count(*) from public.messages where demande_id = '{demande}' and contenu like 'Geste commercial accordé%'") == '1',
+             'fermée sans suite : motif ajouté au fil')
+    await page.screenshot(path=f'{CAPTURES}/admin-support-fil-ordinateur.png', full_page=True)
+
+    # 3. Demande enregistrée pour un client (appel téléphonique)
+    await page.goto(SITE + 'admin/support/')
+    await page.wait_for_selector('#liste-demandes')
+    await page.get_by_role('button', name='Enregistrer une demande').click()
+    f = await fenetre(page)
+    await f.locator('select[name=type]').select_option('paiement')
+    await f.locator('input[name=sujet]').fill('Reçu introuvable')
+    await f.locator('textarea[name=message]').fill('Appel : le client ne retrouve pas le reçu de sa dernière course.')
+    await f.get_by_role('button', name='Enregistrer la demande').click()
+    await page.wait_for_selector('dialog.fenetre .alerte:not([hidden])')
+    verifier('Choisissez d\'abord le client' in await f.inner_text(), 'demande pour un client : la personne est obligatoire')
+    await f.locator('#recherche-auteur').fill('Karim')
+    await f.get_by_role('button', name='Chercher').click()
+    await f.locator('.choix', has_text='Karim Benali').get_by_role('button', name='Choisir').click()
+    await f.get_by_role('button', name='Enregistrer la demande').click()
+    await page.wait_for_url(re.compile(r'support/\?demande='))
+    await page.wait_for_selector('#titre-demande')
+    nouvelle = valeur("select id from public.demandes where sujet = 'Reçu introuvable'")
+    verifier(valeur(f"select statut || '|' || (assignee_a = '{ADMIN}')::text || '|' || (auteur_id = '{KARIM}')::text from public.demandes where id = '{nouvelle}'")
+             == 'en_cours|true|true' and 'administration' in await page.inner_text('.fil-messages .fil-message-admin'),
+             'demande enregistrée pour Karim : en cours, à mon nom, note de l\'appel au nom de l\'administration')
+
+    # 4. Objets trouvés : déclaration, client prévenu, restitution
+    await page.goto(SITE + 'admin/support/?vue=objets')
+    await page.wait_for_selector('#liste-objets')
+    await page.get_by_role('button', name='Déclarer un objet trouvé').click()
+    f = await fenetre(page)
+    await f.locator('textarea[name=description]').fill('Sac à dos noir, marque Eastpak')
+    await f.locator('input[name=course]').fill(numero_course.lower())
+    await f.locator('input[name=lieu_stockage]').fill('Bureau, armoire des objets trouvés')
+    await f.get_by_role('button', name='Déclarer l\'objet').click()
+    await fermee(page)
+    objet = valeur("select id from public.objets_trouves where description = 'Sac à dos noir, marque Eastpak'")
+    numero_objet = valeur(f"select numero from public.objets_trouves where id = '{objet}'")
+    verifier(valeur(f"select (course_id = '{course}')::text || '|' || statut from public.objets_trouves where id = '{objet}'") == 'true|trouve',
+             f'objet {numero_objet} déclaré : course retrouvée par son numéro (saisi en minuscules), à rendre')
+    ligne = page.locator('#liste-objets tbody tr', has_text=numero_objet)
+    await ligne.get_by_role('button', name='Prévenir le client').click()
+    await page.wait_for_selector(f'#liste-objets tbody tr:has-text("{numero_objet}") >> text=Propriétaire prévenu')
+    verifier(valeur(f"select count(*) from public.notifications where destinataire_id = '{CLIENT}' and titre = 'Objet trouvé' "
+                    f"and message like '%{numero_course}%Sac à dos noir%{numero_objet}%'") == '1',
+             'Claire prévenue : la course, l\'objet, la référence')
+    await page.locator('#liste-objets tbody tr', has_text=numero_objet).get_by_role('button', name='Rendu').click()
+    f = await fenetre(page)
+    await f.locator('#fenetre-motif').fill('Remis en main propre à Claire, au bureau.')
+    await f.get_by_role('button', name='Enregistrer').click()
+    await fermee(page)
+    await page.wait_for_function(f"!document.getElementById('liste-objets').textContent.includes('{numero_objet}')")
+    verifier(valeur(f"select statut || '|' || restitution from public.objets_trouves where id = '{objet}'") == 'rendu|Remis en main propre à Claire, au bureau.',
+             'objet rendu : comment, et il quitte la liste « en cours »')
+    await page.get_by_role('tab', name=re.compile('^Clos')).click()
+    await page.wait_for_selector(f'#liste-objets tbody tr:has-text("{numero_objet}")')
+    await page.screenshot(path=f'{CAPTURES}/admin-support-objets-ordinateur.png', full_page=True)
+
+    # 5. Messages du site : contact traité, devis suivi
+    en_tant_que(None, "insert into public.messages_contact (nom, email, telephone, sujet, message) values ('Sophie Visiteuse', "
+                      "'sophie@exemple.test', '+33 6 77 88 99 00', 'Transport de nuit', 'Faites-vous des trajets vers Roissy à 4 h du matin ?')")
+    await page.goto(SITE + 'admin/support/?vue=site')
+    await page.wait_for_selector('#liste-contacts .carte-message')
+    carte = page.locator('#liste-contacts .carte-message', has_text='Sophie Visiteuse')
+    verifier((await carte.locator('a[href^="mailto:"]').get_attribute('href')).startswith('mailto:sophie@exemple.test?subject=Re%20%3A%20Transport%20de%20nuit')
+             and await carte.locator('a[href^="tel:"]').count() == 1,
+             'contact : e-mail prêt à envoyer (objet rempli) et appel')
+    await carte.get_by_role('button', name='Marquer traité').click()
+    f = await fenetre(page)
+    await f.locator('#fenetre-motif').fill('Rappelée : oui, sur réservation la veille.')
+    await f.get_by_role('button', name='Marquer traité').click()
+    await fermee(page)
+    await page.wait_for_function("!document.getElementById('liste-contacts').textContent.includes('Sophie Visiteuse')")
+    verifier(valeur(f"select traite::text || '|' || (traite_par = '{ADMIN}')::text || '|' || note from public.messages_contact where nom = 'Sophie Visiteuse'")
+             == 'true|true|Rappelée : oui, sur réservation la veille.', 'message traité : par qui, note interne')
+    carte = page.locator('#liste-devis .carte-message', has_text='Jean Visiteur')
+    await carte.get_by_role('button', name='Devis envoyé').click()
+    f = await fenetre(page)
+    await f.locator('input[name=montant]').fill('480,00')
+    await f.get_by_role('button', name='Enregistrer').click()
+    await fermee(page)
+    verifier(valeur("select statut || '|' || montant from public.demandes_devis where nom = 'Jean Visiteur'") == 'devis_envoye|480.00',
+             'devis envoyé : montant (virgule acceptée)')
+    await page.get_by_role('tab', name=re.compile('^Devis en attente')).click()
+    await page.wait_for_selector('#liste-devis .carte-message:has-text("Jean Visiteur")')
+    await page.locator('#liste-devis .carte-message', has_text='Jean Visiteur').get_by_role('button', name='Acceptée').click()
+    await page.wait_for_function("!document.getElementById('liste-devis').textContent.includes('Jean Visiteur')")
+    verifier(valeur("select statut from public.demandes_devis where nom = 'Jean Visiteur'") == 'acceptee', 'devis accepté')
+    await page.get_by_role('tab', name='Tous').click()
+    await page.wait_for_selector('#liste-devis .carte-message:has-text("Jean Visiteur")')
+    await page.screenshot(path=f'{CAPTURES}/admin-support-site-ordinateur.png', full_page=True)
+
+    # 6. Fiche de la course : ses demandes et ses objets trouvés
+    await page.goto(SITE + f'admin/courses/?id={course}')
+    await page.wait_for_selector('#titre-support')
+    bloc = await page.inner_text('section[aria-labelledby=titre-support]')
+    verifier(numero in bloc and numero_objet in bloc and 'Enregistrer une demande du client' in bloc,
+             'fiche de la course : la demande et l\'objet trouvé, liens vers le support')
+    await ctx.close()
+
+    # 7. Téléphone : rien ne déborde
+    ctx, page, _ = await entrer(nav, mobile=True)
+    for adresse, attente, capture in [
+            ('admin/support/?file=toutes', '#liste-demandes tbody tr', 'admin-support-demandes-telephone'),
+            (f'admin/support/?demande={demande}', '.fil-messages .fil-message', 'admin-support-fil-telephone'),
+            ('admin/support/?vue=objets&liste=tous', '#liste-objets tbody tr', 'admin-support-objets-telephone'),
+            ('admin/support/?vue=site&liste=tous', '#liste-devis .carte-message', 'admin-support-site-telephone')]:
+        await page.goto(SITE + adresse)
+        await page.wait_for_selector(attente)
+        verifier(await page.evaluate('document.documentElement.scrollWidth <= screen.width'),
+                 f'téléphone : {capture.replace("admin-support-", "").replace("-telephone", "")} sans défilement horizontal de la page')
+        await page.screenshot(path=f'{CAPTURES}/{capture}.png', full_page=True)
+    await ctx.close()
+
+
+STATUTS_CODE = {'actif': 'Actif', 'a_venir': 'À venir', 'expire': 'Expiré', 'epuise': 'Épuisé', 'desactive': 'Désactivé'}
+
+
+async def marketing(nav):
+    print('Marketing')
+    ctx, page, _ = await entrer(nav, mobile=False)
+
+    # 1. Codes promo : liste, création contrôlée, désactivation, utilisations, suppression
+    await page.goto(SITE + 'admin/marketing/')
+    await page.wait_for_selector('#liste-codes tbody tr')
+    verifier(await page.inner_text('.admin-titre') == 'Marketing'
+             and await page.get_attribute('.admin-lien[data-module="marketing"]', 'aria-current') == 'page'
+             and await page.locator('#onglets .onglet[role=tab]').count() == 3,
+             'module Marketing ouvert, signalé dans le menu, trois onglets')
+    nombre = int(valeur("select count(*) from public.codes_promo"))
+    verifier(await page.locator('#liste-codes tbody tr').count() == nombre, f'une ligne par code promo ({nombre})')
+    await page.get_by_role('button', name='Nouveau code promo').click()
+    f = await fenetre(page)
+    await f.locator('input[name=code]').fill('noel 2026')
+    await f.locator('input[name=valeur]').fill('7,50')
+    await f.get_by_role('button', name='Créer le code').click()
+    verifier('sans espace' in await f.inner_text() and await f.locator('input[name=code]').input_value() == 'NOEL 2026',
+             'code saisi en minuscules : passé en majuscules ; avec une espace : refusé à la saisie')
+    await f.locator('input[name=code]').fill('noel2026')
+    await f.locator('input[name=libelle]').fill('Fêtes de fin d\'année')
+    await f.locator('select[name=type]').select_option('montant')
+    await f.locator('input[name=debut]').fill('2026-12-01')
+    await f.locator('input[name=fin]').fill('2026-12-31')
+    await f.locator('input[name=utilisations_max]').fill('200')
+    await f.get_by_role('button', name='Créer le code').click()
+    await fermee(page)
+    verifier(valeur("select concat_ws('|', code, valeur, type, utilisations_max, (debut = prive.debut_jour_paris('2026-12-01'))::text, "
+                    "(fin = prive.debut_jour_paris('2027-01-01'))::text) from public.codes_promo where code = 'NOEL2026'")
+             == 'NOEL2026|7.50|montant|200|true|true',
+             'code créé : majuscules, 7,50 € (virgule acceptée), du 1er au 31 décembre compris (jours de Paris)')
+    attendu = STATUTS_CODE[valeur("select prive.statut_code_promo(c, 0) from public.codes_promo c where code = 'NOEL2026'")]
+    ligne = page.locator('#liste-codes tbody tr', has_text='NOEL2026')
+    await ligne.wait_for()
+    verifier(attendu in await ligne.inner_text() and '− 7,50 €' in texte(await ligne.inner_text()) and 'du 01/12/2026 au 31/12/2026' in await ligne.inner_text(),
+             f'liste : remise, validité, statut « {attendu} »')
+    await ligne.get_by_role('button', name='Désactiver').click()
+    await page.wait_for_selector('#liste-codes tbody tr:has-text("NOEL2026") >> text=Désactivé')
+    verifier(valeur("select actif from public.codes_promo where code = 'NOEL2026'") == 'f', 'code désactivé : refusé à la commande')
+    await page.locator('#liste-codes tbody tr', has_text='NOEL2026').get_by_role('button', name='Activer').click()
+    await page.wait_for_selector(f'#liste-codes tbody tr:has-text("NOEL2026") >> text={attendu}')
+    await page.locator('#liste-codes tbody tr', has_text='NOEL2026').get_by_role('button', name='Supprimer').click()
+    f = await fenetre(page)
+    await f.get_by_role('button', name='Supprimer').click()
+    await fermee(page)
+    await page.wait_for_function("!document.getElementById('liste-codes').textContent.includes('NOEL2026')")
+    verifier(valeur("select count(*) from public.codes_promo where code = 'NOEL2026'") == '0', 'code jamais utilisé : supprimé')
+    # Un code déjà servi : ses utilisations, pas de suppression
+    course = valeur(f"select id from public.courses where client_id = '{CLIENT}' and statut = 'terminee' and code_promo_id is null order by terminee_le limit 1")
+    numero_course = valeur(f"select numero from public.courses where id = '{course}'")
+    systeme(f"insert into public.utilisations_promo (code_promo_id, client_id, course_id, remise) "
+            f"select id, '{CLIENT}', '{course}', 3 from public.codes_promo where code = 'BIENVENUE10'")
+    await page.reload()
+    ligne = page.locator('#liste-codes tbody tr', has_text='BIENVENUE10')
+    await ligne.wait_for()
+    verifier(await ligne.get_by_role('button', name='Supprimer').count() == 0, 'code déjà servi : pas de bouton « Supprimer »')
+    await ligne.get_by_role('button', name='Utilisations').click()
+    f = await fenetre(page)
+    verifier(numero_course in await f.inner_text() and 'Claire Durand' in await f.inner_text() and '− 3,00 €' in texte(await f.inner_text()),
+             'utilisations du code : client, course, remise')
+    await page.screenshot(path=f'{CAPTURES}/admin-marketing-utilisations-ordinateur.png', full_page=True)
+    await f.get_by_role('button', name='Fermer').click()
+    await fermee(page)
+    systeme("delete from public.utilisations_promo where code_promo_id = (select id from public.codes_promo where code = 'BIENVENUE10')")
+    await page.reload()
+    await page.wait_for_selector('#liste-codes tbody tr')
+    await page.screenshot(path=f'{CAPTURES}/admin-marketing-codes-ordinateur.png', full_page=True)
+
+    # 2. Parrainage : chiffres, récompenses, annulation d'un parrainage en attente
+    code_claire = valeur(f"select code_parrainage from public.profils where id = '{CLIENT}'")
+    systeme("set role supabase_auth_admin; insert into auth.users (id, email, raw_user_meta_data) values "
+            "('c0000000-0000-4000-8000-000000000010', 'filleul3@exemple.test', "
+            f"'{{\"prenom\": \"Tom\", \"nom\": \"Lefort\", \"code_parrain\": \"{code_claire}\"}}'); reset role")
+    await page.get_by_role('tab', name='Parrainage').click()
+    await page.wait_for_selector('#liste-parrainages tbody tr')
+    tuiles = [texte(t) for t in await page.locator('#chiffres-parrainage .chiffre-cle').all_inner_texts()]
+    verifier(len(tuiles) == 4 and tuiles[0].split('\n')[1] == valeur("select count(*) from public.parrainages")
+             and tuiles[2].split('\n')[1] == valeur("select count(*) from public.parrainages where statut = 'en_attente'"),
+             'chiffres clés : parrainages et parrainages en attente, conformes à la base')
+    recompense = euros_fr(valeur("select recompense_parrain from public.parametres"))
+    verifier(recompense in texte(await page.inner_text('#recompenses')) and 'Claire Durand' in await page.inner_text('#meilleurs'),
+             f'récompenses en vigueur ({recompense}) et meilleurs parrains')
+    ligne = page.locator('#liste-parrainages tbody tr', has_text='Tom Lefort')
+    await ligne.get_by_role('button', name='Annuler').click()
+    f = await fenetre(page)
+    await f.get_by_role('button', name='Annuler le parrainage').click()
+    verifier('Indiquez le motif' in await f.inner_text(), 'annulation : motif obligatoire')
+    await f.locator('#fenetre-motif').fill('Compte créé pour la récompense.')
+    await f.get_by_role('button', name='Annuler le parrainage').click()
+    await fermee(page)
+    await page.wait_for_selector('#liste-parrainages tbody tr:has-text("Tom Lefort") >> text=Annulé')
+    verifier(valeur("select statut from public.parrainages where filleul_id = 'c0000000-0000-4000-8000-000000000010'") == 'annule',
+             'parrainage en attente annulé')
+    await page.screenshot(path=f'{CAPTURES}/admin-marketing-parrainage-ordinateur.png', full_page=True)
+
+    # 3. Notifications groupées : brouillon, envoi aux chauffeurs, plus de modification
+    await page.get_by_role('tab', name='Notifications groupées').click()
+    await page.wait_for_selector('#liste-campagnes')
+    await page.get_by_role('button', name='Nouvelle notification groupée').click()
+    f = await fenetre(page)
+    await f.locator('input[name=titre]').fill('Nouvelles zones de prise en charge')
+    await f.locator('textarea[name=message]').fill('Dès lundi, les gares de Chantilly et de Creil font partie de la zone desservie.')
+    await f.locator('select[name=cible]').select_option('chauffeurs')
+    await f.get_by_role('button', name='Enregistrer le brouillon').click()
+    await fermee(page)
+    ligne = page.locator('#liste-campagnes tbody tr', has_text='Nouvelles zones de prise en charge')
+    await ligne.wait_for()
+    verifier('Brouillon' in await ligne.inner_text(), 'brouillon enregistré, rien n\'est envoyé')
+    chauffeurs = valeur("select count(*) from public.profils p join public.chauffeurs c on c.id = p.id "
+                        "where p.role = 'chauffeur' and p.statut = 'actif' and c.statut = 'valide'")
+    await ligne.get_by_role('button', name='Envoyer').click()
+    f = await fenetre(page)
+    verifier(f'{chauffeurs} personne' in await f.inner_text(), f'confirmation : {chauffeurs} destinataires annoncés')
+    await f.get_by_role('button', name='Envoyer maintenant').click()
+    await fermee(page)
+    await page.wait_for_selector('#liste-campagnes tbody tr:has-text("Nouvelles zones") >> text=Envoyée')
+    verifier(valeur("select count(*) from public.notifications n join public.campagnes c on c.id = n.campagne_id "
+                    "where c.titre = 'Nouvelles zones de prise en charge'") == chauffeurs
+             and await page.locator('#liste-campagnes tbody tr', has_text='Nouvelles zones').get_by_role('button', name='Modifier').count() == 0,
+             'envoyée : une notification par chauffeur validé ; plus modifiable')
+    await page.screenshot(path=f'{CAPTURES}/admin-marketing-campagnes-ordinateur.png', full_page=True)
+    await ctx.close()
+
+    # 4. Téléphone : rien ne déborde
+    ctx, page, _ = await entrer(nav, mobile=True)
+    for adresse, attente, capture in [
+            ('admin/marketing/', '#liste-codes tbody tr', 'admin-marketing-codes-telephone'),
+            ('admin/marketing/?vue=parrainage', '#liste-parrainages tbody tr', 'admin-marketing-parrainage-telephone'),
+            ('admin/marketing/?vue=campagnes', '#liste-campagnes tbody tr', 'admin-marketing-campagnes-telephone')]:
+        await page.goto(SITE + adresse)
+        await page.wait_for_selector(attente)
+        verifier(await page.evaluate('document.documentElement.scrollWidth <= screen.width'),
+                 f'téléphone : {capture.replace("admin-marketing-", "").replace("-telephone", "")} sans défilement horizontal de la page')
+        await page.screenshot(path=f'{CAPTURES}/{capture}.png', full_page=True)
+    await ctx.close()
+
+
 ETAPES = {'porte': porte, 'tableau': tableau_de_bord, 'dispatch': dispatch, 'courses': courses,
           'clients': clients, 'entreprises': entreprises, 'finances': finances, 'plateformes': plateformes, 'rh': rh,
-          'chauffeurs': chauffeurs, 'flotte': flotte, 'tarifs': tarifs, 'parametres': parametres}
+          'support': support, 'marketing': marketing, 'chauffeurs': chauffeurs, 'flotte': flotte, 'tarifs': tarifs,
+          'parametres': parametres}
 
 
 async def main():

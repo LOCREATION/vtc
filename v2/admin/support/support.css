@@ -1,0 +1,54 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Administration : support
+   -----------------------------------------------------------------------------
+   Fil des messages d'une demande (administration à droite, l'auteur à
+   gauche), conversation d'une course, cartes des messages du site. Les règles
+   des pages à onglets (listes, filtres, tableaux) sont communes
+   (../commun/admin.css).
+   ============================================================================= */
+
+/* Listes courtes (objets d'une course, autres demandes, objets perdus signalés) */
+.liste-simple { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+.liste-simple .secondaire { display: block; color: var(--gris); font-size: 14px; }
+.liste-simple .badge { vertical-align: middle; }
+.liste-simple .bouton { margin-left: 6px; vertical-align: middle; }
+
+/* Pastilles côte à côte dans un tableau (statut, attente, non lus) */
+.pastilles { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* Personne chargée de la demande */
+.champ-assignee { max-width: 360px; }
+
+/* Fil des messages */
+.fil-messages { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.fil-message {
+  max-width: min(100%, 640px); justify-self: start;
+  background: #F3F6FA; border: 1px solid var(--trait); border-radius: 14px 14px 14px 4px;
+  padding: 10px 14px; display: grid; gap: 6px;
+}
+.fil-message-admin { justify-self: end; background: #FFF8E6; border-color: #EFE2B8; border-radius: 14px 14px 4px 14px; }
+.fil-entete { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 12px; font-size: 15px; }
+.fil-date { color: var(--gris); font-size: 14px; }
+.fil-texte { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.fil-piece { justify-self: start; min-height: 32px; padding: 0; }
+.fil-lu { color: var(--gris); font-size: 13px; justify-self: end; }
+
+/* Réponse */
+.reponse-support { margin-top: 6px; padding-top: 14px; border-top: 1px solid var(--trait); }
+
+/* Conversation entre le client et le chauffeur pendant la course */
+.conversation-course { margin-top: 4px; }
+.conversation-course summary { cursor: pointer; font-weight: 600; color: var(--nuit-2); min-height: 44px; display: flex; align-items: center; }
+.fil-conversation { margin-top: 8px; }
+.fil-message-chauffeur { justify-self: end; background: #E8EEF8; border-radius: 14px 14px 4px 14px; }
+
+/* Messages du site */
+.liste-cartes { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.carte-message { border: 1px solid var(--trait); border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px; }
+.carte-traitee { background: #F8FAFC; }
+.carte-message-entete { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.carte-message-entete .fil-date { margin-left: auto; }
+.carte-message-sujet { margin: 0; font-weight: 600; }
+.carte-message-contact { margin: 0; overflow-wrap: anywhere; }
+.note-interne { margin: 0; background: #FFFBEF; border: 1px solid #EFE2B8; border-radius: var(--rayon-champ); padding: 8px 10px; white-space: pre-wrap; }

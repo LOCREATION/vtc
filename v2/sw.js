@@ -8,7 +8,7 @@
 //   cache ici (toujours à jour, et rien de personnel n'est conservé).
 // Changer VERSION à chaque mise en ligne efface les anciennes copies.
 // =============================================================================
-const VERSION = 'loc-reaction-v2-2026-11-01-1';
+const VERSION = 'loc-reaction-v2-2026-11-01-2';
 const COQUILLE = [
   './',
   './connexion/',

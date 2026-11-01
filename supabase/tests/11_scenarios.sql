@@ -406,8 +406,10 @@ select test.doit_echouer('select * from public.journal_lister()', 'Réservé');
 -- 10. CODES PROMO
 -- #############################################################################
 call test.connexion(:'admin', 'aal2');
-insert into public.codes_promo (code, libelle, type, valeur, utilisations_par_client)
-values ('BIENVENUE10', 'Bienvenue : 10 %', 'pourcentage', 10, 1);
+-- Codes promo : écrits par la fonction du module Marketing (migration 18)
+select test.doit_echouer($$insert into public.codes_promo (code, type, valeur) values ('DIRECT', 'montant', 5)$$, 'permission denied');
+select public.admin_enregistrer_code_promo(null, '{"code": "bienvenue10", "libelle": "Bienvenue : 10 %", "type": "pourcentage",
+                                                  "valeur": 10, "utilisations_par_client": 1}');
 call test.connexion(:'chauffeur1');
 select public.mettre_en_ligne(false);
 call test.connexion(:'chauffeuse');
@@ -481,8 +483,9 @@ select test.doit_echouer(format('insert into storage.objects (bucket_id, name) v
 
 call test.connexion(:'admin', 'aal2');
 select test.verifier((select count(*) from public.messages where demande_id = :'demande1') = 2, 'support : l''administration lit le fil');
-insert into public.messages (demande_id, auteur_id, contenu) values (:'demande1', auth.uid(), 'Nous l''avons retrouvé.');
-update public.demandes set statut = 'resolue', assignee_a = auth.uid() where id = :'demande1';
+-- Statut et attribution : par les fonctions du module Support (migration 17)
+select test.doit_echouer(format('update public.demandes set statut = %L where id = %L', 'resolue', :'demande1'), 'permission denied');
+select public.admin_repondre_demande(:'demande1', 'Nous l''avons retrouvé.', true);
 
 call test.connexion(:'client1');
 update public.messages set lu_le = now() where demande_id = :'demande1' and auteur_id <> auth.uid();

@@ -11,7 +11,10 @@
 //     correction : attribuer, relancer, retirer le chauffeur, faire avancer
 //     une étape (téléphone du chauffeur en panne), modifier, annuler ;
 //     paiements : confirmer un encaissement, déclarer impayé, annuler la
-//     somme due ou rembourser (avoir automatique), comme dans Finances.
+//     somme due ou rembourser (avoir automatique), comme dans Finances ;
+//     support : demandes au sujet de la course, objets trouvés, conversation
+//     entre le client et le chauffeur ; enregistrer une demande du client,
+//     déclarer un objet trouvé (module Support).
 // =============================================================================
 import { supabase } from '../../commun/supabase.js';
 import { el, euros, nombre, afficherMessage, apresPause } from '../../commun/outils.js';
@@ -23,6 +26,9 @@ import {
 } from '../commun/composants.js';
 import { fenetreAttribution, relancerRecherche, retirerChauffeur, annulerCourse } from '../commun/actions-course.js';
 import { actionsPaiement } from '../commun/actions-paiement.js';
+import {
+  TYPES_DEMANDE, STATUTS_DEMANDE, STATUTS_OBJET, pastille, formulaireDemandePourCompte, formulaireObjet
+} from '../support/commun-support.js';
 
 const $ = (id) => document.getElementById(id);
 const PAR_PAGE = 50;
@@ -402,8 +408,51 @@ function afficherFiche(f) {
       : el('p', { classe: 'vide-admin', texte: c.statut === 'terminee' ? 'Pas encore de note.' : 'Les notes sont données à la fin de la course.' }));
 
   $('vue-fiche').replaceChildren(entete, el('div', { classe: 'grille-2' }, trajet, el('div', { classe: 'pile' }, personnes, prix)),
-    paiements, el('div', { classe: 'grille-2' }, etapes, el('div', { classe: 'pile' }, demandes, notes)));
+    paiements, el('div', { classe: 'grille-2' }, etapes, el('div', { classe: 'pile' }, demandes, notes)),
+    sectionSupport(f, recharger));
   dessinerCarte(c, f.arrets);
+}
+
+// Support : demandes au sujet de la course, objets trouvés après elle,
+// conversation entre le client et le chauffeur (lecture) ; ouvrir une
+// demande pour le client (appel), déclarer un objet trouvé
+function sectionSupport(f, recharger) {
+  const c = f.course;
+  const client = f.client || {};
+  const ouvrir = boutonAction('Enregistrer une demande du client', async () => {
+    const creee = await formulaireDemandePourCompte({ auteur: { id: client.id, nom: nomComplet(client.prenom, client.nom) || client.email }, course: c.numero });
+    if (creee) location.href = lienAdmin(`support/?demande=${creee.id}`);
+  });
+  if (!client.id) ouvrir.disabled = true;
+  const declarer = boutonAction('Déclarer un objet trouvé', async () => {
+    const perdus = f.demandes.filter((d) => d.type === 'objet_perdu' && ['ouverte', 'en_cours'].includes(d.statut));
+    const fait = await formulaireObjet({ course: c.numero, demandes: perdus });
+    if (fait) { afficherMessage(`Objet ${fait.numero} enregistré au registre des objets trouvés.`, 'succes'); await recharger(); }
+  });
+  return el('section', { classe: 'carte-admin', 'aria-labelledby': 'titre-support' },
+    el('h2', { id: 'titre-support', texte: 'Support' }),
+    el('h3', { classe: 'sous-section', texte: 'Demandes au sujet de la course' }),
+    f.demandes.length
+      ? el('ul', { classe: 'liste-simple' }, ...f.demandes.map((d) => el('li', {},
+          el('a', { href: lienAdmin(`support/?demande=${d.id}`), texte: d.numero }),
+          ` · ${d.sujet} · ${TYPES_DEMANDE[d.type] || d.type} · ${d.auteur} (${d.auteur_role === 'chauffeur' ? 'chauffeur' : 'client'}), le ${dateCourte(d.cree_le)} `,
+          pastille(STATUTS_DEMANDE, d.statut))))
+      : el('p', { classe: 'vide-admin', texte: 'Aucune demande au support pour cette course.' }),
+    el('h3', { classe: 'sous-section', texte: 'Objets trouvés' }),
+    f.objets.length
+      ? el('ul', { classe: 'liste-simple' }, ...f.objets.map((o) => el('li', {},
+          el('a', { href: lienAdmin(`support/?vue=objets&q=${encodeURIComponent(o.numero)}`), texte: o.numero }),
+          ` · ${o.description} · trouvé le ${dateCourte(o.trouve_le)} `, pastille(STATUTS_OBJET, o.statut))))
+      : el('p', { classe: 'vide-admin', texte: 'Aucun objet trouvé après cette course.' }),
+    el('h3', { classe: 'sous-section', texte: 'Conversation entre le client et le chauffeur' }),
+    f.conversation.length
+      ? el('ol', { classe: 'chronologie' }, ...f.conversation.map((m) => el('li', {},
+          el('time', { datetime: m.cree_le, texte: `${dateCourte(m.cree_le)} ${heure(m.cree_le)}` }),
+          el('div', {},
+            el('strong', { texte: `${m.auteur_nom} (${m.auteur_role === 'client' ? 'client' : m.auteur_role === 'chauffeur' ? 'chauffeur' : 'administration'}) : ` }),
+            el('span', { texte: m.contenu || 'pièce jointe' })))))
+      : el('p', { classe: 'vide-admin', texte: 'Aucun message échangé pendant la course.' }),
+    el('div', { classe: 'actions-ligne' }, ouvrir, declarer));
 }
 
 function detailEtape(e) {

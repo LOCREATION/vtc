@@ -16,16 +16,17 @@ de l'état laissé par le précédent) :
 
 ```
 npm install && npm run preparer
-bash ../lancer_tests_locaux.sh     # base locale neuve + 665 vérifications
+bash ../lancer_tests_locaux.sh     # base locale neuve + 813 vérifications
 python3 test_pages.py              # accueil et connexion (25 vérifications)
 python3 test_client.py             # commande et suivi (18 vérifications)
 python3 test_chauffeur.py          # espace chauffeur (20 vérifications)
-python3 test_admin.py              # administration (254 vérifications)
+python3 test_admin.py              # administration (302 vérifications)
 ```
 
 `test_admin.py` accepte le nom d'une étape pour n'en jouer qu'une partie :
 `porte`, `tableau`, `dispatch`, `courses`, `clients`, `entreprises`, `finances`,
-`plateformes`, `rh`, `chauffeurs`, `flotte`, `tarifs`, `parametres`
+`plateformes`, `rh`, `support`, `marketing`, `chauffeurs`, `flotte`, `tarifs`,
+`parametres`
 (ex. `python3 test_admin.py porte dispatch`).
 
 Administration : le service de connexion de Supabase est imité

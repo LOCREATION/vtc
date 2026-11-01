@@ -21,7 +21,8 @@ const etat = { carte: null, calques: null, premiereVue: true, serie: [] };
 // (une alerte peut aussi porter son propre lien, vers la bonne liste)
 const PAGES = {
   dispatch: 'dispatch/', courses: 'courses/', clients: 'clients/?vue=entreprises', chauffeurs: 'chauffeurs/',
-  flotte: 'flotte/', tarifs: 'tarifs/', finances: 'finances/', plateformes: 'plateformes/', rh: 'rh/', parametres: 'parametres/'
+  flotte: 'flotte/', tarifs: 'tarifs/', finances: 'finances/', plateformes: 'plateformes/', rh: 'rh/', support: 'support/',
+  marketing: 'marketing/', parametres: 'parametres/'
 };
 
 ouvrirAdministration({ module: 'tableau' }).then(async () => {
