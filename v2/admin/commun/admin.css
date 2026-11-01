@@ -190,6 +190,8 @@ a.chiffre-lien[aria-current='true'] .chiffre-cle { border-color: var(--nuit); bo
 .tableau tbody tr[data-cliquable] { cursor: pointer; }
 .tableau tbody tr[data-cliquable]:hover { background: #F6F8FB; }
 .tableau .secondaire { display: block; color: var(--gris); font-size: 14px; }
+/* Un numéro de téléphone ne se coupe jamais sur deux lignes */
+a[href^='tel:'] { white-space: nowrap; }
 @media (max-width: 760px) {
   .tableau thead { display: none; }
   .tableau, .tableau tbody, .tableau tr, .tableau td { display: block; width: 100%; }
@@ -199,6 +201,10 @@ a.chiffre-lien[aria-current='true'] .chiffre-cle { border-color: var(--nuit); bo
   .tableau td::before { content: attr(data-libelle); color: var(--gris); font-size: 14px; }
   .tableau td[data-libelle=''] { grid-template-columns: 1fr; }
   .tableau td[data-libelle='']::before { display: none; }
+  /* Colonne d'actions sans action pour cette ligne : rien à afficher */
+  .tableau td[data-libelle='']:empty { display: none; }
+  /* Une pastille seule dans sa cellule garde sa largeur (pas étirée) */
+  .tableau td > .badge { justify-self: start; }
   .tableau .droite { text-align: left; }
 }
 .vide-admin { color: var(--gris); padding: 8px 0; }

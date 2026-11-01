@@ -1674,6 +1674,8 @@ async def support(nav):
     verifier(valeur(f"select statut from public.demandes where id = '{demande}'") == 'fermee'
              and valeur(f"select count(*) from public.messages where demande_id = '{demande}' and contenu like 'Geste commercial accordé%'") == '1',
              'fermée sans suite : motif ajouté au fil')
+    verifier('Répondre rouvre la demande, sauf si vous cochez « C\'est réglé ».' in await page.inner_text('#reponse-demande'),
+             'demande fermée : l\'aide prévient que répondre la rouvre')
     await page.screenshot(path=f'{CAPTURES}/admin-support-fil-ordinateur.png', full_page=True)
 
     # 3. Demande enregistrée pour un client (appel téléphonique)
@@ -1783,6 +1785,10 @@ async def support(nav):
         await page.wait_for_selector(attente)
         verifier(await page.evaluate('document.documentElement.scrollWidth <= screen.width'),
                  f'téléphone : {capture.replace("admin-support-", "").replace("-telephone", "")} sans défilement horizontal de la page')
+        if capture == 'admin-support-site-telephone':
+            verifier(await page.evaluate("(() => { const liens = [...document.querySelectorAll('#contenu a[href^=\"tel:\"]')]; "
+                                         "return liens.length > 0 && liens.every((a) => a.getClientRects().length === 1); })()"),
+                     'téléphone : chaque numéro tient sur une seule ligne')
         await page.screenshot(path=f'{CAPTURES}/{capture}.png', full_page=True)
     await ctx.close()
 
@@ -1924,6 +1930,14 @@ async def marketing(nav):
         await page.wait_for_selector(attente)
         verifier(await page.evaluate('document.documentElement.scrollWidth <= screen.width'),
                  f'téléphone : {capture.replace("admin-marketing-", "").replace("-telephone", "")} sans défilement horizontal de la page')
+        if capture == 'admin-marketing-codes-telephone':
+            verifier(await page.evaluate("(() => { const b = [...document.querySelectorAll('#liste-codes td[data-libelle=\"Statut\"] .badge')]; "
+                                         "return b.length > 0 && b.every((x) => x.getBoundingClientRect().width < x.parentElement.getBoundingClientRect().width / 2); })()"),
+                     'téléphone : la pastille de statut garde sa largeur (pas étirée)')
+        if capture == 'admin-marketing-parrainage-telephone':
+            verifier(await page.evaluate("[...document.querySelectorAll('#liste-parrainages td[data-libelle=\"\"]')]"
+                                         ".every((td) => td.textContent.trim() !== '—' && (td.childNodes.length > 0 || getComputedStyle(td).display === 'none'))"),
+                     'téléphone : pas de tiret orphelin quand une ligne n\'a pas d\'action')
         await page.screenshot(path=f'{CAPTURES}/{capture}.png', full_page=True)
     await ctx.close()
 

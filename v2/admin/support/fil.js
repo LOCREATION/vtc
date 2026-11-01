@@ -126,6 +126,9 @@ async function changerStatut(d, statut, motif, recharger) {
 // ---------------------------------------------------------------------------
 function sectionMessages(f, recharger) {
   const d = f.demande;
+  // Demande résolue ou fermée : y répondre la rouvre (« en cours »), sauf
+  // si « C'est réglé » est coché
+  const close = d.statut === 'resolue' || d.statut === 'fermee';
   const liste = el('ol', { classe: 'fil-messages', 'aria-label': 'Messages de la demande' }, ...f.messages.map((m) =>
     el('li', { classe: `fil-message${m.de_l_administration ? ' fil-message-admin' : ''}` },
       el('div', { classe: 'fil-entete' },
@@ -143,7 +146,11 @@ function sectionMessages(f, recharger) {
   const envoyer = el('button', { type: 'submit', classe: 'bouton bouton-principal', texte: 'Envoyer la réponse' });
   const formulaire = el('form', { classe: 'grille-champs reponse-support', id: 'reponse-demande', novalidate: true },
     el('div', { classe: 'champ champ-plein' }, el('label', { for: 'reponse-texte', texte: 'Votre réponse' }), texte,
-      el('p', { classe: 'aide', texte: `La personne est prévenue dans l'application. ${f.auteur && f.auteur.email ? 'Pour répondre aussi par e-mail, utilisez le lien de l\'adresse ci-dessous.' : ''}` })),
+      el('p', { classe: 'aide', texte: [
+        'La personne est prévenue dans l\'application.',
+        close ? 'Répondre rouvre la demande, sauf si vous cochez « C\'est réglé ».' : null,
+        f.auteur && f.auteur.email ? 'Pour répondre aussi par e-mail, utilisez le lien de l\'adresse ci-dessous.' : null
+      ].filter(Boolean).join(' ') })),
     el('div', { classe: 'champ' }, el('label', { for: 'reponse-fichier', texte: 'Pièce jointe (facultatif) : photo ou PDF, 10 Mo au plus' }), fichier),
     el('label', { classe: 'case champ-plein', for: 'reponse-cloturer' }, cloturer, el('span', { texte: 'C\'est réglé : marquer la demande résolue avec cette réponse' })),
     erreur,
@@ -173,7 +180,8 @@ function sectionMessages(f, recharger) {
         if (chemin) await supabase.storage.from('support').remove([chemin]);
         throw error;
       }
-      afficherMessage(data.statut === 'resolue' ? 'Réponse envoyée, demande résolue.' : 'Réponse envoyée.', 'succes');
+      afficherMessage(data.statut === 'resolue' ? 'Réponse envoyée, demande résolue.'
+        : (close ? 'Réponse envoyée : la demande est rouverte.' : 'Réponse envoyée.'), 'succes');
       await recharger();
     } catch (probleme) {
       erreur.textContent = messageErreurAdmin(probleme);
