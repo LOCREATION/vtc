@@ -36,6 +36,9 @@
   border-left: 10px solid #1D4ED8; white-space: nowrap;
 }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+/* Appeler, Messages, Partager : chaque bouton s'élargit pour remplir sa ligne
+   (« Appeler » et « Messages » côte à côte sur un téléphone) */
+#actions .bouton { flex: 1 1 auto; padding: 0 16px; }
 
 /* Note en étoiles */
 .noter { display: grid; gap: 12px; padding-top: 12px; border-top: 1px solid var(--trait); }
