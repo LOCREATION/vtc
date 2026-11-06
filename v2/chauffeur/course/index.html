@@ -19,6 +19,7 @@
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
   <link rel="stylesheet" href="../../commun/styles.css">
   <link rel="stylesheet" href="../chauffeur.css">
+  <link rel="stylesheet" href="../../commun/discussion.css">
   <link rel="stylesheet" href="course.css">
   <script type="module" src="course.js"></script>
 </head>
@@ -45,7 +46,10 @@
         </div>
         <div class="client" id="bloc-client" hidden>
           <p><span class="etiquette-nuit">Client</span> <strong id="client-prenom"></strong></p>
-          <a class="bouton bouton-secondaire" id="appeler-client" href="#">Appeler</a>
+          <!-- Appeler, et « Messages » (conversation : commun/discussion.js) -->
+          <div class="actions-client" id="actions-client">
+            <a class="bouton bouton-secondaire" id="appeler-client" href="#">Appeler</a>
+          </div>
         </div>
         <button type="button" class="bouton bouton-principal bouton-large bouton-etape" id="action-etape" hidden></button>
       </section>

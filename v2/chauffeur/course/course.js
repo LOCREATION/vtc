@@ -8,6 +8,8 @@
 // La position est envoyée pendant toute la course : le client suit la voiture.
 // Si le client annule, l'écran le montre en temps réel (relecture de secours
 // toutes les 15 s).
+// « Messages » : conversation avec le client pendant la course et 24 heures
+// après (commun/discussion.js), réponses rapides comprises.
 // =============================================================================
 import { supabase, profilConnecte, messageErreur } from '../../commun/supabase.js';
 import { RACINE } from '../../commun/config.js';
@@ -15,6 +17,7 @@ import { imposerLangue, appliquerTraductions } from '../../commun/i18n.js';
 import { euros, nombre, el, afficherMessage, dateHeure } from '../../commun/outils.js';
 import { SuiviGps } from '../../commun/gps-chauffeur.js';
 import { lignesFeuilleDeRoute } from '../commun/feuille-route.js';
+import { creerDiscussion, discussionOuverte } from '../../commun/discussion.js';
 import '../../commun/pwa.js';
 
 imposerLangue('fr');
@@ -33,7 +36,7 @@ const ETAPES = {
   annulee: ['Course annulée', 'Cette course a été annulée.', null, null]
 };
 const etat = {
-  profil: null, course: null, arrets: [], societe: null, paiements: [], noteDonnee: false,
+  profil: null, course: null, arrets: [], societe: null, paiements: [], noteDonnee: false, discussion: null,
   attenteGratuiteMin: 5, gps: null, carte: null, reperes: {}, minuteurAttente: null, noteChoisie: 0,
   confirmation: null
 };
@@ -62,6 +65,8 @@ async function demarrer() {
   await chargerFin();
 
   $('espace').hidden = false;
+  etat.discussion = creerDiscussion({ role: 'chauffeur', moi: etat.profil.id, place: $('actions-client'),
+                                      interlocuteur: (c) => c.client_prenom || 'le client' });
   etat.gps = new SuiviGps({ chauffeurId: etat.profil.id, onPosition: majMaPosition });
   initialiserCarte();
   preparerNote();
@@ -118,9 +123,14 @@ function afficher() {
     $('nav-waze').href = liens.waze;
     $('nav-maps').href = liens.maps;
   }
-  $('bloc-client').hidden = !(active && c.client_telephone);
+  // Client : pendant la course (appel et messages), puis 24 heures pour les
+  // messages seulement
+  const enCourse = ['acceptee', 'arrivee', 'en_cours'].includes(c.statut);
+  $('bloc-client').hidden = !(c.client_prenom && (enCourse || discussionOuverte(c)));
   $('client-prenom').textContent = c.client_prenom || '';
+  $('appeler-client').hidden = !(enCourse && c.client_telephone);
   $('appeler-client').href = c.client_telephone ? `tel:${c.client_telephone}` : '#';
+  if (etat.discussion) etat.discussion.majCourse(c);
   $('action-etape').hidden = !bouton;
   $('action-etape').textContent = bouton || '';
   $('desister').hidden = !['planifiee', 'acceptee', 'arrivee'].includes(c.statut);
