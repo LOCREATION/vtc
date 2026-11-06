@@ -1,9 +1,9 @@
 # Banc d'essai de l'espace client v2 (client/) : onglets Accueil, Activité,
-# Compte, cloche des notifications, « Mes demandes au support », lien « Mon
-# compte » de l'accueil public.
+# Compte (lieux, proches), cloche des notifications, « Mes demandes au
+# support », lien « Mon compte » de l'accueil public.
 # Joué avec la cliente des scénarios de test (Claire) ; ce qui est créé ici
-# (courses, lieux, demandes, notifications) est retiré, le profil remis comme
-# avant.
+# (courses, lieux, proches, demandes, notifications) est retiré, le profil
+# remis comme avant.
 import asyncio, json, re, time
 from playwright.async_api import async_playwright
 from banc import (SITE, CAPTURES, CLIENT, CHAUFFEUSE, ADMIN, PNG_GRIS, FICHIERS_DEPOSES, FICHIERS_RETIRES,
@@ -190,6 +190,72 @@ async def support_client(page, debut, demandes_creees):
     return demande
 
 
+async def proches_client(page):
+    """Compte > Mes proches (client/compte/proches.js) : liste, ajout (contrôles,
+    numéro déjà enregistré), modification, « Commander » (la commande s'ouvre
+    pour ce proche), retrait."""
+    print('Mes proches')
+    await page.goto(SITE + 'client/?onglet=compte')
+    await page.wait_for_selector('#compte-proches')
+    existants = ligne_sql(f"select count(*) || '|' || coalesce(min(nom), '') || '|' || coalesce(min(telephone), '') "
+                          f"from public.proches where client_id = '{CLIENT}'")
+    nombre, premier_nom, premier_tel = int(existants[0]), existants[1], existants[2]
+    await page.wait_for_function(f"document.querySelectorAll('#compte-liste-proches li').length === {nombre}")
+    if nombre:
+        verifier(premier_nom in await page.inner_text('#compte-liste-proches') and await page.is_hidden('#compte-proches-vide'),
+                 f'Mes proches : {nombre} proche(s) déjà enregistré(s) affiché(s)')
+    else:
+        verifier(await page.is_visible('#compte-proches-vide'), 'Mes proches : « Aucun proche enregistré. »')
+    await page.click('#proche-ajouter')
+    await page.wait_for_selector('#proche-formulaire:not([hidden])')
+    verifier(await page.inner_text('#proche-formulaire-titre') == 'Ajouter un proche', '« Ajouter » : formulaire « Ajouter un proche »')
+    await page.click('#proche-enregistrer')
+    verifier(await page.is_visible('#proche-nom-compte-erreur') and await page.is_visible('#proche-telephone-compte-erreur'),
+             'proche sans nom ni numéro : refusé avant l\'envoi')
+    await page.fill('#proche-nom-compte', 'Paul Martin')
+    if premier_tel:
+        await page.fill('#proche-telephone-compte', premier_tel)
+        await page.click('#proche-enregistrer')
+        verifier(f'Ce numéro est déjà celui de {premier_nom}.' == await page.inner_text('#proche-telephone-compte-erreur'),
+                 'numéro déjà enregistré pour un autre proche : signalé avant l\'envoi')
+    await page.fill('#proche-telephone-compte', '06 11 22 33 44')
+    await page.fill('#proche-relation-compte', 'Fils')
+    await page.click('#proche-enregistrer')
+    await message_affiche(page, 'Proche enregistré : Paul Martin.')
+    proche = valeur(f"select id from public.proches where client_id = '{CLIENT}' and nom = 'Paul Martin' "
+                    "and telephone = '+33611223344' and relation = 'Fils'")
+    verifier(len(proche) == 36 and await page.is_hidden('#proche-formulaire')
+             and '+33 6 11 22 33 44' in await page.inner_text(f'#proche-{proche}'),
+             'proche enregistré dans la base (nom, numéro international, lien), affiché lisiblement')
+
+    await page.click(f'#proche-{proche}-modifier')
+    await page.wait_for_selector('#proche-formulaire:not([hidden])')
+    verifier(await page.inner_text('#proche-formulaire-titre') == 'Modifier Paul Martin'
+             and await page.input_value('#proche-telephone-compte') == '+33 6 11 22 33 44',
+             '« Modifier » : formulaire rempli avec le proche')
+    await page.fill('#proche-relation-compte', 'Fils aîné')
+    await page.click('#proche-enregistrer')
+    await message_affiche(page, 'Proche enregistré : Paul Martin.')
+    verifier(valeur(f"select relation from public.proches where id = '{proche}'") == 'Fils aîné', 'proche modifié dans la base')
+
+    verifier(await page.evaluate(f"document.getElementById('proche-{proche}-commander').href") == SITE + f'client/commande/?proche={proche}',
+             '« Commander » : vers la commande, pour ce proche')
+    await page.click(f'#proche-{proche}-commander')
+    await page.wait_for_url(re.compile(r'/client/commande/\?proche='))
+    await page.wait_for_function("document.getElementById('proche-nom').value === 'Paul Martin'")
+    verifier(await page.is_checked('input[name="pour"][value="proche"]') and await page.is_visible('#bloc-proche')
+             and await page.input_value('#proche-telephone') == '+33611223344'
+             and await page.input_value('#proche-enregistre') == proche and await page.is_hidden('#case-enregistrer-proche'),
+             'commande : « Pour un proche », Paul Martin déjà choisi')
+    await page.go_back()
+    await page.wait_for_selector(f'#proche-{proche}-retirer')
+    await page.click(f'#proche-{proche}-retirer')
+    await message_affiche(page, 'Proche retiré : Paul Martin.')
+    verifier(valeur(f"select count(*) from public.proches where id = '{proche}'") == '0'
+             and await page.locator(f'#proche-{proche}').count() == 0,
+             '« Retirer » : proche retiré de la base et de la liste')
+
+
 def commander(**autres):
     corps = {'p_categorie': 'berline_hybride', 'p_depart_adresse': '10 Rue de Rivoli 75004 Paris',
              'p_depart_lat': 48.8556, 'p_depart_lng': 2.36, 'p_arrivee_adresse': 'Gare de Lyon',
@@ -340,6 +406,7 @@ async def main():
                      'notification « Réservation confirmée » : onglet Activité, sans quitter la page')
 
             demande = await support_client(page, debut, demandes_creees)
+            await proches_client(page)
 
             print('Langue')
             await page.click('#onglets [data-onglet="compte"]')
@@ -412,7 +479,8 @@ insert into auth.users (email, raw_user_meta_data) values ('nouveau{int(time.tim
         # Retour à l'état de départ
         for c in (en_cours, reservation):
             appel_rpc('annuler_course', {'p_course': c['id'], 'p_motif': 'Fin de l\'essai'}, ADMIN)
-        systeme(f"""delete from public.lieux where client_id = '{CLIENT}';
+        systeme(f"""delete from public.proches where client_id = '{CLIENT}' and nom = 'Paul Martin';
+                   delete from public.lieux where client_id = '{CLIENT}';
                    update public.profils set telephone = nullif($t${telephone}$t$, ''), langue = '{langue}' where id = '{CLIENT}';
                    delete from public.notifications where destinataire_id = '{CLIENT}' and cree_le >= '{debut}';""")
         for d in demandes_creees:

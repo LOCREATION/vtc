@@ -10,18 +10,14 @@
 // Une seule source pour l'écran de course (course/) et le document PDF
 // (document/) : les deux disent toujours la même chose.
 // =============================================================================
-import { dateHeure } from '../../commun/outils.js';
+import { dateHeure, telephoneLisible } from '../../commun/outils.js';
 
 function quand(instant) {
   return dateHeure(instant, { dateStyle: 'long', timeStyle: 'short' });
 }
 
-// +33612345678 → « +33 6 12 34 56 78 » (les autres numéros restent tels quels)
-export function telephoneLisible(numero) {
-  const n = String(numero || '');
-  const francais = n.match(/^\+33([1-9])(\d{2})(\d{2})(\d{2})(\d{2})$/);
-  return francais ? `+33 ${francais.slice(1).join(' ')}` : n;
-}
+// Numéro lisible (« +33 6 12 34 56 78 », « +229 97 00 00 00 ») : commun/outils.js
+export { telephoneLisible };
 
 // L'exploitant (sur le document PDF, ces mentions sont dans l'en-tête)
 export function mentionsExploitant(societe) {

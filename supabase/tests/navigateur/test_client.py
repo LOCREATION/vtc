@@ -203,7 +203,7 @@ async def main():
             prix = (await page.inner_text('#prix')).replace(' ', '').replace('\xa0', '')
             verifier(f"{attendu['prix_total']:.2f}".replace('.', ',') in prix, f'prix avec un arrêt = prix de la base ({prix})')
             await page.click('label:has(input[value="proche"])')
-            await page.select_option('#proche-enregistre', label='Mamie Durand (+33677777777)')
+            await page.select_option('#proche-enregistre', label='Mamie Durand (+33 6 77 77 77 77)')
             verifier(await page.input_value('#proche-telephone') == '+33677777777', 'proche enregistré : nom et téléphone repris')
             await page.click('label:has(input[value="carte"])')
             await page.fill('#code-promo', 'bienvenue10')
