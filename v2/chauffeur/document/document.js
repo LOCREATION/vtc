@@ -31,7 +31,7 @@ import { mentionsCourse } from '../commun/feuille-route.js';
 import { lireHistorique, instantFin } from '../commun/historique.js';
 import { jourParis, ajouterJours, dateCourte, dateLongue, dureeLisible, heuresLisibles, libellePeriode } from '../commun/periodes.js';
 import { STATUTS_COURSE, arrondi, majorationDe } from '../commun/libelles.js';
-import { ouvrirFichier } from '../commun/fichiers.js';
+import { ouvrirFichier } from '../../commun/fichiers.js';
 
 imposerLangue('fr');                 // espace chauffeur en français
 

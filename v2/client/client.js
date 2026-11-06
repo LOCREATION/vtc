@@ -10,7 +10,12 @@
 // Personne non connectée : connexion (connexion/), puis retour ici.
 // Compte chauffeur ou d'administration : un lien vers son propre espace.
 // Notifications : la cloche ouvre le panneau commun ; un lien vers une course
-// ouvre son suivi (client/course/), « /client/activite/ » l'onglet Activité.
+// ouvre son suivi (client/course/), « /client/activite/ » l'onglet Activité,
+// « /client/demandes/?id=… » la demande dans « Mes demandes au support ».
+// « Mes demandes au support » (commun/support.js) : panneau ouvert par-dessus
+// la page, depuis Compte, la page d'une course (« Signaler un problème »), une
+// notification, ou l'adresse : ?demande=<id> (lien d'une notification),
+// ?signaler=<id de la course> (nouvelle demande sur cette course).
 // =============================================================================
 import { supabase, profilConnecte, messageErreur } from '../commun/supabase.js';
 import { RACINE } from '../commun/config.js';
@@ -18,10 +23,12 @@ import { t, appliquerTraductions, adopterLangueProfil, langueActive, lienAvecLan
 import { el, afficherMessage } from '../commun/outils.js';
 import { installerPanneauNotifications } from '../commun/panneau-notifications.js';
 import { adresseDuLien } from '../commun/notifications.js';
+import { installerSupport } from '../commun/support.js';
 import '../commun/pwa.js';
 
 const $ = (id) => document.getElementById(id);
-const etat = { profil: null, onglet: 'accueil', notifications: null };
+const etat = { profil: null, onglet: 'accueil', notifications: null, support: null };
+const IDENTIFIANT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const ONGLETS = {
   accueil: () => import('./accueil/accueil.js'),
@@ -35,6 +42,9 @@ const contexte = {
   get profil() { return etat.profil; },
   majProfil(champs) { etat.profil = { ...etat.profil, ...champs }; },
   ouvrirOnglet: (code) => ouvrirOnglet(code),
+  // options : { demande } (une demande), { nouvelle: true, course } (nouvelle
+  // demande, course facultative), rien (la liste)
+  ouvrirSupport: (options) => (etat.support ? etat.support.ouvrir(options) : null),
   deconnecter,
   // Langue choisie dans Compte : la page se recharge dans cette langue
   changerLangue(langue) {
@@ -76,7 +86,15 @@ async function demarrer() {
   etat.notifications = installerPanneauNotifications({
     cloche: $('cloche'), pastille: $('cloche-non-lues'), moi: etat.profil.id, suivreLien
   });
+  etat.support = installerSupport({ moi: etat.profil.id, role: 'client',
+    apresLecture: () => etat.notifications && etat.notifications.relire() });
+  // Demande au support dans l'adresse (lue avant que l'onglet ne la réécrive)
+  const adresse = new URLSearchParams(location.search);
+  const demande = adresse.get('demande');
+  const signaler = adresse.get('signaler');
   await ouvrirOnglet(ongletDeLAdresse(), { historique: 'remplacer' });
+  if (demande && IDENTIFIANT.test(demande)) etat.support.ouvrir({ demande });
+  else if (signaler && IDENTIFIANT.test(signaler)) etat.support.ouvrir({ nouvelle: true, course: signaler });
 }
 
 // ---------------------------------------------------------------------------
@@ -147,6 +165,11 @@ async function suivreLien(lien) {
   }
   if (chemin === '/client/activite/') {
     await ouvrirOnglet('activite');
+    return;
+  }
+  if (chemin === '/client/demandes/') {
+    const demande = new URLSearchParams(lien.split('?')[1] || '').get('id');
+    await contexte.ouvrirSupport(demande && IDENTIFIANT.test(demande) ? { demande } : {});
     return;
   }
   const adresse = adresseDuLien(lien);

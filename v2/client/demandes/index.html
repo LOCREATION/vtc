@@ -1,0 +1,34 @@
+<!doctype html>
+<!-- =============================================================================
+     LOC RÉACTION S.A.S — Version 2
+     Espace client : adresse « /client/demandes/?id=… »
+     Lien des notifications du support (« Réponse du support », « Demande
+     résolue », « Demande fermée », « Demande enregistrée ») : renvoie à
+     l'espace client, qui ouvre la demande dans « Mes demandes au support »
+     (?demande=…). La langue du lien (?lang=en) est gardée.
+     ============================================================================= -->
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mes demandes au support, LOC RÉACTION</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0A1A38">
+  <link rel="icon" href="../../commun/img/icone.svg" type="image/svg+xml">
+  <script>
+    (function () {
+      var parametres = new URLSearchParams(location.search);
+      var id = parametres.get('id');
+      var valide = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id || '');
+      var suite = new URLSearchParams();
+      if (parametres.get('lang') === 'en') suite.set('lang', 'en');
+      if (valide) suite.set('demande', id);
+      else suite.set('onglet', 'compte');
+      location.replace('../?' + suite.toString() + (valide ? '' : '#compte-bloc-support'));
+    })();
+  </script>
+</head>
+<body>
+  <p><a href="../?onglet=compte#compte-bloc-support">Ouvrir mes demandes au support</a></p>
+</body>
+</html>

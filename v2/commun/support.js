@@ -1,9 +1,9 @@
 // =============================================================================
 // LOC RÉACTION S.A.S — Version 2
-// Espace chauffeur : « Mes demandes au support »
+// « Mes demandes au support » : espace chauffeur et espace client
 // -----------------------------------------------------------------------------
-// Panneau ouvert par-dessus la page (le service continue : position,
-// demandes de course), en trois vues :
+// Panneau ouvert par-dessus la page (dans l'espace chauffeur, le service
+// continue : position, demandes de course), en trois vues :
 //   - Mes demandes : la plus récemment active d'abord, avec son statut, la
 //     course concernée et les réponses non lues (fonction mes_demandes) ;
 //   - une demande : le fil des messages (les miens à droite, LOC RÉACTION à
@@ -12,41 +12,55 @@
 //     sont marquées « lues », leur notification aussi ;
 //   - Nouvelle demande : de quoi il s'agit, course concernée (facultative),
 //     sujet, message (fonction ouvrir_demande).
-// Ouvert depuis l'onglet Compte (« Aide et support »), la fiche d'une course
+// Ouvert depuis l'onglet Compte (« Aide et support »), la page d'une course
 // (« Signaler un problème »), une notification du support, ou l'adresse de
-// l'espace chauffeur avec ?demande=… ou ?signaler=… (chauffeur.js).
+// l'espace avec ?demande=… ou ?signaler=… (chauffeur.js, client.js).
 // Nouvelles réponses pendant que le fil est ouvert : temps réel, et relecture
 // de secours toutes les 20 secondes.
+// Textes : commun/i18n.js (« support.* ») ; l'espace chauffeur impose le
+// français, l'espace client suit la langue choisie (français ou anglais).
+// Couleurs : commun/support.css (claires ; de nuit dans l'espace chauffeur).
+// Fermeture du panneau : événement « support-ferme » sur le document (les
+// onglets Compte relisent alors le nombre de réponses à lire).
 // =============================================================================
-import { supabase, messageErreur } from '../../commun/supabase.js';
-import { el, afficherMessage, dateHeure } from '../../commun/outils.js';
-import { ouvrirFichier, extension } from '../commun/fichiers.js';
+import { supabase, messageErreur } from './supabase.js';
+import { t, langueActive } from './i18n.js';
+import { el, afficherMessage, dateHeure } from './outils.js';
+import { ouvrirFichier, extension } from './fichiers.js';
 
-const STATUTS = { ouverte: 'Ouverte', en_cours: 'En cours', resolue: 'Résolue', fermee: 'Fermée' };
-const TYPES = { course: 'Une course', paiement: 'Un paiement', objet_perdu: 'Un objet oublié', compte: 'Mon compte', autre: 'Autre chose' };
-const TYPES_COURTS = { course: 'Course', paiement: 'Paiement', objet_perdu: 'Objet oublié', compte: 'Compte', autre: 'Autre' };
+const STATUTS = ['ouverte', 'en_cours', 'resolue', 'fermee'];
+const TYPES = ['course', 'paiement', 'objet_perdu', 'compte', 'autre'];
 const FORMATS = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'];
+const EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 'pdf'];
 const TAILLE_MAX = 10 * 1024 * 1024;          // 10 Mo, comme le dossier « support » de la base
 const RELECTURE_MS = 20000;
 
-// moi : identifiant du chauffeur connecté
-export function installerSupport({ moi }) {
+const statut = (code) => (STATUTS.includes(code) ? t(`support.statut_${code}`) : code);
+const typeCourt = (code) => (TYPES.includes(code) ? t(`support.court_${code}`) : code);
+const erreurLisible = (e) => messageErreur(e, langueActive());
+
+// moi : identifiant de la personne connectée
+// role : 'chauffeur' ou 'client' (ses courses, le lien de ses notifications)
+// apresLecture : appelé quand une notification du support vient d'être
+//   marquée lue (la cloche relit son nombre sans attendre)
+export function installerSupport({ moi, role, apresLecture = null }) {
   const etat = { vue: 'liste', demandes: [], courant: null, messages: [], canal: null, minuteur: null, envoi: false, piece: null };
+  const colonneCourse = role === 'chauffeur' ? 'chauffeur_id' : 'client_id';
+  const lienNotification = (id) => `/${role}/demandes/?id=${id}`;
 
   // ---------------------------------------------------------------------------
   // Structure du panneau
   // ---------------------------------------------------------------------------
-  const retour = el('button', { type: 'button', classe: 'bouton bouton-texte support-retour', id: 'support-retour', texte: '‹ Mes demandes', hidden: true });
-  const fermer = el('button', { type: 'button', classe: 'bouton bouton-texte support-fermer', id: 'support-fermer', texte: 'Fermer' });
-  const titre = el('h2', { id: 'support-titre', texte: 'Mes demandes au support' });
+  const retour = el('button', { type: 'button', classe: 'bouton bouton-texte support-retour', id: 'support-retour', texte: t('support.retour'), hidden: true });
+  const fermer = el('button', { type: 'button', classe: 'bouton bouton-texte support-fermer', id: 'support-fermer', texte: t('support.fermer') });
+  const titre = el('h2', { id: 'support-titre', texte: t('support.titre') });
   const sousTitre = el('p', { classe: 'support-sous-titre', id: 'support-sous-titre', hidden: true });
   const erreur = el('p', { classe: 'alerte', id: 'support-erreur', role: 'alert', hidden: true });
 
   // Vue « Mes demandes »
-  const nouvelle = el('button', { type: 'button', classe: 'bouton bouton-principal bouton-large', id: 'support-nouvelle', texte: 'Nouvelle demande' });
-  const liste = el('ul', { classe: 'support-liste', id: 'support-liste', 'aria-label': 'Mes demandes' });
-  const vide = el('p', { classe: 'support-vide', id: 'support-vide', hidden: true,
-    texte: 'Aucune demande pour le moment. Une question sur une course, un paiement, un objet oublié, votre compte ? Écrivez à LOC RÉACTION.' });
+  const nouvelle = el('button', { type: 'button', classe: 'bouton bouton-principal bouton-large', id: 'support-nouvelle', texte: t('support.nouvelle') });
+  const liste = el('ul', { classe: 'support-liste', id: 'support-liste', 'aria-label': t('support.liste_aria') });
+  const vide = el('p', { classe: 'support-vide', id: 'support-vide', hidden: true, texte: t('support.vide') });
   const vueListe = el('div', { classe: 'support-vue', id: 'support-vue-liste' }, nouvelle, vide, liste);
 
   // Vue « une demande »
@@ -59,43 +73,48 @@ export function installerSupport({ moi }) {
     aide ? el('p', { classe: 'aide', texte: aide }) : null,
     el('p', { classe: 'erreur-champ', id: `${id}-erreur`, hidden: true }));
   const type = el('select', { id: 'support-type', classe: 'saisie' },
-    ...Object.entries(TYPES).map(([valeur, libelle]) => el('option', { value: valeur, texte: libelle })));
-  const course = el('select', { id: 'support-course', classe: 'saisie' }, el('option', { value: '', texte: 'Aucune course en particulier' }));
+    ...TYPES.map((code) => el('option', { value: code, texte: t(`support.type_${code}`) })));
+  const course = el('select', { id: 'support-course', classe: 'saisie' }, el('option', { value: '', texte: t('support.aucune_course') }));
   const sujet = el('input', { id: 'support-sujet', classe: 'saisie', type: 'text', maxlength: '200', required: true,
-    placeholder: 'Ex. : client absent au rendez-vous' });
+    placeholder: t(role === 'chauffeur' ? 'support.exemple_chauffeur' : 'support.exemple_client') });
   const message = el('textarea', { id: 'support-message', classe: 'saisie', rows: '5', maxlength: '2000', required: true });
-  const envoyerDemande = el('button', { type: 'submit', classe: 'bouton bouton-principal bouton-large', id: 'support-envoyer-demande', texte: 'Envoyer la demande' });
+  const envoyerDemande = el('button', { type: 'submit', classe: 'bouton bouton-principal bouton-large', id: 'support-envoyer-demande', texte: t('support.envoyer_demande') });
   const vueNouvelle = el('form', { classe: 'support-vue support-formulaire', id: 'support-vue-nouvelle', novalidate: true, hidden: true },
-    champ('support-type', 'De quoi s\'agit-il ?', type),
-    champ('support-course', 'Course concernée (facultatif)', course),
-    champ('support-sujet', 'Sujet', sujet),
-    champ('support-message', 'Votre message', message, 'Donnez les détails utiles : heure, lieu, montant… LOC RÉACTION vous répond ici.'),
+    champ('support-type', t('support.de_quoi'), type),
+    champ('support-course', t('support.course_concernee'), course),
+    champ('support-sujet', t('support.sujet'), sujet),
+    champ('support-message', t('support.message'), message, t('support.message_aide')),
     envoyerDemande);
 
   // Bas du panneau : réponse dans le fil
   const reponse = el('textarea', { id: 'support-reponse-texte', classe: 'saisie', rows: '1', maxlength: '2000',
-    'aria-label': 'Votre réponse', placeholder: 'Votre réponse' });
+    'aria-label': t('support.votre_reponse'), placeholder: t('support.votre_reponse') });
   const fichier = el('input', { type: 'file', id: 'support-reponse-fichier', classe: 'visuellement-cache',
     accept: FORMATS.join(','), tabindex: '-1', 'aria-hidden': 'true' });
-  const joindre = el('button', { type: 'button', classe: 'bouton bouton-secondaire support-joindre', id: 'support-joindre', texte: 'Photo' });
+  const joindre = el('button', { type: 'button', classe: 'bouton bouton-secondaire support-joindre', id: 'support-joindre', texte: t('support.photo') });
   const piece = el('p', { classe: 'support-piece-choisie', id: 'support-piece-choisie', hidden: true });
-  const envoyerReponse = el('button', { type: 'submit', classe: 'bouton bouton-principal', id: 'support-reponse-envoyer', texte: 'Envoyer' });
+  const envoyerReponse = el('button', { type: 'submit', classe: 'bouton bouton-principal', id: 'support-reponse-envoyer', texte: t('support.envoyer') });
   const formReponse = el('form', { classe: 'support-reponse', id: 'support-reponse', novalidate: true },
     piece, el('div', { classe: 'support-reponse-ligne' }, joindre, reponse, envoyerReponse), fichier);
+  const texteFermee = el('p', { id: 'support-fermee-texte' });
   const fermee = el('div', { classe: 'support-fermee', id: 'support-fermee', hidden: true },
-    el('p', { id: 'support-fermee-texte' }),
-    el('button', { type: 'button', classe: 'bouton bouton-secondaire', id: 'support-fermee-nouvelle', texte: 'Nouvelle demande',
+    texteFermee,
+    el('button', { type: 'button', classe: 'bouton bouton-secondaire', id: 'support-fermee-nouvelle', texte: t('support.nouvelle'),
       onclick: () => montrerNouvelle({ course: etat.courant ? etat.courant.course_id : null }) }));
   const bas = el('div', { classe: 'support-bas', id: 'support-bas', hidden: true }, formReponse, fermee);
 
+  const corps = el('div', { classe: 'support-corps', id: 'support-corps' }, erreur, vueListe, vueFil, vueNouvelle);
   const panneau = el('dialog', { classe: 'support', id: 'support', 'aria-labelledby': 'support-titre' },
     el('header', { classe: 'support-entete' }, el('div', { classe: 'support-barre' }, retour, fermer), titre, sousTitre),
-    el('div', { classe: 'support-corps', id: 'support-corps' }, erreur, vueListe, vueFil, vueNouvelle),
+    corps,
     bas);
   document.body.append(panneau);
 
   fermer.addEventListener('click', () => panneau.close());
-  panneau.addEventListener('close', arreterSuivi);
+  panneau.addEventListener('close', () => {
+    arreterSuivi();
+    document.dispatchEvent(new CustomEvent('support-ferme'));
+  });
   retour.addEventListener('click', () => montrerListe());
   nouvelle.addEventListener('click', () => montrerNouvelle());
   vueNouvelle.addEventListener('submit', (e) => { e.preventDefault(); creerDemande(); });
@@ -131,7 +150,7 @@ export function installerSupport({ moi }) {
         await montrerFil(d);
         return;
       }
-      afficherMessage('Cette demande est introuvable : voici toutes vos demandes.', 'erreur');
+      afficherMessage(t('support.introuvable'), 'erreur');
     }
     montrerVue('liste');
     afficherListe();
@@ -146,15 +165,15 @@ export function installerSupport({ moi }) {
     bas.hidden = vue !== 'fil';
     if (vue !== 'fil') arreterSuivi();
     if (vue === 'liste') {
-      titre.textContent = 'Mes demandes au support';
+      titre.textContent = t('support.titre');
       sousTitre.hidden = true;
     }
-    panneau.querySelector('.support-corps').scrollTop = 0;
+    corps.scrollTop = 0;
   }
 
   function montrerErreur(e) {
     erreur.hidden = !e;
-    erreur.textContent = e ? messageErreur(e) : '';
+    erreur.textContent = e ? erreurLisible(e) : '';
   }
 
   // ---------------------------------------------------------------------------
@@ -183,12 +202,12 @@ export function installerSupport({ moi }) {
       const bouton = el('button', { type: 'button', classe: 'support-demande', dataset: { statut: d.statut, id: d.id } },
         el('span', { classe: 'support-demande-entete' },
           el('span', { classe: 'support-numero', texte: d.numero }),
-          el('span', { classe: 'support-statut', dataset: { statut: d.statut }, texte: STATUTS[d.statut] || d.statut })),
+          el('span', { classe: 'support-statut', dataset: { statut: d.statut }, texte: statut(d.statut) })),
         el('span', { classe: 'support-demande-sujet', texte: d.sujet }),
         el('span', { classe: 'support-demande-infos',
-          texte: [TYPES_COURTS[d.type] || d.type, d.course_numero, quand(d.activite)].filter(Boolean).join(' · ') }),
+          texte: [typeCourt(d.type), d.course_numero, quand(d.activite)].filter(Boolean).join(' · ') }),
         d.non_lus > 0
-          ? el('span', { classe: 'support-non-lus', texte: d.non_lus > 1 ? `${d.non_lus} réponses non lues` : '1 réponse non lue' })
+          ? el('span', { classe: 'support-non-lus', texte: d.non_lus > 1 ? t('support.non_lus', { n: d.non_lus }) : t('support.non_lu') })
           : null);
       bouton.addEventListener('click', () => montrerFil(d));
       return el('li', {}, bouton);
@@ -204,13 +223,12 @@ export function installerSupport({ moi }) {
     montrerVue('fil');
     titre.textContent = d.sujet;
     sousTitre.hidden = false;
-    sousTitre.textContent = [d.numero, STATUTS[d.statut] || d.statut, d.course_numero ? `course ${d.course_numero}` : null].filter(Boolean).join(' · ');
+    sousTitre.textContent = [d.numero, statut(d.statut), d.course_numero ? t('support.course_numero', { numero: d.course_numero }) : null]
+      .filter(Boolean).join(' · ');
     const ouverte = ['ouverte', 'en_cours'].includes(d.statut);
     formReponse.hidden = !ouverte;
     fermee.hidden = ouverte;
-    $id('support-fermee-texte').textContent = d.statut === 'resolue'
-      ? 'Demande résolue. Pour une autre question, ouvrez une nouvelle demande.'
-      : 'Demande fermée. Pour une autre question, ouvrez une nouvelle demande.';
+    texteFermee.textContent = t(d.statut === 'resolue' ? 'support.resolue_texte' : 'support.fermee_texte');
     viderReponse();
     fil.replaceChildren();
     await relireFil({ premiere: true });
@@ -237,15 +255,16 @@ export function installerSupport({ moi }) {
   function bulle(m) {
     const auteur = m.auteur_id === moi ? 'moi' : 'equipe';
     return el('li', { classe: 'support-message', dataset: { auteur } },
-      auteur === 'equipe' ? el('span', { classe: 'support-auteur', texte: 'LOC RÉACTION' }) : null,
+      auteur === 'equipe' ? el('span', { classe: 'support-auteur', texte: t('support.equipe') }) : null,
       m.contenu ? el('p', { classe: 'support-bulle', texte: m.contenu }) : null,
       m.piece_jointe_chemin ? boutonPiece(m.piece_jointe_chemin) : null,
       el('span', { classe: 'support-heure', texte: quand(m.cree_le) }));
   }
 
   function boutonPiece(chemin) {
-    const b = el('button', { type: 'button', classe: 'bouton bouton-texte support-piece', texte: chemin.endsWith('.pdf') ? 'Ouvrir le PDF joint' : 'Ouvrir la photo jointe' });
-    b.addEventListener('click', () => ouvrirFichier('support', chemin).catch((e) => afficherMessage(messageErreur(e), 'erreur')));
+    const b = el('button', { type: 'button', classe: 'bouton bouton-texte support-piece',
+      texte: t(chemin.endsWith('.pdf') ? 'support.ouvrir_pdf' : 'support.ouvrir_photo') });
+    b.addEventListener('click', () => ouvrirFichier('support', chemin).catch((e) => afficherMessage(erreurLisible(e), 'erreur')));
     return b;
   }
 
@@ -258,12 +277,12 @@ export function installerSupport({ moi }) {
     if (error) return;
     etat.messages.forEach((m) => { if (m.auteur_id !== moi && !m.lu_le) m.lu_le = maintenant; });
     d.non_lus = 0;
-    await supabase.from('notifications').update({ lu_le: maintenant })
-      .eq('destinataire_id', moi).eq('lien', `/chauffeur/demandes/?id=${d.id}`).is('lu_le', null);
+    const notification = await supabase.from('notifications').update({ lu_le: maintenant })
+      .eq('destinataire_id', moi).eq('lien', lienNotification(d.id)).is('lu_le', null);
+    if (!notification.error && apresLecture) apresLecture();
   }
 
   function descendre() {
-    const corps = panneau.querySelector('.support-corps');
     corps.scrollTop = corps.scrollHeight;
   }
 
@@ -290,18 +309,18 @@ export function installerSupport({ moi }) {
     const f = fichier.files && fichier.files[0];
     fichier.value = '';
     if (!f) return;
-    if (!FORMATS.includes(f.type) && !['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 'pdf'].includes(extension(f))) {
-      afficherMessage('Format non accepté : photo (JPEG, PNG, WebP, HEIC) ou PDF.', 'erreur');
+    if (!FORMATS.includes(f.type) && !EXTENSIONS.includes(extension(f))) {
+      afficherMessage(t('support.format'), 'erreur');
       return;
     }
     if (f.size > TAILLE_MAX) {
-      afficherMessage('Fichier trop lourd : 10 Mo au plus.', 'erreur');
+      afficherMessage(t('support.trop_lourd'), 'erreur');
       return;
     }
     etat.piece = f;
-    const retirer = el('button', { type: 'button', classe: 'bouton bouton-texte', id: 'support-piece-retirer', texte: 'Retirer' });
+    const retirer = el('button', { type: 'button', classe: 'bouton bouton-texte', id: 'support-piece-retirer', texte: t('support.retirer') });
     retirer.addEventListener('click', () => { etat.piece = null; piece.hidden = true; piece.replaceChildren(); });
-    piece.replaceChildren(el('span', { texte: `Pièce jointe : ${f.name}` }), retirer);
+    piece.replaceChildren(el('span', { texte: t('support.piece_jointe', { nom: f.name }) }), retirer);
     piece.hidden = false;
   }
 
@@ -318,7 +337,7 @@ export function installerSupport({ moi }) {
     const contenu = reponse.value.trim();
     if (!d || etat.envoi) return;
     if (!contenu && !etat.piece) {
-      afficherMessage('Écrivez votre réponse ou joignez une photo.', 'erreur');
+      afficherMessage(t('support.ecrire'), 'erreur');
       reponse.focus();
       return;
     }
@@ -331,7 +350,10 @@ export function installerSupport({ moi }) {
         chemin = `${d.id}/${crypto.randomUUID()}.${extension(etat.piece) || 'jpg'}`;
         const envoi = await supabase.storage.from('support')
           .upload(chemin, etat.piece, { contentType: etat.piece.type || undefined, upsert: false });
-        if (envoi.error) throw envoi.error;
+        if (envoi.error) {
+          chemin = null;             // rien n'a été déposé
+          throw envoi.error;
+        }
       }
       const { error } = await supabase.from('messages').insert({ demande_id: d.id, auteur_id: moi, contenu: contenu || null, piece_jointe_chemin: chemin });
       if (error) throw error;
@@ -339,11 +361,10 @@ export function installerSupport({ moi }) {
       await relireFil();
       descendre();
     } catch (e) {
-      // Pièce déposée mais message refusé : la pièce ne reste pas orpheline
+      // Pièce déposée mais message refusé : son auteur la retire (règle
+      // « support_auteur_retrait » de la base), elle ne reste pas orpheline
       if (chemin) await supabase.storage.from('support').remove([chemin]).catch(() => {});
-      afficherMessage(/row-level security/i.test(e && e.message || '')
-        ? 'Réponse non envoyée : cette demande est close. Ouvrez une nouvelle demande.'
-        : messageErreur(e), 'erreur');
+      afficherMessage(/row-level security/i.test(e && e.message || '') ? t('support.close') : erreurLisible(e), 'erreur');
     } finally {
       etat.envoi = false;
       envoyerReponse.disabled = false;
@@ -356,7 +377,7 @@ export function installerSupport({ moi }) {
   // ---------------------------------------------------------------------------
   async function montrerNouvelle({ course: idCourse = null } = {}) {
     montrerVue('nouvelle');
-    titre.textContent = 'Nouvelle demande';
+    titre.textContent = t('support.nouvelle');
     sousTitre.hidden = true;
     for (const id of ['support-type', 'support-course', 'support-sujet', 'support-message']) marquer(id, null);
     sujet.value = '';
@@ -370,25 +391,25 @@ export function installerSupport({ moi }) {
   // Mes 20 dernières courses (et celle qui est demandée, si elle est plus ancienne)
   async function chargerCourses(idCourse) {
     const { data, error } = await supabase.from('courses').select('id, numero, prise_en_charge_le, depart_adresse, arrivee_adresse')
-      .eq('chauffeur_id', moi).order('prise_en_charge_le', { ascending: false }).limit(20);
+      .eq(colonneCourse, moi).order('prise_en_charge_le', { ascending: false }).limit(20);
     const courses = error ? [] : (data || []);
     if (idCourse && !courses.some((c) => c.id === idCourse)) {
       const seule = await supabase.from('courses').select('id, numero, prise_en_charge_le, depart_adresse, arrivee_adresse')
         .eq('id', idCourse).maybeSingle();
       if (!seule.error && seule.data) courses.unshift(seule.data);
     }
-    course.replaceChildren(el('option', { value: '', texte: 'Aucune course en particulier' }),
+    course.replaceChildren(el('option', { value: '', texte: t('support.aucune_course') }),
       ...courses.map((c) => el('option', { value: c.id,
         texte: [c.numero, c.prise_en_charge_le ? dateHeure(c.prise_en_charge_le, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : null,
                 c.depart_adresse].filter(Boolean).join(' · ') })));
   }
 
   function marquer(id, texte) {
-    const champ = document.getElementById(id);
+    const controle = document.getElementById(id);
     const zone = document.getElementById(`${id}-erreur`);
-    if (!champ || !zone) return;
-    if (texte) champ.setAttribute('aria-invalid', 'true');
-    else champ.removeAttribute('aria-invalid');
+    if (!controle || !zone) return;
+    if (texte) controle.setAttribute('aria-invalid', 'true');
+    else controle.removeAttribute('aria-invalid');
     zone.hidden = !texte;
     zone.textContent = texte || '';
   }
@@ -397,8 +418,8 @@ export function installerSupport({ moi }) {
     const s = sujet.value.trim();
     const m = message.value.trim();
     let valide = true;
-    if (s.length < 3) { marquer('support-sujet', 'Indiquez le sujet (3 caractères au moins).'); valide = false; }
-    if (!m) { marquer('support-message', 'Décrivez votre demande.'); valide = false; }
+    if (s.length < 3) { marquer('support-sujet', t('support.sujet_requis')); valide = false; }
+    if (!m) { marquer('support-message', t('support.message_requis')); valide = false; }
     if (!valide) {
       (s.length < 3 ? sujet : message).focus();
       return;
@@ -408,13 +429,13 @@ export function installerSupport({ moi }) {
       const { data, error } = await supabase.rpc('ouvrir_demande',
         { p_type: type.value, p_sujet: s, p_message: m, p_course: course.value || null });
       if (error) throw error;
-      afficherMessage(`Demande ${data.numero} envoyée : LOC RÉACTION vous répond ici.`, 'succes');
+      afficherMessage(t('support.envoyee', { numero: data.numero }), 'succes');
       await chargerDemandes();
       const d = etat.demandes.find((x) => x.id === data.id);
       if (d) await montrerFil(d);
       else await montrerListe();
     } catch (e) {
-      afficherMessage(messageErreur(e), 'erreur');
+      afficherMessage(erreurLisible(e), 'erreur');
     } finally {
       envoyerDemande.disabled = false;
     }
@@ -423,14 +444,13 @@ export function installerSupport({ moi }) {
   return { ouvrir, fermer: () => { if (panneau.open) panneau.close(); } };
 }
 
-const $id = (id) => document.getElementById(id);
-
-// « Aujourd'hui, 13:20 », « Hier, 18:02 », « 3 nov., 09:14 »
+// « Aujourd'hui, 13:20 », « Hier, 18:02 », « 3 nov. 2026, 09:14 »
+// (mêmes libellés que le panneau des notifications)
 function quand(instant) {
   const jour = (d) => dateHeure(d, { year: 'numeric', month: '2-digit', day: '2-digit' });
   const heure = dateHeure(instant, { hour: '2-digit', minute: '2-digit' });
   const aujourdhui = new Date();
-  if (jour(instant) === jour(aujourdhui)) return `Aujourd'hui, ${heure}`;
-  if (jour(instant) === jour(new Date(aujourdhui.getTime() - 86400000))) return `Hier, ${heure}`;
+  if (jour(instant) === jour(aujourdhui)) return t('notifs.aujourdhui', { heure });
+  if (jour(instant) === jour(new Date(aujourdhui.getTime() - 86400000))) return t('notifs.hier', { heure });
   return dateHeure(instant, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }

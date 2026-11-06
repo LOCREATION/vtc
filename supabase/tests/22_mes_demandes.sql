@@ -6,7 +6,7 @@
 -- mes_demandes() avec les réponses non lues, reçoit les notifications du
 -- support avec le lien de la demande, répond (LOC RÉACTION prévenue), joint
 -- une photo dans le dossier de sa demande seulement ; une demande résolue ne
--- s'écrit plus ; pour un client, pas encore de lien.
+-- s'écrit plus. Le client : 23_demandes_clients.sql.
 -- Tout ce qui est créé ici est retiré à la fin.
 -- Le moindre écart arrête le script avec le message « ÉCHEC : … ».
 -- =============================================================================
@@ -127,22 +127,9 @@ select test.verifier((select count(*) from public.notifications where destinatai
 
 
 -- #############################################################################
--- 5. CLIENT : PAS ENCORE DE LIEN (SON ESPACE VIENDRA)
+-- 5. RETOUR À L'ÉTAT DE DÉPART
 -- #############################################################################
-call test.connexion(:'client1');
-select id as demande3 from public.ouvrir_demande('autre', 'Question sur une facture', 'Pouvez-vous me renvoyer la facture ?') \gset
-call test.connexion(:'admin', 'aal2');
-select public.admin_repondre_demande(:'demande3', 'Elle vous est renvoyée par e-mail.');
-call test.systeme();
-select test.verifier((select count(*) from public.notifications where destinataire_id = :'client1' and cree_le >= :'debut_essai'
-                        and titre = 'Réponse du support' and lien is null) = 1,
-                     'réponse du support à un client : notification sans lien pour le moment');
-
-
--- #############################################################################
--- 6. RETOUR À L'ÉTAT DE DÉPART
--- #############################################################################
-delete from public.demandes where id in (:'demande1', :'demande2', :'demande3');
+delete from public.demandes where id in (:'demande1', :'demande2');
 delete from public.notifications n where not exists (select 1 from instantane_notifications i where i.id = n.id);
 update public.notifications n set titre = i.titre, message = i.message, lien = i.lien, lu_le = i.lu_le, cree_le = i.cree_le
   from instantane_notifications i where i.id = n.id;

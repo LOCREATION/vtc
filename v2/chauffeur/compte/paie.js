@@ -18,7 +18,7 @@ import { supabase, messageErreur } from '../../commun/supabase.js';
 import { el, euros, afficherMessage } from '../../commun/outils.js';
 import { libellePeriode, dateCourte, jourParis } from '../commun/periodes.js';
 import { STATUTS_BULLETIN, TYPES_CONTRAT, STATUTS_CONTRAT } from '../commun/libelles.js';
-import { ouvrirFichier } from '../commun/fichiers.js';
+import { ouvrirFichier } from '../../commun/fichiers.js';
 
 // Couleur de l'état : à signer (attente), signé (validé), terminé (neutre)
 const COULEUR_CONTRAT = { envoye: 'en_attente', signe: 'valide', termine: 'neutre' };

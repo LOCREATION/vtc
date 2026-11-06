@@ -1,17 +1,193 @@
 # Banc d'essai de l'espace client v2 (client/) : onglets Accueil, Activité,
-# Compte, cloche des notifications, lien « Mon compte » de l'accueil public.
+# Compte, cloche des notifications, « Mes demandes au support », lien « Mon
+# compte » de l'accueil public.
 # Joué avec la cliente des scénarios de test (Claire) ; ce qui est créé ici
-# (courses, lieux, notifications) est retiré, le profil remis comme avant.
+# (courses, lieux, demandes, notifications) est retiré, le profil remis comme
+# avant.
 import asyncio, json, re, time
 from playwright.async_api import async_playwright
-from banc import (SITE, CAPTURES, CLIENT, CHAUFFEUSE, ADMIN, systeme, en_tant_que, appel_rpc,
-                  session_injectee, routeur, serveur_local, verifier)
+from banc import (SITE, CAPTURES, CLIENT, CHAUFFEUSE, ADMIN, PNG_GRIS, FICHIERS_DEPOSES, FICHIERS_RETIRES,
+                  systeme, en_tant_que, appel_rpc, session_injectee, routeur, serveur_local, verifier)
 
 console = []
 
 
 def valeur(requete):
     return systeme(requete)
+
+
+def ligne_sql(requete):
+    return valeur(requete).split('|')
+
+
+async def attendre_valeur(requete, attendu, delai=6):
+    """Attend (quelques secondes au plus) que la base renvoie « attendu »."""
+    fin = time.time() + delai
+    while True:
+        obtenu = valeur(requete)
+        if obtenu == attendu or time.time() > fin:
+            break
+        await asyncio.sleep(0.3)
+    verifier(obtenu == attendu, f'base : {attendu} attendu (obtenu : {obtenu})')
+
+
+async def message_affiche(page, texte):
+    """Attend un message bref (zone en bas de l'écran) contenant « texte »."""
+    await page.wait_for_function(f"(document.getElementById('zone-messages')?.textContent || '').includes({json.dumps(texte)})", timeout=8000)
+
+
+def a_lire_sql():
+    """Réponses de LOC RÉACTION que la cliente n'a pas encore lues, toutes demandes confondues."""
+    return int(valeur(f"""select count(*) from public.messages m join public.demandes d on d.id = m.demande_id
+                            where d.auteur_id = '{CLIENT}' and m.auteur_id <> '{CLIENT}' and m.lu_le is null"""))
+
+
+async def verifier_a_lire(page, n, libelle):
+    """Compte > Aide et support : « n réponses de LOC RÉACTION à lire. » (rien si aucune)."""
+    attendu = '' if n == 0 else ('1 réponse de LOC RÉACTION à lire.' if n == 1 else f'{n} réponses de LOC RÉACTION à lire.')
+    script = ("(() => { const z = document.getElementById('compte-support-non-lus'); "
+              f"return !!z && (z.hidden ? '' : z.textContent) === {json.dumps(attendu)}; }})()")
+    try:
+        await page.wait_for_function(script, timeout=6000)
+    except Exception:
+        pass
+    verifier(await page.evaluate(script), libelle)
+
+
+async def support_client(page, debut, demandes_creees):
+    """« Mes demandes au support » (commun/support.js) dans l'espace client :
+    nouvelle demande depuis Compte (contrôles, course de la cliente), réponse
+    avec une photo, réponse de LOC RÉACTION lue (et sa notification), nombre de
+    réponses à lire dans Compte, lien d'une notification, pièce jointe retirée
+    si la demande a été close entre-temps, « Signaler un problème » depuis la
+    page d'une course terminée, adresse /client/demandes/?id=…."""
+    print('Mes demandes au support')
+    # Les 20 dernières courses de la cliente (celles que propose le formulaire) ; la plus récente terminée
+    recentes = f"select * from public.courses where client_id = '{CLIENT}' order by prise_en_charge_le desc limit 20"
+    terminee, numero_terminee = ligne_sql(f"select id || '|' || numero from ({recentes}) x where statut = 'terminee' "
+                                          "order by prise_en_charge_le desc limit 1")
+    await page.click('#onglets [data-onglet="compte"]')
+    await page.wait_for_selector('#vue-compte:not([hidden]) #compte-bloc-support')
+    a_lire = a_lire_sql()
+    await verifier_a_lire(page, a_lire, f'Compte > Aide et support : {a_lire} réponse(s) de LOC RÉACTION à lire au départ')
+    await page.click('#compte-nouvelle-demande')
+    await page.wait_for_selector('dialog#support[open] #support-vue-nouvelle:not([hidden])')
+    verifier(await page.inner_text('#support-titre') == 'Nouvelle demande'
+             and await page.get_attribute('#support-sujet', 'placeholder') == 'Ex. : sac oublié dans le véhicule',
+             'Compte > « Nouvelle demande » : formulaire du support, exemple adapté au client')
+    options = await page.eval_on_selector_all('#support-course option', 'os => os.map(o => o.value)')
+    attendues = valeur(f"select string_agg(id::text, ',') from ({recentes}) x").split(',')
+    verifier(options[0] == '' and sorted(options[1:]) == sorted(attendues) and terminee in options,
+             'nouvelle demande : « Aucune course en particulier », puis les 20 dernières courses de la cliente')
+    await page.click('#support-envoyer-demande')
+    verifier(await page.is_visible('#support-sujet-erreur') and await page.is_visible('#support-message-erreur'),
+             'nouvelle demande vide : sujet et message demandés avant l\'envoi')
+    await page.select_option('#support-type', 'objet_perdu')
+    await page.select_option('#support-course', terminee)
+    await page.fill('#support-sujet', 'Sac oublié dans le véhicule')
+    await page.fill('#support-message', "J'ai oublié un sac de sport bleu sur la banquette arrière.")
+    await page.click('#support-envoyer-demande')
+    await page.wait_for_selector('#support-vue-fil:not([hidden]) #support-fil li')
+    demande, numero = ligne_sql(f"select id || '|' || numero from public.demandes where auteur_id = '{CLIENT}' "
+                                f"and sujet = 'Sac oublié dans le véhicule' and type = 'objet_perdu' and course_id = '{terminee}'")
+    demandes_creees.append(demande)
+    await message_affiche(page, f'Demande {numero} envoyée')
+    sous_titre = await page.inner_text('#support-sous-titre')
+    verifier(numero in sous_titre and 'Ouverte' in sous_titre and numero_terminee in sous_titre,
+             'demande envoyée : enregistrée (type, course), son fil s\'ouvre')
+    verifier(int(valeur(f"select count(*) from public.notifications where destinataire_id = '{ADMIN}' and cree_le >= '{debut}' "
+                        f"and titre = 'Nouvelle demande au support' and lien = '/admin/support/?demande={demande}'")) == 1,
+             'nouvelle demande : l\'administration est prévenue (lien direct vers la demande)')
+
+    # Réponse avec une photo
+    await page.set_input_files('#support-reponse-fichier', files=[{'name': 'sac.png', 'mimeType': 'image/png', 'buffer': PNG_GRIS}])
+    await page.wait_for_selector('#support-piece-choisie:not([hidden])')
+    await page.fill('#support-reponse-texte', 'Voici une photo du sac.')
+    await page.click('#support-reponse-envoyer')
+    await page.wait_for_function("document.querySelectorAll('#support-fil li[data-auteur=\"moi\"]').length === 2")
+    chemin = valeur(f"select piece_jointe_chemin from public.messages where demande_id = '{demande}' and piece_jointe_chemin is not null")
+    verifier(chemin.startswith(f'{demande}/') and chemin.endswith('.png') and f'support/{chemin}' in FICHIERS_DEPOSES,
+             'réponse avec une photo : déposée dans le dossier de la demande, message enregistré')
+    verifier(int(valeur(f"select count(*) from public.notifications where destinataire_id = '{ADMIN}' and cree_le >= '{debut}' "
+                        f"and titre = 'Nouveau message sur une demande' and lien = '/admin/support/?demande={demande}'")) == 1,
+             'réponse de la cliente : l\'administration est prévenue')
+
+    # Réponse de LOC RÉACTION : « 1 réponse non lue », lue à l'ouverture (et sa notification)
+    ok, sortie = appel_rpc('admin_repondre_demande', {'p_demande': demande, 'p_message': 'Votre chauffeur a retrouvé le sac.'}, ADMIN)
+    assert ok, sortie
+    verifier(valeur(f"select count(*) from public.notifications where destinataire_id = '{CLIENT}' and titre = 'Réponse du support' "
+                    f"and lien = '/client/demandes/?id={demande}' and lu_le is null") == '1',
+             'réponse du support : notification de la cliente avec le lien de son espace')
+    await page.click('#support-retour')
+    await page.wait_for_selector(f'#support-liste button[data-id="{demande}"]')
+    carte = await page.inner_text(f'#support-liste button[data-id="{demande}"]')
+    verifier('1 réponse non lue' in carte and 'En cours' in carte and 'Objet oublié' in carte,
+             'Mes demandes : « 1 réponse non lue », « En cours », « Objet oublié »')
+    await page.click(f'#support-liste button[data-id="{demande}"]')
+    await page.wait_for_selector('#support-fil li[data-auteur="equipe"]')
+    verifier('Votre chauffeur a retrouvé le sac.' in await page.inner_text('#support-fil li[data-auteur="equipe"]'),
+             'fil : réponse de LOC RÉACTION affichée')
+    await attendre_valeur(f"select count(*) from public.messages where demande_id = '{demande}' and auteur_id <> '{CLIENT}' and lu_le is null", '0')
+    await attendre_valeur(f"select count(*) from public.notifications where destinataire_id = '{CLIENT}' "
+                          f"and lien = '/client/demandes/?id={demande}' and lu_le is null", '0')
+    verifier(True, 'fil ouvert : réponse marquée « lue », sa notification aussi')
+
+    # Nouvelle réponse pendant que le panneau est fermé : Compte l'annonce, la cloche aussi
+    ok, sortie = appel_rpc('admin_repondre_demande', {'p_demande': demande, 'p_message': 'Il vous sera remis demain matin à votre domicile.'}, ADMIN)
+    assert ok, sortie
+    await page.click('#support-fermer')
+    await verifier_a_lire(page, a_lire + 1, 'panneau refermé : Compte compte la nouvelle réponse à lire')
+    await page.click('#cloche')
+    await page.wait_for_selector('dialog#notifs[open] #notifs-liste li')
+    await page.locator('#notifs-liste .notif', has_text='Il vous sera remis demain matin').click()
+    await page.wait_for_selector('dialog#support[open] #support-vue-fil:not([hidden])')
+    verifier(await page.inner_text('#support-titre') == 'Sac oublié dans le véhicule' and await page.is_hidden('dialog#notifs'),
+             'notification « Réponse du support » : la demande s\'ouvre dans le panneau du support')
+
+    # Demande close pendant que la cliente écrit : la photo déposée est retirée
+    ok, sortie = appel_rpc('admin_statut_demande', {'p_demande': demande, 'p_statut': 'resolue'}, ADMIN)
+    assert ok, sortie
+    await page.set_input_files('#support-reponse-fichier', files=[{'name': 'ticket.png', 'mimeType': 'image/png', 'buffer': PNG_GRIS}])
+    await page.fill('#support-reponse-texte', 'Merci beaucoup !')
+    await page.click('#support-reponse-envoyer')
+    await message_affiche(page, 'Réponse non envoyée : cette demande est close.')
+    # Ce refus de la base (réponse 400) est voulu : il ne compte pas parmi les erreurs de la console
+    for i in range(len(console) - 1, -1, -1):
+        if 'status of 400' in console[i]:
+            del console[i]
+            break
+    depose = [f for f in FICHIERS_DEPOSES if f.startswith(f'support/{demande}/') and f != f'support/{chemin}']
+    verifier(len(depose) == 1 and depose[0] in FICHIERS_RETIRES,
+             'demande close entre-temps : réponse refusée, la photo déposée est retirée (pas de fichier orphelin)')
+    await page.click('#support-retour')
+    await page.click(f'#support-liste button[data-id="{demande}"]')
+    await page.wait_for_selector('#support-fermee:not([hidden])')
+    verifier(await page.is_hidden('#support-reponse') and 'Demande résolue' in await page.inner_text('#support-fermee'),
+             'demande résolue : plus de réponse, « Nouvelle demande » proposée')
+    await page.evaluate("document.getElementById('zone-messages')?.replaceChildren()")
+    await page.screenshot(path=f'{CAPTURES}/client-support-fil.png')
+    await page.click('#support-fermer')
+    await verifier_a_lire(page, a_lire, 'réponses lues : Compte revient au nombre de départ')
+
+    # Page d'une course terminée : « Signaler un problème sur cette course »
+    await page.goto(SITE + f'client/course/?id={terminee}')
+    await page.wait_for_selector('#signaler:not([hidden])')
+    verifier(await page.evaluate("document.getElementById('signaler').href") == SITE + f'client/?signaler={terminee}',
+             'course terminée : « Signaler un problème sur cette course »')
+    await page.click('#signaler')
+    await page.wait_for_selector('dialog#support[open] #support-vue-nouvelle:not([hidden])')
+    await page.wait_for_function(f"document.getElementById('support-course').value === '{terminee}'")
+    verifier(await page.input_value('#support-type') == 'course' and page.url == SITE + 'client/',
+             '« Signaler un problème » : espace client, nouvelle demande sur cette course (adresse nettoyée)')
+    await page.click('#support-fermer')
+
+    # Adresse des notifications (page de renvoi) : la demande s'ouvre dans l'espace client
+    await page.goto(SITE + f'client/demandes/?id={demande}')
+    await page.wait_for_selector('dialog#support[open] #support-vue-fil:not([hidden])')
+    verifier(page.url == SITE + 'client/' and await page.inner_text('#support-titre') == 'Sac oublié dans le véhicule',
+             'adresse /client/demandes/?id=… : l\'espace client ouvre la demande')
+    await page.click('#support-fermer')
+    return demande
 
 
 def commander(**autres):
@@ -45,6 +221,7 @@ async def nouveau_contexte(nav, session=True):
 async def main():
     preparer()
     debut = valeur("select now()")
+    demandes_creees = []
     telephone = valeur(f"select coalesce(telephone, '') from public.profils where id = '{CLIENT}'")
     langue = valeur(f"select langue from public.profils where id = '{CLIENT}'")
     # Une course en cours (chauffeuse attribuée) et une réservation pour demain
@@ -162,6 +339,8 @@ async def main():
             verifier(await page.is_hidden('dialog#notifs') and page.url.endswith('client/?onglet=activite'),
                      'notification « Réservation confirmée » : onglet Activité, sans quitter la page')
 
+            demande = await support_client(page, debut, demandes_creees)
+
             print('Langue')
             await page.click('#onglets [data-onglet="compte"]')
             await page.wait_for_selector('#compte-langue-en')
@@ -172,6 +351,21 @@ async def main():
                      and valeur(f"select langue from public.profils where id = '{CLIENT}'") == 'en',
                      'langue : anglais enregistré, l\'espace s\'affiche en anglais')
             verifier('lang=en' in await page.get_attribute('#onglets [data-onglet="activite"]', 'href'), 'langue : elle suit dans les onglets')
+            await page.click('#compte-mes-demandes')
+            await page.wait_for_selector(f'dialog#support[open] #support-liste button[data-id="{demande}"]')
+            verifier(await page.inner_text('#support-titre') == 'My support requests'
+                     and 'Resolved' in await page.inner_text(f'#support-liste button[data-id="{demande}"]')
+                     and await page.inner_text('#support-nouvelle') == 'New request',
+                     'support en anglais : « My support requests », statut « Resolved »')
+            await page.click('#support-fermer')
+            await page.goto(SITE + f'client/demandes/?id={demande}&lang=en')
+            await page.wait_for_selector('dialog#support[open] #support-vue-fil:not([hidden])')
+            verifier(page.url == SITE + 'client/?lang=en' and 'Resolved' in await page.inner_text('#support-sous-titre')
+                     and 'Request resolved.' in await page.inner_text('#support-fermee'),
+                     'adresse /client/demandes/?id=…&lang=en : la demande s\'ouvre en anglais')
+            await page.click('#support-fermer')
+            await page.click('#onglets [data-onglet="compte"]')
+            await page.wait_for_selector('#compte-langue-fr')
             await page.check('#compte-langue-fr')
             await page.wait_for_url(re.compile(r'lang=fr'))
             await page.wait_for_selector('#compte-titre')
@@ -221,6 +415,9 @@ insert into auth.users (email, raw_user_meta_data) values ('nouveau{int(time.tim
         systeme(f"""delete from public.lieux where client_id = '{CLIENT}';
                    update public.profils set telephone = nullif($t${telephone}$t$, ''), langue = '{langue}' where id = '{CLIENT}';
                    delete from public.notifications where destinataire_id = '{CLIENT}' and cree_le >= '{debut}';""")
+        for d in demandes_creees:
+            systeme(f"""delete from public.notifications where cree_le >= '{debut}' and lien like '%{d}%';
+                       delete from public.demandes where id = '{d}';""")
     utiles = [c for c in console if 'WebSocket' not in c and 'realtime' not in c.lower() and 'ERR_FAILED' not in c]
     print('Erreurs de la console (hors temps réel, injoignable ici) :', utiles or 'aucune')
 

@@ -644,7 +644,7 @@ async def notifications_chauffeur(page):
 
 
 async def support_chauffeur(page, course):
-    """« Mes demandes au support » (chauffeur/support/) : nouvelle demande
+    """« Mes demandes au support » (commun/support.js) : nouvelle demande
     depuis Compte (contrôles, course choisie), réponse avec une photo, réponse
     de LOC RÉACTION lue (et sa notification), lien d'une notification, demande
     résolue, « Signaler un problème » depuis la fiche d'une course, adresse
