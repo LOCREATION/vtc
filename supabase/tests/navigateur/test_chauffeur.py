@@ -5,7 +5,7 @@
 # salariée : documents (dépôt, vérification, retrait), bulletins et contrat
 # imprimables, heures, demande et retrait d'absence ; liens des
 # notifications ; messages avec le client pendant la course ; cloche et
-# panneau des notifications ; déconnexion.
+# panneau des notifications ; mes demandes au support ; déconnexion.
 # Joué avec la chauffeuse des scénarios de test (Nadia, salariée).
 # Tout ce qui est créé ici est retiré : le parcours de l'administration
 # part ensuite du même état.
@@ -643,6 +643,117 @@ async def notifications_chauffeur(page):
     await page.wait_for_selector('#vue-accueil:not([hidden])')
 
 
+async def support_chauffeur(page, course):
+    """« Mes demandes au support » (chauffeur/support/) : nouvelle demande
+    depuis Compte (contrôles, course choisie), réponse avec une photo, réponse
+    de LOC RÉACTION lue (et sa notification), lien d'une notification, demande
+    résolue, « Signaler un problème » depuis la fiche d'une course, adresse
+    /chauffeur/demandes/?id=…"""
+    print('Mes demandes au support')
+    debut = valeur("select now()")
+    await page.click('#onglets [data-onglet="compte"]')
+    await page.wait_for_selector('#vue-compte:not([hidden]) #compte-bloc-support')
+    await page.click('#compte-nouvelle-demande')
+    await page.wait_for_selector('dialog#support[open] #support-vue-nouvelle:not([hidden])')
+    verifier(await page.inner_text('#support-titre') == 'Nouvelle demande', 'Compte > « Nouvelle demande » : formulaire dans le panneau du support')
+    await page.click('#support-envoyer-demande')
+    verifier(await page.is_visible('#support-sujet-erreur') and await page.is_visible('#support-message-erreur'),
+             'nouvelle demande vide : sujet et message demandés avant l\'envoi')
+    await page.select_option('#support-type', 'paiement')
+    await page.select_option('#support-course', course['id'])
+    await page.fill('#support-sujet', 'Pourboire non reçu')
+    await page.fill('#support-message', "Le client m'a laissé un pourboire par carte, il n'apparaît pas dans mes revenus.")
+    await page.click('#support-envoyer-demande')
+    await page.wait_for_selector('#support-vue-fil:not([hidden]) #support-fil li')
+    demande, numero = ligne_sql(f"select id || '|' || numero from public.demandes where auteur_id = '{CHAUFFEUSE}' "
+                                f"and sujet = 'Pourboire non reçu' and type = 'paiement' and course_id = '{course['id']}'")
+    await message_affiche(page, f'Demande {numero} envoyée')
+    sous_titre = await page.inner_text('#support-sous-titre')
+    verifier(await page.inner_text('#support-titre') == 'Pourboire non reçu' and numero in sous_titre and 'Ouverte' in sous_titre
+             and course['numero'] in sous_titre, 'demande envoyée : enregistrée (type, course), son fil s\'ouvre')
+
+    # Réponse avec une photo
+    await page.set_input_files('#support-reponse-fichier', files=[{'name': 'ticket.png', 'mimeType': 'image/png', 'buffer': PNG_GRIS}])
+    await page.wait_for_selector('#support-piece-choisie:not([hidden])')
+    await page.fill('#support-reponse-texte', 'Voici le ticket du terminal de paiement.')
+    await page.click('#support-reponse-envoyer')
+    await page.wait_for_function("document.querySelectorAll('#support-fil li[data-auteur=\"moi\"]').length === 2")
+    chemin = valeur(f"select piece_jointe_chemin from public.messages where demande_id = '{demande}' and piece_jointe_chemin is not null")
+    verifier(chemin.startswith(f'{demande}/') and chemin.endswith('.png') and f'support/{chemin}' in FICHIERS_DEPOSES,
+             'réponse avec une photo : déposée dans le dossier de la demande, message enregistré')
+    verifier(await page.locator('#support-fil .support-piece').count() == 1 and await page.is_hidden('#support-piece-choisie'),
+             'réponse envoyée : photo à ouvrir dans le fil, champ vidé')
+    verifier(int(valeur(f"select count(*) from public.notifications where destinataire_id = '{ADMIN}' and cree_le >= '{debut}' "
+                        f"and titre = 'Nouveau message sur une demande' and lien = '/admin/support/?demande={demande}'")) == 1,
+             'réponse du chauffeur : l\'administration est prévenue (lien direct vers la demande)')
+
+    # Réponse de LOC RÉACTION : « 1 réponse non lue », lue à l'ouverture (et sa notification)
+    ok, sortie = appel_rpc('admin_repondre_demande', {'p_demande': demande, 'p_message': 'Nous vérifions le paiement du pourboire.'}, ADMIN)
+    assert ok, sortie
+    await page.click('#support-retour')
+    await page.wait_for_selector(f'#support-liste button[data-id="{demande}"]')
+    verifier('1 réponse non lue' in await page.inner_text(f'#support-liste button[data-id="{demande}"]')
+             and 'En cours' in await page.inner_text(f'#support-liste button[data-id="{demande}"]'),
+             'Mes demandes : « 1 réponse non lue », demande « En cours »')
+    await page.click(f'#support-liste button[data-id="{demande}"]')
+    await page.wait_for_selector('#support-fil li[data-auteur="equipe"]')
+    verifier('Nous vérifions le paiement du pourboire.' in await page.inner_text('#support-fil li[data-auteur="equipe"]'),
+             'fil : réponse de LOC RÉACTION affichée')
+    await attendre_valeur(f"select count(*) from public.messages where demande_id = '{demande}' and auteur_id <> '{CHAUFFEUSE}' and lu_le is null", '0')
+    await attendre_valeur(f"select count(*) from public.notifications where destinataire_id = '{CHAUFFEUSE}' "
+                          f"and lien = '/chauffeur/demandes/?id={demande}' and lu_le is null", '0')
+    verifier(True, 'fil ouvert : réponse marquée « lue », sa notification aussi')
+    await sans_messages(page)
+    await page.screenshot(path=f'{CAPTURES}/chauffeur-support-fil.png')
+
+    # Notification du support : ouvre la demande
+    ok, sortie = appel_rpc('admin_repondre_demande', {'p_demande': demande, 'p_message': 'Le pourboire sera versé avec votre prochain virement.'}, ADMIN)
+    assert ok, sortie
+    await page.click('#support-fermer')
+    await page.click('#cloche')
+    await page.wait_for_selector('dialog#notifs[open] #notifs-liste li')
+    await page.locator('#notifs-liste .notif', has_text='Le pourboire sera versé').click()
+    await page.wait_for_selector('dialog#support[open] #support-vue-fil:not([hidden])')
+    verifier(await page.inner_text('#support-titre') == 'Pourboire non reçu' and await page.is_hidden('dialog#notifs'),
+             'notification « Réponse du support » : la demande s\'ouvre dans le panneau du support')
+
+    # Demande résolue : plus de réponse possible
+    ok, sortie = appel_rpc('admin_statut_demande', {'p_demande': demande, 'p_statut': 'resolue'}, ADMIN)
+    assert ok, sortie
+    await page.click('#support-retour')
+    await page.click(f'#support-liste button[data-id="{demande}"]')
+    await page.wait_for_selector('#support-fermee:not([hidden])')
+    verifier(await page.is_hidden('#support-reponse') and 'Demande résolue' in await page.inner_text('#support-fermee'),
+             'demande résolue : plus de réponse, « Nouvelle demande » proposée')
+    await page.click('#support-fermer')
+
+    # Fiche d'une course : « Signaler un problème sur cette course »
+    await page.click('#onglets [data-onglet="courses"]')
+    await page.wait_for_function(f"(document.getElementById('courses-liste')?.textContent || '').includes('{course['numero']}')", timeout=8000)
+    await page.click(f'#courses-liste button[aria-label^="Course {course["numero"]}"]')
+    await page.wait_for_selector('#courses-zone-fiche:not([hidden]) #fiche-signaler')
+    await page.click('#fiche-signaler')
+    await page.wait_for_selector('dialog#support[open] #support-vue-nouvelle:not([hidden])')
+    await page.wait_for_function(f"document.getElementById('support-course').value === '{course['id']}'")
+    verifier(await page.input_value('#support-type') == 'course', 'fiche d\'une course : « Signaler un problème », la course déjà choisie')
+    await page.click('#support-fermer')
+    await page.click('#courses-retour')
+
+    # Adresse des notifications (page de renvoi) : la demande s'ouvre dans l'espace chauffeur
+    await page.goto(SITE + f'chauffeur/demandes/?id={demande}')
+    await page.wait_for_selector('dialog#support[open] #support-vue-fil:not([hidden])')
+    verifier(re.search(r'/chauffeur/$', page.url) is not None and await page.inner_text('#support-titre') == 'Pourboire non reçu',
+             'adresse /chauffeur/demandes/?id=… : l\'espace chauffeur ouvre la demande')
+    await page.click('#support-fermer')
+
+    # Retour à l'état de départ (demande, messages et notifications de l'essai)
+    systeme(f"""delete from public.demandes where id = '{demande}';
+               delete from public.notifications where cree_le >= '{debut}'
+                 and (lien like '%{demande}%' or (destinataire_id = '{CHAUFFEUSE}' and titre in ('Réponse du support', 'Demande résolue')));""")
+    await page.click('#onglets [data-onglet="accueil"]')
+    await page.wait_for_selector('#vue-accueil:not([hidden])')
+
+
 def preparer():
     # État connu : aucune course en cours, personne en ligne, délai de réponse de 30 s
     systeme("""update public.courses set statut = 'annulee', annulee_par = 'admin', annulee_le = now()
@@ -783,6 +894,7 @@ async def main():
 
             await onglets_chauffeur(ctx, page, course, course4)
             await notifications_chauffeur(page)
+            await support_chauffeur(page, course)
 
             await page.click('#bascule-en-ligne')
             await page.wait_for_function("document.getElementById('pastille-etat').textContent === 'Hors ligne'")

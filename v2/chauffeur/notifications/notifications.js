@@ -7,7 +7,7 @@
 // - Panneau (sur téléphone : monte du bas) : les 100 dernières, les non lues
 //   marquées d'un point doré. Toucher une notification la marque « lue » et
 //   ouvre ce dont elle parle : la course, l'onglet Compte à « Mes documents »,
-//   l'onglet Revenus, l'accueil…
+//   l'onglet Revenus, l'accueil, une demande au support…
 // - « Tout marquer comme lu » ; « Effacer les lues » (les non lues restent).
 // - Le panneau s'ouvre dans la page de l'espace chauffeur : le service
 //   continue (position, demandes) ; une demande qui arrive ferme le panneau
@@ -136,6 +136,11 @@ export function installerNotifications({ cloche, pastille, moi, contexte }) {
       await contexte.ouvrirOnglet('compte');
       const section = document.getElementById('compte-documents');
       if (section) section.scrollIntoView({ block: 'start' });
+      return;
+    }
+    if (chemin === '/chauffeur/demandes/') {
+      const demande = new URLSearchParams(lien.split('?')[1] || '').get('id');
+      await contexte.ouvrirSupport(demande ? { demande } : {});
       return;
     }
     const adresse = adresseDuLien(lien);

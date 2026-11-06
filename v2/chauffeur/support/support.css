@@ -1,0 +1,73 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Espace chauffeur : panneau « Mes demandes au support » (support.js),
+   couleurs de nuit de l'espace chauffeur
+   ============================================================================= */
+
+/* Panneau : monte du bas sur un téléphone, fenêtre centrée ailleurs */
+dialog.support {
+  border: none; padding: 0; margin: auto auto 0; width: 100%; max-width: 560px; height: min(90dvh, 760px);
+  border-radius: 18px 18px 0 0; background: var(--surface); color: var(--blanc); overflow: hidden;
+}
+dialog.support[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
+dialog.support::backdrop { background: rgba(4, 10, 24, 0.75); }
+@media (min-width: 700px) {
+  dialog.support { margin: auto; border-radius: var(--rayon-feuille); }
+}
+
+.support-entete { display: grid; gap: 2px; padding: 8px 16px 12px 18px; border-bottom: 1px solid var(--ligne); }
+.support-barre { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.support-retour { margin-left: -8px; }
+.support-fermer { margin-left: auto; }
+.support-entete h2 { font-size: 22px; font-weight: 700; overflow-wrap: anywhere; }
+.support-sous-titre { margin: 0; color: var(--texte-2); font-size: 15px; }
+.support-corps { overflow-y: auto; overscroll-behavior: contain; padding: 14px 16px calc(16px + env(safe-area-inset-bottom)); }
+.support-vue { display: grid; gap: 12px; }
+.support-vue[hidden] { display: none; }
+.support-vide { margin: 8px 0; color: var(--texte-2); }
+
+/* Mes demandes */
+.support-liste { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.support-demande {
+  width: 100%; display: grid; gap: 4px; text-align: left; padding: 12px 14px; border-radius: 12px;
+  border: 1px solid var(--ligne); background: var(--surface-2); color: inherit; font: inherit; cursor: pointer;
+}
+.support-demande:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
+.support-demande-entete { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 14px; color: var(--texte-2); }
+.support-numero { font-weight: 600; letter-spacing: 0.02em; }
+.support-statut { padding: 2px 10px; border-radius: 999px; font-weight: 600; font-size: 13px; background: var(--surface); color: var(--blanc); }
+.support-statut[data-statut='ouverte'] { background: #5A4708; color: #FFE7A3; }
+.support-statut[data-statut='en_cours'] { background: #123B6B; color: #CFE2FF; }
+.support-statut[data-statut='resolue'] { background: #13432A; color: #B7F5CC; }
+.support-statut[data-statut='fermee'] { background: #3A3F4B; color: #D9DEE8; }
+.support-demande-sujet { font-weight: 600; font-size: 17px; overflow-wrap: anywhere; }
+.support-demande-infos { color: var(--texte-2); font-size: 14px; }
+.support-non-lus { justify-self: start; margin-top: 2px; padding: 3px 10px; border-radius: 999px; background: #B3261E; color: #FFFFFF; font-weight: 700; font-size: 13px; }
+
+/* Fil d'une demande */
+.support-fil { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.support-message { display: grid; gap: 3px; max-width: 86%; justify-self: start; }
+.support-message[data-auteur='moi'] { justify-self: end; justify-items: end; }
+.support-auteur { font-size: 13px; font-weight: 700; color: var(--or); }
+.support-bulle { margin: 0; padding: 10px 14px; border-radius: 16px 16px 16px 4px; background: var(--surface-2); overflow-wrap: anywhere; white-space: pre-wrap; }
+.support-message[data-auteur='moi'] .support-bulle { border-radius: 16px 16px 4px 16px; background: var(--or); color: var(--nuit); }
+.support-piece { padding: 0; min-height: 36px; }
+.support-heure { font-size: 13px; color: var(--texte-2); }
+
+/* Bas du panneau : répondre */
+.support-bas { padding: 10px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--ligne); background: var(--surface); }
+.support-bas[hidden] { display: none; }
+.support-reponse { display: grid; gap: 8px; }
+.support-reponse[hidden] { display: none; }
+.support-reponse-ligne { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: end; }
+.support-reponse .saisie { resize: none; min-height: 48px; max-height: 120px; padding-top: 12px; }
+.support-reponse .bouton { min-height: 48px; padding: 0 14px; }
+.support-piece-choisie { margin: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; color: var(--texte-2); overflow-wrap: anywhere; }
+.support-piece-choisie[hidden] { display: none; }
+.support-fermee { display: grid; gap: 10px; }
+.support-fermee[hidden] { display: none; }
+.support-fermee p { margin: 0; color: var(--texte-2); }
+
+/* Nouvelle demande */
+.support-formulaire .champ { display: grid; gap: 6px; }
+.support-formulaire textarea { resize: vertical; }

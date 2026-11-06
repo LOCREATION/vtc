@@ -10,6 +10,8 @@
 // toutes les 15 s).
 // « Messages » : conversation avec le client pendant la course et 24 heures
 // après (commun/discussion.js), réponses rapides comprises.
+// Course terminée ou annulée : « Signaler un problème sur cette course »
+// ouvre une nouvelle demande au support dans l'espace chauffeur (?signaler=).
 // =============================================================================
 import { supabase, profilConnecte, messageErreur } from '../../commun/supabase.js';
 import { RACINE } from '../../commun/config.js';
@@ -134,6 +136,8 @@ function afficher() {
   $('action-etape').hidden = !bouton;
   $('action-etape').textContent = bouton || '';
   $('desister').hidden = !['planifiee', 'acceptee', 'arrivee'].includes(c.statut);
+  $('signaler').hidden = !['terminee', 'annulee'].includes(c.statut);
+  $('signaler').href = `../?signaler=${encodeURIComponent(c.id)}`;
 
   afficherAttente();
   afficherPaiement();
