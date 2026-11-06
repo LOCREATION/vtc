@@ -1,12 +1,179 @@
 # Banc d'essai de l'espace chauffeur v2 : service, demande entrante, course
 # complète, encaissement, note, feuille de route, délai dépassé, refus,
-# réservation prise. Joué avec la chauffeuse des scénarios de test.
-import asyncio, json, time
+# réservation prise ; onglets Revenus, Courses et Compte, demande reçue sur
+# un autre onglet, feuille de route et relevé en PDF, déconnexion.
+# Joué avec la chauffeuse des scénarios de test.
+import asyncio, json, re, time
+from decimal import Decimal
 from playwright.async_api import async_playwright
 from banc import (SITE, CAPTURES, CLIENT, CHAUFFEUSE, ADMIN, systeme, en_tant_que, appel_rpc,
                   session_injectee, routeur, serveur_local, verifier)
 
 console = []
+
+
+def normaliser(texte):
+    """Texte sans aucun espace (les montants français contiennent des espaces insécables)."""
+    return re.sub(r'\s', '', texte)
+
+
+def montant_fr(valeur_sql):
+    """« 85.4 » (base) → « 85,40€ » (affichage français, sans espace)."""
+    return f"{Decimal(valeur_sql):.2f}".replace('.', ',') + '€'
+
+
+def chiffre_attendu(depuis_sql):
+    """Chiffre d'affaires des courses terminées de la chauffeuse depuis un jour de Paris (prix fixe + attente)."""
+    return valeur(f"""select coalesce(sum(prix_total + frais_attente), 0) from public.courses
+                       where chauffeur_id = '{CHAUFFEUSE}' and statut = 'terminee'
+                         and (terminee_le at time zone 'Europe/Paris')::date
+                             between {depuis_sql} and (now() at time zone 'Europe/Paris')::date""")
+
+
+async def capture_complete(page, chemin):
+    """Capture de toute la page, la barre d'onglets à sa vraie place (en bas de l'écran)."""
+    await page.evaluate('window.scrollTo(0, 0)')
+    hauteur = 844
+    for _ in range(3):                     # la hauteur peut encore changer une fois agrandie
+        mesure = await page.evaluate('document.documentElement.scrollHeight')
+        if mesure <= hauteur:
+            break
+        hauteur = mesure
+        await page.set_viewport_size({'width': 390, 'height': hauteur})
+        await page.wait_for_timeout(150)
+    await page.screenshot(path=chemin)
+    await page.set_viewport_size({'width': 390, 'height': 844})
+
+
+async def onglets_chauffeur(ctx, page, course, reservation):
+    """Onglets Revenus, Courses, Compte ; la chauffeuse est en ligne au départ."""
+    print('Onglets')
+    verifier(await page.locator('#onglets .onglet-bas').count() == 4 and await page.is_visible('#onglets'),
+             'barre d\'onglets : Accueil, Revenus, Courses, Compte')
+    verifier(await page.get_attribute('#onglets [data-onglet="accueil"]', 'aria-current') == 'page', 'onglet Accueil ouvert au départ')
+    await page.wait_for_timeout(4200)      # le message de l'étape précédente s'efface
+    await page.evaluate('window.scrollTo(0, 0)')
+    await page.screenshot(path=f'{CAPTURES}/chauffeur-accueil-telephone.png')
+    await page.click('#onglets [data-onglet="revenus"]')
+    await page.wait_for_selector('#vue-revenus:not([hidden]) #revenus-ca')
+    verifier(page.url.endswith('chauffeur/?onglet=revenus'), 'onglet Revenus : gardé dans l\'adresse')
+    verifier(await page.is_hidden('#vue-accueil') and await page.inner_text('#pastille-etat') == 'En ligne',
+             'onglet Revenus : sans rechargement, toujours en ligne')
+
+    print('Demande reçue sur un autre onglet')
+    autre = commander()
+    await page.wait_for_selector('#demande:not([hidden])', timeout=15000)
+    verifier('10 Rue de Rivoli' in await page.inner_text('#demande'), 'demande entrante en plein écran depuis l\'onglet Revenus')
+    await page.click('#refuser')
+    await page.wait_for_selector('#demande[hidden]', state='attached')
+    annuler_par_admin(autre['id'])
+
+    print('Revenus')
+    jour = chiffre_attendu("(now() at time zone 'Europe/Paris')::date")
+    nb = valeur(f"""select count(*) from public.courses where chauffeur_id = '{CHAUFFEUSE}' and statut = 'terminee'
+                     and (terminee_le at time zone 'Europe/Paris')::date = (now() at time zone 'Europe/Paris')::date""")
+    await page.wait_for_function(f"(document.getElementById('revenus-ca')?.textContent || '').replace(/\\s/g, '') === '{montant_fr(jour)}'", timeout=8000)
+    verifier(await page.inner_text('#revenus-libelle') == 'Aujourd\'hui', f'revenus du jour : {montant_fr(jour)} comme dans la base')
+    verifier(await page.inner_text('#revenus-chiffres div:first-child dd') == nb, f'revenus du jour : {nb} course(s) terminée(s)')
+    verifier('Trajets (prix fixes)' in await page.inner_text('#revenus-detail'), 'revenus : détail des trajets, majorations, attente, pourboires')
+    await capture_complete(page, f'{CAPTURES}/chauffeur-revenus-telephone.png')
+    for code, debut in (('semaine', "date_trunc('week', now() at time zone 'Europe/Paris')::date"),
+                        ('mois', "date_trunc('month', now() at time zone 'Europe/Paris')::date")):
+        await page.click(f'label[for="revenus-type-{code}"]')
+        attendu = chiffre_attendu(debut)
+        await page.wait_for_function(f"(document.getElementById('revenus-ca')?.textContent || '').replace(/\\s/g, '') === '{montant_fr(attendu)}'", timeout=8000)
+        libelle = await page.inner_text('#revenus-libelle')
+        verifier(libelle.startswith('Semaine du') if code == 'semaine' else re.match(r'^[A-ZÉÛ][a-zéû]+ \d{4}$', libelle) is not None,
+                 f'revenus {code} : {libelle}, {montant_fr(attendu)} comme dans la base')
+    verifier(await page.is_disabled('#revenus-suivante'), 'revenus : pas de période à venir')
+    await page.click('#revenus-precedente')
+    await page.wait_for_function("!document.getElementById('revenus-suivante').disabled")
+    verifier(True, 'revenus : mois précédent consultable')
+    await page.click('#revenus-suivante')
+    await page.wait_for_function("document.getElementById('revenus-suivante').disabled")
+    mois = chiffre_attendu("date_trunc('month', now() at time zone 'Europe/Paris')::date")
+    releve = await page.get_attribute('#revenus-releve', 'href')
+    verifier(re.match(r'^document/\?type=releve&du=\d{4}-\d{2}-01&au=\d{4}-\d{2}-\d{2}$', releve or '') is not None,
+             'revenus : relevé du mois en PDF')
+
+    print('Courses')
+    await page.click('#onglets [data-onglet="courses"]')
+    await page.wait_for_function(f"(document.getElementById('courses-liste')?.textContent || '').includes('{course['numero']}')", timeout=8000)
+    verifier(page.url.endswith('chauffeur/?onglet=courses'), f'onglet Courses : la course {course["numero"]} est dans l\'historique')
+    await page.click('label[for="courses-filtre-annulee"]')
+    await page.wait_for_function(f"(document.getElementById('courses-liste')?.textContent || '').includes('{reservation['numero']}')", timeout=8000)
+    verifier(course['numero'] not in await page.inner_text('#courses-liste'),
+             'filtre Annulées : la réservation annulée par l\'administration, sans les courses terminées')
+    await page.click('label[for="courses-filtre-terminee"]')
+    await page.wait_for_function(f"(document.getElementById('courses-liste')?.textContent || '').includes('{course['numero']}')", timeout=8000)
+    await capture_complete(page, f'{CAPTURES}/chauffeur-courses-telephone.png')
+    await page.click(f'#courses-liste button[aria-label^="Course {course["numero"]}"]')
+    await page.wait_for_selector('#courses-zone-fiche:not([hidden]) #fiche-titre')
+    fiche = await page.inner_text('#courses-zone-fiche')
+    verifier(f'Course {course["numero"]}' in fiche and 'Prix fixe' in fiche and 'Encaissé' in fiche and 'Note du client' in fiche,
+             'fiche : trajet, horaires, prix détaillé, paiement encaissé, note du client')
+    feuille = await page.get_attribute('#fiche-feuille', 'href')
+    verifier(feuille == f'document/?type=feuille&course={course["id"]}', 'fiche : feuille de route en PDF')
+    await capture_complete(page, f'{CAPTURES}/chauffeur-courses-fiche-telephone.png')
+    await page.click('#courses-retour')
+    await page.wait_for_selector('#courses-zone-liste:not([hidden])')
+
+    print('Documents')
+    doc = await ctx.new_page()
+    doc.on('pageerror', lambda e: console.append(f'pageerror (document) : {e}'))
+    await doc.goto(SITE + 'chauffeur/' + feuille)
+    await doc.wait_for_selector('#document .doc')
+    texte = await doc.inner_text('#document')
+    verifier('FEUILLE DE ROUTE' in texte.upper() and course['numero'] in texte and 'Claire' in texte and 'LOC RÉACTION S.A.S' in texte,
+             'feuille de route PDF : entreprise, course, client')
+    verifier('Justificatif de la réservation préalable' in texte and 'Prise en charge' in texte and 'Réservée le' in texte,
+             'feuille de route PDF : réservation préalable, date et lieu de prise en charge')
+    registre = valeur("select coalesce(registre_vtc_numero, '') from public.societe where id = 1")
+    if registre:
+        verifier(f'Registre des exploitants VTC n° {registre}' in texte, 'feuille de route PDF : n° du registre VTC')
+    else:
+        verifier(await doc.is_visible('#document .alerte'), 'feuille de route PDF : n° du registre VTC manquant signalé à l\'écran')
+    await doc.screenshot(path=f'{CAPTURES}/chauffeur-feuille-de-route-telephone.png', full_page=True)
+    await doc.emulate_media(media='print')
+    verifier(await doc.is_hidden('.barre-document') and await doc.is_visible('#document .doc'), 'impression : le document seul, sans la barre d\'outils')
+    await doc.emulate_media(media='screen')
+    await doc.goto(SITE + 'chauffeur/' + releve)
+    await doc.wait_for_selector('#document .doc')
+    texte = await doc.inner_text('#document')
+    verifier(f'Chiffred\'affairesdescourses{montant_fr(mois)}' in normaliser(texte) and course['numero'] in texte,
+             f'relevé du mois PDF : chiffre d\'affaires {montant_fr(mois)}, détail des courses')
+    await doc.screenshot(path=f'{CAPTURES}/chauffeur-releve-telephone.png', full_page=True)
+    await doc.close()
+
+    print('Compte')
+    await page.click('#onglets [data-onglet="compte"]')
+    await page.wait_for_selector('#vue-compte:not([hidden]) #compte-profil dd')
+    prenom = valeur(f"select prenom from public.profils where id = '{CHAUFFEUSE}'")
+    verifier(prenom in await page.inner_text('#compte-profil'), 'compte : profil de la chauffeuse')
+    immat = valeur(f"""select coalesce(v.immatriculation, '') from public.chauffeurs c
+                        left join public.vehicules v on v.id = c.vehicule_id where c.id = '{CHAUFFEUSE}'""")
+    fiche = await page.inner_text('#compte-fiche')
+    verifier('Validée' in fiche and (immat in fiche if immat else 'Aucun véhicule affecté' in fiche), 'compte : fiche chauffeur, véhicule affecté')
+    await capture_complete(page, f'{CAPTURES}/chauffeur-compte-telephone.png')
+    telephone = valeur(f"select coalesce(telephone, '') from public.profils where id = '{CHAUFFEUSE}'")
+    await page.click('#compte-modifier')
+    await page.fill('#compte-telephone', '12')
+    await page.click('#compte-enregistrer')
+    verifier(await page.is_visible('#compte-telephone-erreur'), 'compte : numéro de téléphone invalide refusé avant l\'envoi')
+    await page.fill('#compte-telephone', '06 99 88 77 66')
+    await page.click('#compte-enregistrer')
+    await page.wait_for_selector('#compte-formulaire', state='hidden')
+    verifier(valeur(f"select telephone from public.profils where id = '{CHAUFFEUSE}'") == '+33699887766',
+             'compte : téléphone enregistré dans la base')
+    systeme(f"update public.profils set telephone = nullif($t${telephone}$t$, '') where id = '{CHAUFFEUSE}';")
+    await page.click('#onglets [data-onglet="accueil"]')
+    await page.wait_for_selector('#vue-accueil:not([hidden])')
+    verifier(page.url.endswith('/chauffeur/'), 'retour à l\'accueil : adresse sans onglet')
+    await page.go_back()
+    await page.wait_for_selector('#vue-compte:not([hidden])')
+    verifier(True, 'bouton Retour du téléphone : onglet précédent (Compte)')
+    await page.click('#onglets [data-onglet="accueil"]')
+    await page.wait_for_selector('#vue-accueil:not([hidden])')
 
 
 def preparer():
@@ -145,9 +312,21 @@ async def main():
             await page.screenshot(path=f'{CAPTURES}/chauffeur-reservation-prise.png', full_page=True)
             annuler_par_admin(course4['id'])
 
+            await onglets_chauffeur(ctx, page, course, course4)
+
             await page.click('#bascule-en-ligne')
             await page.wait_for_function("document.getElementById('pastille-etat').textContent === 'Hors ligne'")
             verifier(valeur(f"select en_ligne from public.positions where chauffeur_id = '{CHAUFFEUSE}'") == 'f', 'passer hors ligne')
+
+            print('Déconnexion en ligne')
+            await page.click('#bascule-en-ligne')
+            await page.wait_for_function("document.getElementById('pastille-etat').textContent === 'En ligne'")
+            await page.click('#onglets [data-onglet="compte"]')
+            await page.wait_for_selector('#vue-compte:not([hidden]) #compte-deconnexion')
+            await page.click('#compte-deconnexion')
+            await page.wait_for_url('**/connexion/**')
+            verifier(valeur(f"select en_ligne from public.positions where chauffeur_id = '{CHAUFFEUSE}'") == 'f',
+                     'déconnexion : hors ligne d\'abord, puis page de connexion')
             await nav.close()
     finally:
         serveur.terminate()

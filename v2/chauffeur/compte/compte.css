@@ -1,0 +1,11 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Espace chauffeur : onglet Compte
+   ============================================================================= */
+.entete-panneau { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.entete-panneau .bouton-texte { padding-right: 0; }
+.compte-formulaire { display: grid; gap: 14px; }
+.actions-compte { display: flex; flex-wrap: wrap; gap: 10px; }
+.actions-compte .bouton { flex: 1 1 160px; }
+.compte-alertes { display: grid; gap: 8px; }
+.compte-alertes:empty { display: none; }

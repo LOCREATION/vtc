@@ -19,7 +19,7 @@ npm install && npm run preparer
 bash ../lancer_tests_locaux.sh     # base locale neuve + 813 vérifications
 python3 test_pages.py              # accueil et connexion (25 vérifications)
 python3 test_client.py             # commande et suivi (18 vérifications)
-python3 test_chauffeur.py          # espace chauffeur (20 vérifications)
+python3 test_chauffeur.py          # espace chauffeur (49 vérifications)
 python3 test_admin.py              # administration (306 vérifications)
 ```
 

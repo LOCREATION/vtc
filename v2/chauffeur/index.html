@@ -1,9 +1,16 @@
 <!doctype html>
 <!-- =============================================================================
      LOC RÉACTION S.A.S — Version 2
-     Espace chauffeur : accueil
-     En ligne / hors ligne, chiffres du jour, courses attribuées, filtre de
-     destination, réservations à prendre, demande entrante en plein écran.
+     Espace chauffeur
+     Quatre onglets dans une seule page, comme dans Bolt Driver :
+       - Accueil : en ligne / hors ligne, chiffres du jour, courses attribuées,
+         filtre de destination, réservations à prendre ;
+       - Revenus : jour, semaine, mois, relevé en PDF ;
+       - Courses : historique, fiche d'une course, feuille de route en PDF ;
+       - Compte : profil, fiche chauffeur, contact, déconnexion.
+     Changer d'onglet ne recharge pas la page : le service continue sur tous
+     les onglets (position envoyée, demande entrante en plein écran avec son
+     et vibration).
      ============================================================================= -->
 <html lang="fr">
 <head>
@@ -19,6 +26,9 @@
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
   <link rel="stylesheet" href="../commun/styles.css">
   <link rel="stylesheet" href="chauffeur.css">
+  <link rel="stylesheet" href="revenus/revenus.css">
+  <link rel="stylesheet" href="courses/courses.css">
+  <link rel="stylesheet" href="compte/compte.css">
   <script type="module" src="chauffeur.js"></script>
 </head>
 <body class="theme-nuit">
@@ -36,48 +46,77 @@
       <a href="../">Retour à l'accueil</a>
     </p>
 
-    <div class="espace-chauffeur" id="espace" hidden>
-      <div class="carte" id="carte" role="img" aria-label="Carte : ma position"></div>
+    <div id="espace" hidden>
+      <!-- Onglet Accueil : le service -->
+      <section class="vue espace-chauffeur" id="vue-accueil" data-onglet="accueil" aria-label="Accueil">
+        <div class="carte" id="carte" role="img" aria-label="Carte : ma position"></div>
 
-      <section class="panneau" aria-labelledby="titre-service">
-        <h1 class="visuellement-cache" id="titre-service">Mon service</h1>
-        <button type="button" class="bouton bouton-principal bouton-large bouton-en-ligne" id="bascule-en-ligne" data-en-ligne="false">Passer en ligne</button>
-        <p class="aide" id="aide-en-ligne">Gardez l'application ouverte, écran allumé : les demandes arrivent ici avec un son et une vibration.</p>
-        <p class="alerte" id="erreur-en-ligne" role="alert" hidden></p>
-        <button type="button" class="bouton bouton-secondaire bouton-large" id="activer-son" hidden>Activer le son des demandes</button>
-        <dl class="chiffres">
-          <div><dt>Courses aujourd'hui</dt><dd id="courses-jour">0</dd></div>
-          <div><dt>Chiffre du jour</dt><dd id="ca-jour">0,00 €</dd></div>
-          <div><dt>Note</dt><dd id="note">—</dd></div>
-          <div><dt>Acceptation</dt><dd id="acceptation">—</dd></div>
-        </dl>
+        <section class="panneau" aria-labelledby="titre-service">
+          <h1 class="visuellement-cache" id="titre-service">Mon service</h1>
+          <button type="button" class="bouton bouton-principal bouton-large bouton-en-ligne" id="bascule-en-ligne" data-en-ligne="false">Passer en ligne</button>
+          <p class="aide" id="aide-en-ligne">Gardez l'application ouverte, écran allumé : les demandes arrivent ici avec un son et une vibration.</p>
+          <p class="alerte" id="erreur-en-ligne" role="alert" hidden></p>
+          <button type="button" class="bouton bouton-secondaire bouton-large" id="activer-son" hidden>Activer le son des demandes</button>
+          <dl class="chiffres">
+            <div><dt>Courses aujourd'hui</dt><dd id="courses-jour">0</dd></div>
+            <div><dt>Chiffre du jour</dt><dd id="ca-jour">0,00 €</dd></div>
+            <div><dt>Note</dt><dd id="note">—</dd></div>
+            <div><dt>Acceptation</dt><dd id="acceptation">—</dd></div>
+          </dl>
+        </section>
+
+        <section class="panneau" id="bloc-mes-courses" hidden aria-labelledby="titre-mes-courses">
+          <h2 id="titre-mes-courses">Mes courses</h2>
+          <ul class="liste-courses" id="mes-courses"></ul>
+        </section>
+
+        <section class="panneau" aria-labelledby="titre-filtre">
+          <h2 id="titre-filtre">Filtre de destination</h2>
+          <label class="case">
+            <input type="checkbox" id="filtre-actif">
+            <span>Ne recevoir que les courses qui me rapprochent de cette adresse</span>
+          </label>
+          <div class="point-saisie" style="padding-left:0">
+            <input id="filtre-adresse" class="saisie" type="text" placeholder="Adresse de destination (domicile, dépôt…)" aria-label="Adresse de destination du filtre">
+          </div>
+        </section>
+
+        <section class="panneau" aria-labelledby="titre-reservations">
+          <h2 id="titre-reservations">Réservations disponibles</h2>
+          <ul class="liste-courses" id="reservations"></ul>
+          <p class="vide" id="aucune-reservation" hidden>Aucune réservation libre pour le moment.</p>
+        </section>
       </section>
 
-      <section class="panneau" id="bloc-mes-courses" hidden aria-labelledby="titre-mes-courses">
-        <h2 id="titre-mes-courses">Mes courses</h2>
-        <ul class="liste-courses" id="mes-courses"></ul>
-      </section>
-
-      <section class="panneau" aria-labelledby="titre-filtre">
-        <h2 id="titre-filtre">Filtre de destination</h2>
-        <label class="case">
-          <input type="checkbox" id="filtre-actif">
-          <span>Ne recevoir que les courses qui me rapprochent de cette adresse</span>
-        </label>
-        <div class="point-saisie" style="padding-left:0">
-          <input id="filtre-adresse" class="saisie" type="text" placeholder="Adresse de destination (domicile, dépôt…)" aria-label="Adresse de destination du filtre">
-        </div>
-      </section>
-
-      <section class="panneau" aria-labelledby="titre-reservations">
-        <h2 id="titre-reservations">Réservations disponibles</h2>
-        <ul class="liste-courses" id="reservations"></ul>
-        <p class="vide" id="aucune-reservation" hidden>Aucune réservation libre pour le moment.</p>
-      </section>
+      <!-- Onglets Revenus, Courses, Compte : remplis à la première ouverture
+           par revenus/revenus.js, courses/courses.js, compte/compte.js -->
+      <section class="vue vue-onglet" id="vue-revenus" data-onglet="revenus" aria-labelledby="titre-revenus" hidden></section>
+      <section class="vue vue-onglet" id="vue-courses" data-onglet="courses" aria-labelledby="titre-courses" hidden></section>
+      <section class="vue vue-onglet" id="vue-compte" data-onglet="compte" aria-labelledby="titre-compte" hidden></section>
     </div>
   </main>
 
-  <!-- Demande entrante -->
+  <!-- Barre d'onglets, en bas de l'écran -->
+  <nav class="onglets-bas" id="onglets" aria-label="Espace chauffeur" hidden>
+    <a class="onglet-bas" href="./" data-onglet="accueil">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8M5 9.5V20h5v-6h4v6h5V9.5"/></svg>
+      <span>Accueil</span>
+    </a>
+    <a class="onglet-bas" href="?onglet=revenus" data-onglet="revenus">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18v12H3zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM6.5 9.5h.01M17.5 14.5h.01"/></svg>
+      <span>Revenus</span>
+    </a>
+    <a class="onglet-bas" href="?onglet=courses" data-onglet="courses">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg>
+      <span>Courses</span>
+    </a>
+    <a class="onglet-bas" href="?onglet=compte" data-onglet="compte">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0"/></svg>
+      <span>Compte</span>
+    </a>
+  </nav>
+
+  <!-- Demande entrante : au-dessus de tous les onglets -->
   <div class="demande" id="demande" hidden role="alertdialog" aria-modal="true" aria-labelledby="demande-titre" aria-describedby="demande-prix">
     <div class="demande-contenu">
       <p class="demande-titre" id="demande-titre">Nouvelle demande</p>

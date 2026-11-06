@@ -14,6 +14,7 @@ import { RACINE } from '../../commun/config.js';
 import { imposerLangue, appliquerTraductions } from '../../commun/i18n.js';
 import { euros, nombre, el, afficherMessage, dateHeure } from '../../commun/outils.js';
 import { SuiviGps } from '../../commun/gps-chauffeur.js';
+import { lignesFeuilleDeRoute } from '../commun/feuille-route.js';
 import '../../commun/pwa.js';
 
 imposerLangue('fr');
@@ -193,21 +194,13 @@ function afficherTrajet() {
 }
 
 // Feuille de route : coordonnées de l'entreprise, identité et téléphone du
-// client, date et heure de la réservation, date, heure et lieu de prise en charge
+// client, date et heure de la réservation, date, heure et lieu de prise en
+// charge (mentions communes avec le document PDF : commun/feuille-route.js)
 function afficherFeuilleDeRoute() {
   const c = etat.course;
-  const s = etat.societe || {};
-  const lignes = [
-    ['Exploitant', [s.raison_sociale, s.siren ? `SIREN ${s.siren}` : null].filter(Boolean).join(', ')],
-    ['Adresse', [s.adresse, [s.code_postal, s.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ')],
-    ['Registre VTC', s.registre_vtc_numero || 'n° à compléter dans l\'administration'],
-    ['Course', c.numero],
-    ['Client', [c.client_prenom, c.client_telephone].filter(Boolean).join(', ')],
-    ['Réservée le', dateHeure(c.cree_le, { dateStyle: 'long', timeStyle: 'short' })],
-    ['Prise en charge', `${dateHeure(c.prise_en_charge_le, { dateStyle: 'long', timeStyle: 'short' })}, ${c.depart_adresse}`],
-    ['Véhicule', [c.vehicule_libelle, c.vehicule_immatriculation].filter(Boolean).join(', ')]
-  ];
+  const lignes = lignesFeuilleDeRoute(c, etat.societe, { arrets: etat.arrets });
   $('feuille').replaceChildren(...lignes.map(([cle, valeur]) => el('div', {}, el('dt', { texte: cle }), el('dd', { texte: valeur || '—' }))));
+  $('feuille-pdf').href = `../document/?type=feuille&course=${c.id}`;
 }
 
 // ---------------------------------------------------------------------------

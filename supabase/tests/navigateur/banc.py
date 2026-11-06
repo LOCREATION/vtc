@@ -375,6 +375,9 @@ def routeur(uid, auth=None):
                 return await route.fulfill(status=204 if ok else 400, headers=entetes, body='' if ok else json.dumps({'message': sortie}))
         if url.startswith(f'{API}/auth/v1/user'):
             return await route.fulfill(status=200, headers=entetes, body=json.dumps({'id': uid, 'aud': 'authenticated', 'role': 'authenticated'}))
+        if url.startswith(f'{API}/auth/v1/logout'):
+            # Déconnexion acceptée, comme le fait le vrai service (réponse vide)
+            return await route.fulfill(status=204, headers=entetes)
         if url.startswith('http://localhost:8765/'):
             return await route.continue_()
         return await route.abort()
