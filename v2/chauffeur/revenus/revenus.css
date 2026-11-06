@@ -1,0 +1,14 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Espace chauffeur : onglet Revenus
+   ============================================================================= */
+.revenus-total { gap: 10px; }
+.revenus-montant { font-family: var(--police-titre); font-weight: 700; font-size: 46px; line-height: 1; color: var(--or); }
+
+/* Jour par jour : date, nombre de courses, montant */
+.revenus-jours { list-style: none; margin: 0; padding: 0; display: grid; }
+.revenus-jours li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: baseline;
+  padding: 10px 0; border-bottom: 1px solid var(--ligne); }
+.revenus-jours li:last-child { border-bottom: 0; }
+.revenus-jour-courses { color: var(--texte-2); font-size: 15px; }
+.revenus-jour-montant { font-family: var(--police-titre); font-size: 19px; }

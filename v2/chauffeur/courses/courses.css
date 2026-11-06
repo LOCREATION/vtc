@@ -1,0 +1,25 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Espace chauffeur : onglet Courses (historique et fiche)
+   ============================================================================= */
+.vue-onglet-bloc { display: grid; gap: 12px; min-width: 0; }
+.courses-resume { color: var(--texte-2); text-align: center; font-weight: 500; }
+.courses-liste { display: grid; gap: 18px; }
+.courses-jour { display: grid; gap: 8px; }
+.courses-jour-titre { font-size: 18px; font-weight: 600; color: var(--texte-2); }
+
+/* Carte d'une course de l'historique : toute la carte se touche */
+.course-historique { width: 100%; text-align: left; font: inherit; color: inherit; border: 1.5px solid transparent; cursor: pointer; }
+.course-historique:hover { border-color: var(--ligne); }
+.course-historique:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
+.pied-course { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.note-recue { color: var(--texte-2); font-size: 14px; font-weight: 600; }
+
+/* Fiche */
+.courses-retour { justify-self: start; padding-left: 0; }
+.fiche-entete { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.trajet-fiche { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.trajet-fiche li { padding-left: 22px; position: relative; }
+.trajet-fiche li::before { content: ''; position: absolute; left: 2px; top: 8px; width: 9px; height: 9px; border: 2.5px solid var(--blanc); border-radius: 50%; }
+.trajet-fiche li:last-child::before { border-radius: 0; background: var(--blanc); }
+.trajet-fiche li.arret::before { width: 7px; height: 7px; left: 3px; top: 9px; }

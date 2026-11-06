@@ -13,6 +13,8 @@
   color: var(--blanc);
 }
 .theme-nuit a { color: var(--or); }
+/* Un lien en forme de bouton garde la couleur du bouton (or sur or serait illisible) */
+.theme-nuit a.bouton-principal, .theme-nuit a.bouton-principal:hover { color: var(--nuit); }
 .theme-nuit .saisie { background: var(--surface-2); border-color: var(--ligne); color: var(--blanc); }
 .theme-nuit .saisie::placeholder { color: #8A9BBA; }
 .theme-nuit .suggestions { background: var(--surface-2); border-color: var(--ligne); }
@@ -87,3 +89,66 @@
 
 /* Repère de position du chauffeur sur la carte */
 .repere-moi { width: 20px; height: 20px; border-radius: 50%; background: var(--or); border: 4px solid var(--blanc); box-shadow: 0 0 0 6px rgba(200, 168, 75, 0.35); }
+
+/* =============================================================================
+   Onglets : Accueil, Revenus, Courses, Compte
+   ============================================================================= */
+/* Barre d'onglets en bas de l'écran, au-dessus de la zone du geste système */
+.onglets-bas {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  background: var(--surface); border-top: 1px solid var(--ligne);
+  padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+@media (min-width: 760px) { .onglets-bas { grid-template-columns: repeat(4, minmax(0, 170px)); justify-content: center; } }
+.theme-nuit .onglet-bas {
+  display: grid; justify-items: center; align-content: center; gap: 3px; min-height: 62px; padding: 6px 4px;
+  color: var(--texte-2); text-decoration: none; font-size: 13px; font-weight: 600;
+  border-top: 3px solid transparent;
+}
+.theme-nuit .onglet-bas[aria-current='page'] { color: var(--or); border-top-color: var(--or); }
+.theme-nuit .onglet-bas:focus-visible { outline: 3px solid var(--or); outline-offset: -3px; }
+/* Place pour la barre : le bas du contenu et les messages restent visibles */
+body.avec-onglets main { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+body.avec-onglets .zone-messages { bottom: calc(82px + env(safe-area-inset-bottom)); }
+
+/* Onglets Revenus, Courses, Compte : une colonne lisible */
+.vue-onglet { display: grid; gap: 12px; align-content: start; padding: 0 var(--marge) 24px; max-width: 760px; margin: 0 auto; min-width: 0; }
+.vue-titre { font-size: 30px; font-weight: 700; padding-top: 4px; }
+.etiquette-nuit { color: var(--texte-2); font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* Choix exclusif sur toute la largeur (Jour / Semaine / Mois…) */
+.theme-nuit .bascule { background: var(--surface); }
+.bascule-large { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+.bascule-large span { justify-content: center; width: 100%; padding: 0 8px; }
+.theme-nuit .bascule input:checked + span { background: var(--or); color: var(--nuit); }
+
+/* Période : précédente, libellé, suivante */
+.periode { display: grid; grid-template-columns: 48px minmax(0, 1fr) 48px; align-items: center; gap: 8px; }
+.periode-libelle { text-align: center; font-family: var(--police-titre); font-weight: 600; font-size: 20px; }
+.bouton-icone { min-width: 48px; padding: 0; font-size: 28px; line-height: 1; }
+.theme-nuit .bouton-icone { background: var(--surface); color: var(--blanc); border-color: var(--ligne); }
+
+/* Lignes « libellé … valeur » */
+.lignes-valeurs { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; margin: 0; }
+.lignes-valeurs dt { color: var(--texte-2); }
+.lignes-valeurs dd { margin: 0; text-align: right; font-weight: 600; overflow-wrap: anywhere; }
+.lignes-valeurs .retrait { padding-left: 14px; font-size: 15px; font-weight: 500; }
+.lignes-valeurs .total { color: var(--blanc); font-weight: 700; border-top: 1px solid var(--ligne); padding-top: 8px; }
+/* Le filet du total passe sous l'espace entre les deux colonnes */
+.lignes-valeurs dd.total { margin-left: -16px; padding-left: 16px; }
+/* Variante empilée (libellé au-dessus de la valeur) : valeurs longues sur téléphone */
+.lignes-valeurs.empilees { grid-template-columns: minmax(0, 1fr); gap: 0; }
+.lignes-valeurs.empilees dt { font-size: 14px; }
+.lignes-valeurs.empilees dd { text-align: left; margin-bottom: 10px; }
+.lignes-valeurs.empilees dd:last-child { margin-bottom: 0; }
+.lignes-valeurs dd.libre { text-align: left; grid-column: 1 / -1; font-weight: 500; }
+
+/* État d'une course : Terminée, Annulée */
+.etat-course { display: inline-flex; align-items: center; min-height: 26px; padding: 0 10px; border-radius: var(--rayon-pastille);
+  font-size: 13px; font-weight: 700; background: var(--surface); color: var(--blanc); white-space: nowrap; }
+.etat-course[data-statut='terminee'] { background: #13432A; color: #B7F0CB; }
+.etat-course[data-statut='annulee'] { background: #4A1A1A; color: #FFD6D3; }
+
+/* Avertissement (document à renouveler…) */
+.theme-nuit .alerte-attention { background: #4A3A12; color: #FFE7A8; }

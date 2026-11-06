@@ -1,12 +1,19 @@
 // =============================================================================
 // LOC RÉACTION S.A.S — Version 2
-// Espace chauffeur : accueil
+// Espace chauffeur : le service et les quatre onglets
 // -----------------------------------------------------------------------------
 // Les demandes arrivent par deux chemins, pour ne jamais en perdre une :
 //   1. le temps réel (insertion dans « propositions » pour ce chauffeur) ;
 //   2. une vérification toutes les 8 secondes (réseau coupé, appareil lent).
 // Une demande non traitée dans le délai se ferme et la relance du dispatch
 // est déclenchée tout de suite (en plus de la planification côté base).
+//
+// Onglets Accueil, Revenus, Courses, Compte : une seule page, sans
+// rechargement. Le service (position, demandes, son, vibration) continue
+// donc quel que soit l'onglet ouvert. L'onglet est gardé dans l'adresse
+// (?onglet=revenus) : un rechargement rouvre le même, et le bouton Retour du
+// téléphone revient à l'onglet précédent. Chaque onglet a son dossier
+// (revenus/, courses/, compte/) et n'est chargé qu'à sa première ouverture.
 // =============================================================================
 import { supabase, profilConnecte, messageErreur } from '../commun/supabase.js';
 import { RACINE } from '../commun/config.js';
@@ -28,7 +35,17 @@ const etat = {
   demande: null,               // demande affichée : { id, echeance, duree, son, minuteur }
   delaiReponseMs: 30000,
   filtre: null,                // destination du filtre { adresse, lat, lng }
-  attributionsVues: new Set()
+  attributionsVues: new Set(),
+  onglet: 'accueil'
+};
+
+// Ce que reçoivent les onglets Revenus, Courses et Compte
+const contexte = {
+  get profil() { return etat.profil; },
+  get enLigne() { return etat.enLigne; },
+  majProfil(champs) { etat.profil = { ...etat.profil, ...champs }; },
+  ouvrirOnglet: (code) => ouvrirOnglet(code),
+  deconnecter
 };
 
 demarrer().catch((erreur) => afficherMessage(messageErreur(erreur), 'erreur'));
@@ -37,7 +54,7 @@ async function demarrer() {
   const { data: { session } } = await supabase.auth.getSession();
   etat.profil = session ? await profilConnecte() : null;
   if (!etat.profil) {
-    location.replace(`${RACINE}connexion/?suite=${encodeURIComponent('chauffeur/')}`);
+    location.replace(`${RACINE}connexion/?suite=${encodeURIComponent(`chauffeur/${location.search}`)}`);
     return;
   }
   if (etat.profil.role !== 'chauffeur' || etat.profil.statut !== 'actif') { $('acces-refuse').hidden = false; return; }
@@ -52,7 +69,11 @@ async function demarrer() {
   etat.fiche = fiche.data;
   if (parametres.data) etat.delaiReponseMs = parametres.data.delai_reponse_chauffeur_s * 1000;
 
+  // L'accueil s'affiche d'abord (la carte a besoin d'être visible pour se
+  // dimensionner), puis l'onglet demandé dans l'adresse
   $('espace').hidden = false;
+  $('onglets').hidden = false;
+  document.body.classList.add('avec-onglets');
   initialiserCarte(position.data);
   afficherFiche();
   await preparerFiltre();
@@ -71,6 +92,81 @@ async function demarrer() {
   verifierDemandes();
   setInterval(verifierDemandes, 8000);
   setInterval(() => { chargerReservations(); chargerJour(); }, 30000);
+  await ouvrirOnglet(ongletDeLAdresse(), { historique: 'remplacer' });
+}
+
+// ---------------------------------------------------------------------------
+// Onglets
+// ---------------------------------------------------------------------------
+const ONGLETS = {
+  accueil: null,
+  revenus: () => import('./revenus/revenus.js'),
+  courses: () => import('./courses/courses.js'),
+  compte: () => import('./compte/compte.js')
+};
+const modulesCharges = {};
+
+function ongletDeLAdresse() {
+  const code = new URLSearchParams(location.search).get('onglet');
+  return code && Object.prototype.hasOwnProperty.call(ONGLETS, code) ? code : 'accueil';
+}
+
+// historique : « ajouter » (clic sur un onglet), « remplacer » (ouverture de
+// la page), « aucun » (bouton Retour du téléphone)
+async function ouvrirOnglet(code, { historique = 'ajouter' } = {}) {
+  etat.onglet = code;
+  document.querySelectorAll('#espace > .vue').forEach((vue) => { vue.hidden = vue.dataset.onglet !== code; });
+  document.querySelectorAll('#onglets .onglet-bas').forEach((lien) => {
+    if (lien.dataset.onglet === code) lien.setAttribute('aria-current', 'page');
+    else lien.removeAttribute('aria-current');
+  });
+  const adresse = code === 'accueil' ? location.pathname : `${location.pathname}?onglet=${code}`;
+  if (historique === 'ajouter' && adresse !== location.pathname + location.search) history.pushState({ onglet: code }, '', adresse);
+  else if (historique === 'remplacer') history.replaceState({ onglet: code }, '', adresse);
+  window.scrollTo(0, 0);
+
+  if (code === 'accueil') {
+    // La carte a pu changer de taille pendant qu'elle était cachée
+    if (etat.carte) setTimeout(() => etat.carte.invalidateSize(), 0);
+    return;
+  }
+  const conteneur = $(`vue-${code}`);
+  try {
+    modulesCharges[code] = modulesCharges[code] || await ONGLETS[code]();
+    // Onglet rouvert : ses chiffres sont relus (une course a pu se terminer)
+    await modulesCharges[code].afficher(conteneur, contexte);
+  } catch (erreur) {
+    conteneur.replaceChildren(el('p', { classe: 'alerte', role: 'alert', texte: messageErreur(erreur) }));
+  }
+}
+
+document.querySelectorAll('#onglets .onglet-bas').forEach((lien) => {
+  lien.addEventListener('click', (e) => {
+    // Ouverture dans un nouvel onglet du navigateur : laisser faire
+    if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+    e.preventDefault();
+    debloquerSon();            // tout toucher autorise aussi le son des demandes
+    ouvrirOnglet(lien.dataset.onglet);
+  });
+});
+window.addEventListener('popstate', () => { if (etat.fiche) ouvrirOnglet(ongletDeLAdresse(), { historique: 'aucun' }); });
+
+// Déconnexion (onglet Compte) : hors ligne d'abord, pour qu'aucune demande ne
+// parte vers un téléphone déconnecté
+async function deconnecter() {
+  if (etat.enLigne) {
+    const { error } = await supabase.rpc('mettre_en_ligne', { p_en_ligne: false });
+    if (error) throw error;
+    etat.enLigne = false;
+    majBascule();
+  }
+  if (etat.gps) etat.gps.arreter();
+  // Réseau coupé pendant la déconnexion : la session reste ouverte sur ce
+  // téléphone ; on le dit plutôt que de laisser croire qu'elle est fermée
+  await supabase.auth.signOut();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) throw new Error('Déconnexion impossible pour le moment : vérifiez votre connexion et réessayez.');
+  location.replace(`${RACINE}connexion/`);
 }
 
 // ---------------------------------------------------------------------------

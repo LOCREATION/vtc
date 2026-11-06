@@ -1,0 +1,32 @@
+<!doctype html>
+<!-- =============================================================================
+     LOC RÉACTION S.A.S — Version 2
+     Espace chauffeur : documents imprimables
+       - feuille de route d'une course : ?type=feuille&course=<identifiant>
+       - relevé d'activité d'une période : ?type=releve&du=AAAA-MM-JJ&au=AAAA-MM-JJ
+     Ouverts dans un nouvel onglet depuis l'espace chauffeur (le service
+     continue dans le premier). Bouton « Imprimer ou enregistrer en PDF ».
+     Même mise en page A4 que les documents de l'administration
+     (admin/commun/document.css) : en-tête à l'identité exacte de l'entreprise.
+     ============================================================================= -->
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Document, espace chauffeur LOC RÉACTION</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0A1A38">
+  <link rel="icon" href="../../commun/img/icone.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../../commun/styles.css">
+  <link rel="stylesheet" href="../../admin/commun/document.css">
+  <link rel="stylesheet" href="document.css">
+  <script type="module" src="document.js"></script>
+</head>
+<body class="page-document">
+  <main class="cadre-document">
+    <p class="chargement-document non-imprimable" id="chargement">Préparation du document…</p>
+    <div class="non-imprimable" id="erreur" hidden></div>
+    <div class="cadre-document-contenu" id="document"></div>
+  </main>
+</body>
+</html>

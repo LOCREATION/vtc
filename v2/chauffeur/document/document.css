@@ -1,0 +1,27 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Espace chauffeur : page des documents imprimables
+   La mise en page du document lui-même (écran et A4) est celle de
+   l'administration : admin/commun/document.css.
+   ============================================================================= */
+.page-document { background: var(--bitume); }
+.cadre-document { display: grid; gap: 12px; justify-items: center; padding: 16px var(--marge) 40px; }
+.cadre-document > *, .cadre-document-contenu > * { width: 100%; max-width: 920px; min-width: 0; }
+.cadre-document-contenu { display: grid; gap: 12px; justify-items: center; width: 100%; }
+.chargement-document { color: var(--gris); }
+.doc-mentions-course { display: grid; grid-template-columns: minmax(110px, auto) minmax(0, 1fr); gap: 6px 16px; margin: 0; }
+.doc-mentions-course dt { color: var(--gris); }
+.doc-mentions-course dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.doc-note { color: var(--gris); font-size: 13px; margin: 0; }
+@media print {
+  .page-document { background: #FFFFFF; }
+  .cadre-document { padding: 0; display: block; }
+  .doc-mentions-course { font-size: 10pt; gap: 3px 12px; }
+  .doc-note { font-size: 8pt; }
+}
+.actions-ligne { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+/* Barre d'outils : les deux boutons tiennent sur une ligne de téléphone */
+.bouton-petit { min-height: 42px; padding: 0 14px; font-size: 15px; }
+/* Relevé : le trajet garde une largeur lisible (le tableau défile) */
+.doc-table td.doc-trajet { min-width: 220px; }
+@media print { .doc-table td.doc-trajet { min-width: 0; } }
