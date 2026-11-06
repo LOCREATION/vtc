@@ -9,6 +9,8 @@
        - Courses : historique, fiche d'une course, feuille de route en PDF ;
        - Compte : profil, fiche chauffeur, documents, paie, heures et
          absences, contact, déconnexion.
+     Cloche de la barre du haut : les notifications, dans un panneau qui
+     s'ouvre sans quitter la page (notifications/).
      Un compte qui n'est pas chauffeur en service voit son dossier à la place
      (candidature d'un nouveau chauffeur, dossier en cours d'examen, refus,
      suspension) : dossier/dossier.js. Connexion : chauffeur/connexion/.
@@ -34,6 +36,7 @@
   <link rel="stylesheet" href="courses/courses.css">
   <link rel="stylesheet" href="compte/compte.css">
   <link rel="stylesheet" href="dossier/dossier.css">
+  <link rel="stylesheet" href="notifications/notifications.css">
   <script type="module" src="chauffeur.js"></script>
 </head>
 <body class="theme-nuit">
@@ -43,6 +46,14 @@
       <span>LOC RÉACTION</span>
     </a>
     <p class="pastille-etat" id="pastille-etat" data-en-ligne="false">Hors ligne</p>
+    <!-- Notifications (notifications/notifications.js) : nombre de non lues -->
+    <button type="button" class="cloche" id="cloche" aria-label="Notifications" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+        <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+      </svg>
+      <span class="cloche-pastille" id="cloche-non-lues" hidden></span>
+    </button>
   </header>
 
   <main>

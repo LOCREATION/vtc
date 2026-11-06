@@ -36,9 +36,12 @@
 .barre .marque { color: var(--blanc); }
 .barre .marque img { filter: brightness(0) invert(1); }
 .pastille-etat {
-  display: inline-flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 14px;
+  display: inline-flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 14px; white-space: nowrap;
   border-radius: var(--rayon-pastille); background: var(--surface-2); font-weight: 600; font-size: 15px;
 }
+/* Téléphone étroit (moins de 380 px) : le logo seul, pour garder sur une ligne
+   l'état « En ligne » et la cloche des notifications */
+@media (max-width: 379px) { .barre .marque span { display: none; } }
 .pastille-etat::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: #8A9BBA; }
 .pastille-etat[data-en-ligne='true'] { background: #13432A; }
 .pastille-etat[data-en-ligne='true']::before { background: #4ADE80; }
