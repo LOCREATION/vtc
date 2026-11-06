@@ -7,14 +7,18 @@
 //   - Mes lieux : domicile et travail (adresse cherchée comme à la commande,
 //     précision pour le chauffeur) : raccourcis de l'onglet Accueil ;
 //   - Mes proches : les personnes pour qui commander (proches.js) ;
+//   - Mon solde : montant et derniers mouvements (solde.js) ;
+//   - Parrainage et codes promo : mon code, mon lien, mes filleuls, code de
+//     mon parrain, codes promo utilisés (parrainage.js) ;
 //   - Aide et support : « Mes demandes » et « Nouvelle demande » (panneau
 //     commun/support.js, ouvert par client.js), réponses à lire ;
 //   - Langue : français ou anglais (enregistrée dans le profil, la page se
 //     recharge dans la langue choisie) ;
 //   - Se déconnecter.
-// Une adresse avec ancre (#compte-lieux, #compte-proches, #compte-bloc-support)
-// amène directement à la section.
-// Lectures : profils, lieux, proches, mes_demandes (réponses à lire).
+// Une adresse avec ancre (#compte-lieux, #compte-proches, #compte-solde,
+// #compte-parrainage, #compte-bloc-support) amène directement à la section.
+// Lectures : profils, lieux, proches, soldes et écritures, parrainages,
+// codes promo utilisés, mes_demandes (réponses à lire).
 // Écritures : profils (prénom, nom, téléphone, langue : droits de la base),
 // lieux et proches (les siens).
 // =============================================================================
@@ -23,9 +27,12 @@ import { t, langueActive } from '../../commun/i18n.js';
 import { el, afficherMessage, telephoneInternational } from '../../commun/outils.js';
 import { ChampAdresse } from '../../commun/adresse.js';
 import { creerSectionProches } from './proches.js';
+import { creerSectionSolde } from './solde.js';
+import { creerSectionParrainage } from './parrainage.js';
 
 const TYPES_LIEUX = ['domicile', 'travail'];
-const etat = { contexte: null, profil: null, lieux: [], zones: [], lieuEdite: null, choix: null, champAdresse: null, proches: null };
+const etat = { contexte: null, profil: null, lieux: [], zones: [], lieuEdite: null, choix: null, champAdresse: null,
+  proches: null, solde: null, parrainage: null };
 const $ = (id) => document.getElementById(id);
 const erreurLisible = (e) => messageErreur(e, langueActive());
 let ecouteSupport = false;     // écoute de la fermeture du panneau du support, posée une fois
@@ -83,8 +90,10 @@ function construire(conteneur) {
       el('button', { type: 'submit', classe: 'bouton bouton-principal', id: 'lieu-enregistrer', texte: t('profil.enregistrer') })));
   formLieu.addEventListener('submit', (e) => { e.preventDefault(); enregistrerLieu(); });
 
-  // Proches (section à part : proches.js)
+  // Proches, solde, parrainage : sections à part (proches.js, solde.js, parrainage.js)
   etat.proches = creerSectionProches({ contexte: etat.contexte });
+  etat.solde = creerSectionSolde({ contexte: etat.contexte });
+  etat.parrainage = creerSectionParrainage({ contexte: etat.contexte });
 
   // Langue
   const langue = el('fieldset', { classe: 'choix-langue', id: 'compte-langue' },
@@ -118,6 +127,8 @@ function construire(conteneur) {
       el('ul', { classe: 'lieux-client', id: 'compte-liste-lieux' }),
       formLieu),
     etat.proches.section,
+    etat.solde.section,
+    etat.parrainage.section,
     el('section', { classe: 'bloc-client', id: 'compte-bloc-support', 'aria-labelledby': 'compte-titre-support' },
       el('h2', { id: 'compte-titre-support', texte: t('compte.support') }),
       el('p', { classe: 'aide-client', texte: t('compte.support_aide') }),
@@ -149,7 +160,10 @@ async function charger() {
     supabase.from('profils').select('prenom, nom, telephone, email, langue').eq('id', moi).maybeSingle(),
     supabase.from('lieux').select('id, type, libelle, adresse, latitude, longitude, precision').eq('client_id', moi),
     supabase.rpc('mes_demandes'),
-    etat.proches.charger()          // la section des proches se lit et s'affiche elle-même
+    // Ces sections se lisent et s'affichent elles-mêmes
+    etat.proches.charger(),
+    etat.solde.charger(),
+    etat.parrainage.charger()
   ]);
   for (const r of [profil, lieux, demandes]) if (r.error) throw r.error;
   etat.profil = profil.data || {};

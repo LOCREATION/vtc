@@ -244,7 +244,7 @@ async def proches_client(page):
     await page.wait_for_url(re.compile(r'/client/commande/\?proche='))
     await page.wait_for_function("document.getElementById('proche-nom').value === 'Paul Martin'")
     verifier(await page.is_checked('input[name="pour"][value="proche"]') and await page.is_visible('#bloc-proche')
-             and await page.input_value('#proche-telephone') == '+33611223344'
+             and await page.input_value('#proche-telephone') == '+33 6 11 22 33 44'
              and await page.input_value('#proche-enregistre') == proche and await page.is_hidden('#case-enregistrer-proche'),
              'commande : « Pour un proche », Paul Martin déjà choisi')
     await page.go_back()
@@ -254,6 +254,91 @@ async def proches_client(page):
     verifier(valeur(f"select count(*) from public.proches where id = '{proche}'") == '0'
              and await page.locator(f'#proche-{proche}').count() == 0,
              '« Retirer » : proche retiré de la base et de la liste')
+
+
+def montant_fr(sql_montant):
+    """Montant de la base écrit comme à l'écran : « 5,00 € »."""
+    return valeur(f"select replace(to_char(coalesce(({sql_montant}), 0), 'FM999990.00'), '.', ',') || ' €'")
+
+
+def espaces(texte):
+    """Espaces insécables (montants, ponctuation) ramenées à des espaces simples."""
+    return texte.replace('\u202f', ' ').replace('\xa0', ' ')
+
+
+async def solde_parrainage_client(ctx, page):
+    """Compte > Mon solde et Parrainage et codes promo (solde.js, parrainage.js) :
+    montant et mouvements, code, partage du lien, copie du code, filleuls,
+    codes promo utilisés, lien des notifications du parrainage, adresse
+    /client/compte/#…."""
+    print('Solde, parrainage et codes promo')
+    await ctx.grant_permissions(['clipboard-read', 'clipboard-write'], origin='http://localhost:8765')
+    await page.goto(SITE + 'client/?onglet=compte')
+    await page.wait_for_selector('#compte-solde-montant:not(:empty)')
+    solde = montant_fr(f"select montant from public.soldes where profil_id = '{CLIENT}'")
+    ecritures = int(valeur(f"select count(*) from public.ecritures_solde where profil_id = '{CLIENT}'"))
+    verifier(espaces(await page.inner_text('#compte-solde-montant')) == solde
+             and await page.locator('#compte-mouvements li').count() == min(ecritures, 10),
+             f'Mon solde : {solde}, {min(ecritures, 10)} mouvement(s) affiché(s)')
+    if ecritures:
+        dernier = valeur(f"select motif from public.ecritures_solde where profil_id = '{CLIENT}' order by cree_le desc limit 1")
+        verifier(dernier in await page.inner_text('#compte-mouvements li:first-child'), f'Mon solde : dernier mouvement « {dernier} »')
+
+    code = valeur(f"select code_parrainage from public.profils where id = '{CLIENT}'")
+    recompense = montant_fr("select recompense_filleul from public.parametres")
+    verifier(await page.inner_text('#compte-code-parrainage') == code and recompense in espaces(await page.inner_text('#compte-parrainage-offre')),
+             f'Parrainage : code {code} et offre de bienvenue ({recompense})')
+    inscrits, valides = ligne_sql(f"select count(*) filter (where statut <> 'annule') || '|' || count(*) filter (where statut = 'valide') "
+                                  f"from public.parrainages where parrain_id = '{CLIENT}'")
+    gagne = montant_fr(f"select sum(recompense_parrain) from public.parrainages where parrain_id = '{CLIENT}' and statut = 'valide'")
+    filleuls = espaces(await page.inner_text('#compte-filleuls'))
+    verifier((f'{inscrits} personne' in filleuls if int(inscrits) else 'Personne ne' in filleuls)
+             and (f'{valides} parrainage' in filleuls and gagne in filleuls if int(valides) else True),
+             f'Parrainage : {inscrits} inscrit(s), {valides} validé(s) ({gagne})')
+    verifier(await page.is_hidden('#compte-code-parrain-formulaire'),
+             'cliente déjà venue en course : pas de saisie du code d\'un parrain')
+
+    # Partager mon lien (feuille de partage du téléphone, imitée ici) et copier le code
+    await page.evaluate("navigator.share = async (donnees) => { window.__partage = donnees; }")
+    await page.click('#compte-partager')
+    await page.wait_for_function("!!window.__partage")
+    partage = await page.evaluate("window.__partage")
+    verifier(partage['url'] == SITE + f'connexion/?parrain={code}' and recompense.replace(' ', '') in espaces(partage['text']).replace(' ', ''),
+             '« Partager mon lien » : lien d\'invitation (connexion/?parrain=…) et message avec l\'offre')
+    await page.click('#compte-copier-code')
+    await message_affiche(page, 'Code copié.')
+    verifier(await page.evaluate("navigator.clipboard.readText()") == code, '« Copier le code » : le code est dans le presse-papiers')
+
+    # Codes promo déjà utilisés
+    promos = int(valeur(f"select count(*) from public.utilisations_promo where client_id = '{CLIENT}'"))
+    if promos:
+        verifier(await page.locator('#compte-promos li').count() == min(promos, 20)
+                 and 'Course C-' in await page.inner_text('#compte-promos li:first-child'),
+                 f'codes promo : {min(promos, 20)} remise(s), avec la course')
+    else:
+        verifier(await page.is_visible('#compte-promos-vide'), 'codes promo : « Aucun code promo utilisé pour le moment. »')
+    await page.evaluate("document.getElementById('zone-messages')?.replaceChildren()")
+    await page.evaluate("document.getElementById('compte-solde').scrollIntoView({ block: 'start' })")
+    await page.screenshot(path=f'{CAPTURES}/client-solde-parrainage.png')
+
+    # Notification « Parrainage validé » : onglet Compte, à « Mon solde »
+    systeme(f"""insert into public.notifications (destinataire_id, type, titre, message, lien) values
+      ('{CLIENT}', 'paiement', 'Parrainage validé', 'Essai : 5,00 € crédités sur votre solde.', '/client/compte/#compte-solde');""")
+    await page.goto(SITE + 'client/')
+    await page.wait_for_selector('#cloche-non-lues:not([hidden])')
+    await page.click('#cloche')
+    await page.wait_for_selector('dialog#notifs[open] #notifs-liste li')
+    await page.locator('#notifs-liste .notif', has_text='Essai : 5,00 € crédités sur votre solde.').click()
+    await page.wait_for_selector('#vue-compte:not([hidden]) #compte-solde-montant:not(:empty)')
+    await page.wait_for_function("Math.abs(document.getElementById('compte-solde').getBoundingClientRect().top) < 120")
+    verifier(await page.is_hidden('dialog#notifs'), 'notification « Parrainage validé » : onglet Compte, à « Mon solde »')
+
+    # Adresse /client/compte/#compte-parrainage (page de renvoi)
+    await page.goto(SITE + 'client/compte/#compte-parrainage')
+    await page.wait_for_url(SITE + 'client/?onglet=compte#compte-parrainage')
+    await page.wait_for_selector('#vue-compte:not([hidden]) #compte-code-parrainage:not(:empty)')
+    await page.wait_for_function("Math.abs(document.getElementById('compte-parrainage').getBoundingClientRect().top) < 120")
+    verifier(True, 'adresse /client/compte/#compte-parrainage : onglet Compte, à la section du parrainage')
 
 
 def commander(**autres):
@@ -407,6 +492,7 @@ async def main():
 
             demande = await support_client(page, debut, demandes_creees)
             await proches_client(page)
+            await solde_parrainage_client(ctx, page)
 
             print('Langue')
             await page.click('#onglets [data-onglet="compte"]')
@@ -470,6 +556,32 @@ insert into auth.users (email, raw_user_meta_data) values ('nouveau{int(time.tim
                          and await page.evaluate("document.querySelector('#activite-vide a').href") == SITE + 'client/commande/',
                          'nouveau client : « Aucune course pour le moment. » et « Commander une course »')
                 await page.screenshot(path=f'{CAPTURES}/client-activite-vide.png')
+
+                await page.click('#onglets [data-onglet="compte"]')
+                await page.wait_for_selector('#compte-code-parrain-formulaire:not([hidden])')
+                verifier(espaces(await page.inner_text('#compte-solde-montant')) == '0,00 €' and await page.is_visible('#compte-mouvements-vide')
+                         and await page.is_visible('#compte-promos-vide') and 'Personne ne' in await page.inner_text('#compte-filleuls'),
+                         'nouveau client : solde à 0,00 €, aucun mouvement, aucun filleul, aucun code promo')
+                await page.fill('#compte-code-parrain', 'ab!')
+                await page.click('#compte-code-parrain-valider')
+                verifier('Code invalide' in await page.inner_text('#compte-code-parrain-erreur'), 'code de parrain mal formé : refusé avant l\'envoi')
+                code_ines = valeur(f"select code_parrainage from public.profils where id = '{nouveau}'")
+                await page.fill('#compte-code-parrain', code_ines)
+                await page.click('#compte-code-parrain-valider')
+                await page.wait_for_function("document.getElementById('compte-code-parrain-erreur').textContent.includes('propre code')")
+                verifier(True, 'son propre code : refusé par la base, message clair')
+                code_claire = valeur(f"select code_parrainage from public.profils where id = '{CLIENT}'")
+                await page.fill('#compte-code-parrain', code_claire.lower())
+                await page.click('#compte-code-parrain-valider')
+                await message_affiche(page, 'Code de parrainage enregistré.')
+                await page.wait_for_selector('#compte-mon-parrainage:not([hidden])')
+                verifier(await page.is_hidden('#compte-code-parrain-formulaire')
+                         and 'Vous avez été parrainé(e)' in await page.inner_text('#compte-mon-parrainage')
+                         and valeur(f"select statut from public.parrainages where filleul_id = '{nouveau}' and parrain_id = '{CLIENT}'") == 'en_attente',
+                         'code de la marraine saisi : parrainage en attente de la première course, annoncé dans Compte')
+                await page.evaluate("document.getElementById('zone-messages')?.replaceChildren()")
+                await page.evaluate("document.getElementById('compte-parrainage').scrollIntoView({ block: 'start' })")
+                await page.screenshot(path=f'{CAPTURES}/client-parrainage-filleul.png')
                 await ctx.close()
             finally:
                 systeme(f"delete from auth.users where id = '{nouveau}';")

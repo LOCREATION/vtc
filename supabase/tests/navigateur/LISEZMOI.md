@@ -16,10 +16,10 @@ de l'état laissé par le précédent) :
 
 ```
 npm install && npm run preparer
-bash ../lancer_tests_locaux.sh     # base locale neuve + 891 vérifications
-python3 test_pages.py              # accueil, connexion, les trois entrées, devenir chauffeur (40 vérifications)
+bash ../lancer_tests_locaux.sh     # base locale neuve + 910 vérifications
+python3 test_pages.py              # accueil, connexion, invitation de parrainage, les trois entrées, devenir chauffeur (44 vérifications)
 python3 test_client.py             # commande, suivi et messages avec le chauffeur (31 vérifications)
-python3 test_espace_client.py      # espace client : accueil, activité, compte, proches, notifications, support (64 vérifications)
+python3 test_espace_client.py      # espace client : accueil, activité, compte, proches, solde, parrainage, notifications, support (78 vérifications)
 python3 test_chauffeur.py          # espace chauffeur, messages, notifications, support, nouveau chauffeur (134 vérifications)
 python3 test_admin.py              # administration (309 vérifications)
 ```

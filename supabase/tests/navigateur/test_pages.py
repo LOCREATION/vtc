@@ -36,6 +36,7 @@ def jeton():
 profil_test = {'id': ID_TEST, 'role': 'client', 'statut': 'actif', 'prenom': '', 'nom': '', 'email': 'essai@exemple.test',
                'telephone': None, 'langue': 'fr', 'code_parrainage': 'ABCD2345'}
 modifications_profil = []
+demandes_otp = []          # corps des demandes de code (e-mail, langue, code de parrainage)
 
 async def router(route):
     requete = route.request
@@ -57,7 +58,8 @@ async def router(route):
         return await route.fulfill(status=200, headers=entetes, body=corps)
     if url.startswith(f'{API}/rest/v1/parametres'):
         return await route.fulfill(status=200, headers=entetes, body=reponse_ligne(json.loads(sql(
-            "select row_to_json(p) from (select delai_min_planification_min from public.parametres) p;"))))
+            "select row_to_json(p) from (select delai_min_planification_min, recompense_parrain, recompense_filleul "
+            "from public.parametres) p;"))))
     if url.startswith(f'{API}/rest/v1/societe'):
         return await route.fulfill(status=200, headers=entetes, body=reponse_ligne(json.loads(sql(
             "select row_to_json(s) from public.societe s;"))))
@@ -79,6 +81,7 @@ async def router(route):
             return await route.fulfill(status=204, headers=entetes, body='')
         return await route.fulfill(status=200, headers=entetes, body=reponse_ligne(profil_test))
     if url.startswith(f'{API}/auth/v1/otp'):
+        demandes_otp.append(json.loads(requete.post_data or '{}'))
         return await route.fulfill(status=200, headers=entetes, body='{}')
     if url.startswith(f'{API}/auth/v1/verify'):
         donnees = json.loads(requete.post_data or '{}')
@@ -170,6 +173,8 @@ async def connexion(navigateur):
     await page.click('#bouton-email')
     await page.wait_for_selector('#etape-code:not([hidden])')
     verifier('essai@exemple.test' in await page.inner_text('#code-envoye'), 'connexion : code envoyé, adresse rappelée')
+    verifier(demandes_otp and demandes_otp[-1].get('data') == {'langue': 'fr'} and await page.is_hidden('#invitation-parrainage'),
+             'connexion sans invitation : langue transmise, aucun code de parrainage')
     verifier('60' in await page.inner_text('#renvoyer') or '59' in await page.inner_text('#renvoyer'), 'connexion : renvoi possible après 60 s')
     await page.screenshot(path=f'{CAPTURES}/connexion-2-code.png', full_page=True)
     # Code collé (tous les chiffres d'un coup) : validation immédiate
@@ -196,6 +201,33 @@ async def connexion(navigateur):
     await page.wait_for_url('**/v2/**')
     verifier(page.url.startswith('http://localhost:8765/v2/'), 'connexion : redirection vers un site extérieur refusée')
     await contexte.close()
+
+async def invitation(navigateur):
+    """Lien d'invitation d'un client (connexion/?parrain=CODE) : bandeau avec le
+    code et l'offre de bienvenue, code envoyé avec la demande de code de
+    connexion (la base l'enregistre à la création du compte)."""
+    contexte, page = await nouvelle_page(navigateur, 390, 844, True)
+    offre = sql("select replace(to_char(recompense_filleul, 'FM990.00'), '.', ',') from public.parametres;")
+    await page.goto(SITE + 'connexion/?parrain=k7m2%20q9xa')
+    await page.wait_for_selector('#invitation-parrainage:not([hidden])')
+    texte = await page.inner_text('#invitation-parrainage')
+    verifier('K7M2Q9XA' in texte and (offre in texte if float(offre.replace(',', '.')) > 0 else True),
+             f'invitation : bandeau avec le code (en majuscules) et l\'offre de bienvenue ({offre} €)')
+    await page.screenshot(path=f'{CAPTURES}/connexion-invitation.png', full_page=True)
+    await page.fill('#email', 'invite@exemple.test')
+    await page.click('#bouton-email')
+    await page.wait_for_selector('#etape-code:not([hidden])')
+    verifier(demandes_otp and demandes_otp[-1].get('data') == {'langue': 'fr', 'code_parrain': 'K7M2Q9XA'},
+             'invitation : le code de parrainage part avec la demande de code (création du compte)')
+    await page.goto(SITE + 'connexion/?parrain=%3Cscript%3E&lang=en')
+    await page.wait_for_selector('#etape-email:not([hidden])')
+    await page.fill('#email', 'invite2@exemple.test')
+    await page.click('#bouton-email')
+    await page.wait_for_selector('#etape-code:not([hidden])')
+    verifier(await page.is_hidden('#invitation-parrainage') and demandes_otp[-1].get('data') == {'langue': 'en'},
+             'invitation : code mal formé ignoré (ni bandeau ni code envoyé)')
+    await contexte.close()
+
 
 async def entrees(navigateur):
     """Trois entrées séparées : client, chauffeur (création de compte comprise), administration."""
@@ -319,6 +351,8 @@ async def main():
             await accueil(navigateur, 1280, 900, False, 'bureau')
             print('Connexion')
             await connexion(navigateur)
+            print('Invitation de parrainage')
+            await invitation(navigateur)
             print('Entrées client, chauffeur, administration')
             await entrees(navigateur)
             print('Devenir chauffeur')

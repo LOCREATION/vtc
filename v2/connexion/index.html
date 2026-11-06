@@ -5,6 +5,8 @@
      mot de passe). Étapes : adresse e-mail → code reçu → profil (première
      fois seulement). Le chauffeur et l'administration ont leur propre entrée
      (chauffeur/connexion/, admin/) : liens sous le formulaire.
+     Lien d'invitation d'un client (?parrain=CODE) : bandeau avec le code et
+     l'offre de bienvenue ; le code est enregistré avec le nouveau compte.
      ============================================================================= -->
 <html lang="fr">
 <head>
@@ -39,6 +41,8 @@
       <p class="etiquette-espace" data-i18n="connexion.espace">Espace client</p>
       <h1 data-i18n="connexion.titre">Se connecter ou créer un compte</h1>
       <p class="intro" data-i18n="connexion.intro">Pas de mot de passe : nous vous envoyons un code de connexion par e-mail.</p>
+      <!-- Lien d'invitation d'un client (?parrain=CODE) : le code et l'offre de bienvenue -->
+      <p class="alerte alerte-info" id="invitation-parrainage" hidden></p>
       <div class="champ">
         <label for="email" data-i18n="connexion.email">Adresse e-mail</label>
         <input id="email" class="saisie" type="email" autocomplete="email" inputmode="email" required aria-describedby="erreur-email">

@@ -45,7 +45,10 @@ export function suiteDemandee() {
 //   espace        'client' | 'chauffeur' | 'admin'
 //   destination   (profil, suite) => adresse où aller une fois connecté
 //   nomObligatoire  le nom de famille est demandé (chauffeur : candidature)
-export function demarrerConnexion({ espace, destination, nomObligatoire = false }) {
+//   codeParrain   code de parrainage du lien d'invitation (client) : la base
+//                 relie le nouveau compte à son parrain à la création
+//                 (ignoré pour un compte qui existe déjà)
+export function demarrerConnexion({ espace, destination, nomObligatoire = false, codeParrain = null }) {
   let emailSaisi = '';
   let minuteurRenvoi = null;
   let redirectionEnCours = false;
@@ -95,7 +98,8 @@ export function demarrerConnexion({ espace, destination, nomObligatoire = false 
       options: {
         shouldCreateUser: true,
         emailRedirectTo: retour.href,
-        data: { langue: langueActive() }      // reprise dans le profil à la création
+        // Repris dans le profil à la création du compte (langue, parrain)
+        data: { langue: langueActive(), ...(codeParrain ? { code_parrain: codeParrain } : {}) }
       }
     });
     if (!error) return null;
