@@ -94,8 +94,8 @@ export function installerNotifications({ cloche, pastille, moi, contexte }) {
       el('span', { classe: 'notif-entete' },
         el('span', { classe: 'notif-type', texte: TYPES[n.type] || TYPES.info }),
         el('span', { classe: 'notif-date', texte: quand(n.cree_le) })),
-      el('span', { classe: 'notif-titre', texte: n.titre }),
-      n.message ? el('span', { classe: 'notif-texte', texte: n.message }) : null);
+      el('span', { classe: 'notif-titre', texte: typographie(n.titre) }),
+      n.message ? el('span', { classe: 'notif-texte', texte: typographie(n.message) }) : null);
     bouton.addEventListener('click', () => ouvrirNotification(n));
     return el('li', {}, bouton);
   }
@@ -159,6 +159,12 @@ export function installerNotifications({ cloche, pastille, moi, contexte }) {
     fermer() { if (panneau.open) panneau.close(); },
     relire: () => surveillance.relire()
   };
+}
+
+// Espaces insécables du français : « Merci ! » ne laisse jamais le « ! »
+// seul en début de ligne (de même pour ? ; : » et après «)
+function typographie(texte) {
+  return String(texte || '').replace(/ ([!?;:»])/g, '\u00a0$1').replace(/« /g, '«\u00a0');
 }
 
 // « Aujourd'hui, 13:20 », « Hier, 18:02 », « 3 nov., 09:14 »
