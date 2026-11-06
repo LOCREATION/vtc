@@ -17,7 +17,7 @@
 //
 // Cloche de la barre du haut : les notifications (notifications/), dans un
 // panneau ouvert par-dessus la page ; une demande qui arrive le ferme. De même
-// pour « Mes demandes au support » (support/), ouvert aussi par l'adresse :
+// pour « Mes demandes au support » (commun/support.js), ouvert aussi par l'adresse :
 // ?demande=<id> (lien d'une notification du support), ?signaler=<id de la
 // course> (nouvelle demande sur une course, depuis la page de la course).
 // =============================================================================
@@ -28,7 +28,7 @@ import { euros, nombre, el, afficherMessage, dateHeure } from '../commun/outils.
 import { ChampAdresse, adresseDepuisPosition } from '../commun/adresse.js';
 import { SuiviGps } from '../commun/gps-chauffeur.js';
 import { installerNotifications } from './notifications/notifications.js';
-import { installerSupport } from './support/support.js';
+import { installerSupport } from '../commun/support.js';
 import '../commun/pwa.js';
 
 imposerLangue('fr');                 // espace chauffeur en français
@@ -100,7 +100,8 @@ async function demarrer() {
   document.body.classList.add('avec-onglets');
   $('cloche').hidden = false;
   etat.notifications = installerNotifications({ cloche: $('cloche'), pastille: $('cloche-non-lues'), moi: etat.profil.id, contexte });
-  etat.support = installerSupport({ moi: etat.profil.id });
+  etat.support = installerSupport({ moi: etat.profil.id, role: 'chauffeur',
+    apresLecture: () => etat.notifications && etat.notifications.relire() });
   initialiserCarte(position.data);
   afficherFiche();
   await preparerFiltre();

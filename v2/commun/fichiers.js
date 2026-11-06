@@ -1,20 +1,22 @@
 // =============================================================================
 // LOC RÉACTION S.A.S — Version 2
-// Espace chauffeur : fichiers privés (documents, paie)
+// Fichiers privés : ouverture et extension (espaces chauffeur et client)
 // -----------------------------------------------------------------------------
 // Ouverture d'un fichier par un lien temporaire (10 minutes) : la fenêtre
 // s'ouvre d'abord (sinon le téléphone la bloque), puis reçoit le lien.
-// Les règles d'accès des dossiers ne laissent lire au chauffeur que ses
-// propres pièces (documents/{son compte}/…, paie/{sa fiche salarié}/…).
+// Les règles d'accès des dossiers ne laissent lire à chacun que ses propres
+// pièces (documents/{son compte}/…, paie/{sa fiche salarié}/…,
+// support/{une de ses demandes}/…).
 // =============================================================================
-import { supabase } from '../../commun/supabase.js';
+import { supabase } from './supabase.js';
+import { t } from './i18n.js';
 
 export async function ouvrirFichier(dossier, chemin) {
   const fenetre = window.open('about:blank', '_blank');
   const { data, error } = await supabase.storage.from(dossier).createSignedUrl(chemin, 600);
   if (error || !data) {
     if (fenetre) fenetre.close();
-    throw error || new Error('Fichier introuvable.');
+    throw error || new Error(t('fichier.introuvable'));
   }
   if (fenetre) {
     fenetre.opener = null;

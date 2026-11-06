@@ -13,7 +13,7 @@
 //     absences : heures du mois, congés demandés (planning.js), pour un
 //     chauffeur salarié de LOC RÉACTION seulement ;
 //   - Aide et support : « Mes demandes » et « Nouvelle demande » (panneau
-//     support/support.js, ouvert par chauffeur.js), réponses à lire ;
+//     commun/support.js, ouvert par chauffeur.js), réponses à lire ;
 //   - Contacter LOC RÉACTION : téléphone et e-mail de l'entreprise ;
 //   - Se déconnecter : hors ligne d'abord (chauffeur.js).
 // Une adresse avec ancre (?onglet=compte#compte-documents, lien des
@@ -33,12 +33,18 @@ const STATUTS_FICHE = { candidat: 'Candidature en cours', valide: 'Validée', su
 const ENERGIES = { hybride: 'hybride', electrique: 'électrique', essence: 'essence', diesel: 'diesel', autre: '' };
 const etat = { contexte: null, sections: null };
 const $ = (id) => document.getElementById(id);
+let ecouteSupport = false;     // écoute de la fermeture du panneau du support, posée une fois
 
 export async function afficher(conteneur, contexte) {
   etat.contexte = contexte;
   if (!conteneur.dataset.pret) {
     construire(conteneur);
     conteneur.dataset.pret = 'oui';
+  }
+  // Panneau du support refermé : le nombre de réponses à lire est relu
+  if (!ecouteSupport) {
+    ecouteSupport = true;
+    document.addEventListener('support-ferme', () => { chargerSupport().catch(() => {}); });
   }
   fermerFormulaire();
   etat.sections.documents.fermer();

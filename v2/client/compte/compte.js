@@ -6,10 +6,14 @@
 //     chaque course), e-mail de connexion (lecture seule) ;
 //   - Mes lieux : domicile et travail (adresse cherchée comme à la commande,
 //     précision pour le chauffeur) : raccourcis de l'onglet Accueil ;
+//   - Aide et support : « Mes demandes » et « Nouvelle demande » (panneau
+//     commun/support.js, ouvert par client.js), réponses à lire ;
 //   - Langue : français ou anglais (enregistrée dans le profil, la page se
 //     recharge dans la langue choisie) ;
 //   - Se déconnecter.
-// Une adresse avec ancre (#compte-lieux) amène directement à la section.
+// Une adresse avec ancre (#compte-lieux, #compte-bloc-support) amène
+// directement à la section.
+// Lectures : profils, lieux, mes_demandes (réponses à lire).
 // Écritures : profils (prénom, nom, téléphone, langue : droits de la base),
 // lieux (les siens).
 // =============================================================================
@@ -22,12 +26,18 @@ const TYPES_LIEUX = ['domicile', 'travail'];
 const etat = { contexte: null, profil: null, lieux: [], zones: [], lieuEdite: null, choix: null, champAdresse: null };
 const $ = (id) => document.getElementById(id);
 const erreurLisible = (e) => messageErreur(e, langueActive());
+let ecouteSupport = false;     // écoute de la fermeture du panneau du support, posée une fois
 
 export async function afficher(conteneur, contexte) {
   etat.contexte = contexte;
   if (!conteneur.dataset.pret) {
     construire(conteneur);
     conteneur.dataset.pret = 'oui';
+  }
+  // Panneau du support refermé : le nombre de réponses à lire est relu
+  if (!ecouteSupport) {
+    ecouteSupport = true;
+    document.addEventListener('support-ferme', () => { chargerSupport().catch(() => {}); });
   }
   fermerProfil();
   fermerLieu();
@@ -101,6 +111,15 @@ function construire(conteneur) {
       el('p', { classe: 'aide-client', texte: t('compte.lieux_aide') }),
       el('ul', { classe: 'lieux-client', id: 'compte-liste-lieux' }),
       formLieu),
+    el('section', { classe: 'bloc-client', id: 'compte-bloc-support', 'aria-labelledby': 'compte-titre-support' },
+      el('h2', { id: 'compte-titre-support', texte: t('compte.support') }),
+      el('p', { classe: 'aide-client', texte: t('compte.support_aide') }),
+      el('p', { classe: 'alerte alerte-info', id: 'compte-support-non-lus', role: 'status', hidden: true }),
+      el('div', { classe: 'actions-client' },
+        el('button', { type: 'button', classe: 'bouton bouton-secondaire', id: 'compte-mes-demandes', texte: t('compte.mes_demandes'),
+          onclick: () => etat.contexte.ouvrirSupport() }),
+        el('button', { type: 'button', classe: 'bouton bouton-principal', id: 'compte-nouvelle-demande', texte: t('compte.nouvelle_demande'),
+          onclick: () => etat.contexte.ouvrirSupport({ nouvelle: true }) }))),
     el('section', { classe: 'bloc-client', id: 'compte-bloc-langue', 'aria-labelledby': 'compte-titre-langue' },
       el('h2', { id: 'compte-titre-langue', texte: t('compte.langue') }),
       el('p', { classe: 'aide-client', texte: t('compte.langue_aide') }),
@@ -119,15 +138,17 @@ function construire(conteneur) {
 // ---------------------------------------------------------------------------
 async function charger() {
   const moi = etat.contexte.profil.id;
-  const [profil, lieux] = await Promise.all([
+  const [profil, lieux, demandes] = await Promise.all([
     supabase.from('profils').select('prenom, nom, telephone, email, langue').eq('id', moi).maybeSingle(),
-    supabase.from('lieux').select('id, type, libelle, adresse, latitude, longitude, precision').eq('client_id', moi)
+    supabase.from('lieux').select('id, type, libelle, adresse, latitude, longitude, precision').eq('client_id', moi),
+    supabase.rpc('mes_demandes')
   ]);
-  for (const r of [profil, lieux]) if (r.error) throw r.error;
+  for (const r of [profil, lieux, demandes]) if (r.error) throw r.error;
   etat.profil = profil.data || {};
   etat.lieux = lieux.data || [];
   afficherProfil();
   afficherLieux();
+  afficherSupport(demandes.data);
   const choix = $(`compte-langue-${etat.profil.langue === 'en' ? 'en' : 'fr'}`);
   if (choix) choix.checked = true;
 }
@@ -157,6 +178,21 @@ function afficherLieux() {
         lieu && lieu.precision ? el('span', { classe: 'lieu-precision', texte: lieu.precision }) : null),
       actions);
   }));
+}
+
+// Réponses de LOC RÉACTION pas encore lues, toutes demandes confondues
+function afficherSupport(demandes) {
+  const n = (Array.isArray(demandes) ? demandes : []).reduce((total, d) => total + (Number(d.non_lus) || 0), 0);
+  const zone = $('compte-support-non-lus');
+  if (!zone) return;
+  zone.hidden = n === 0;
+  zone.textContent = n > 1 ? t('compte.support_non_lus', { n }) : t('compte.support_non_lu');
+}
+
+async function chargerSupport() {
+  const { data, error } = await supabase.rpc('mes_demandes');
+  if (error) throw error;
+  afficherSupport(data);
 }
 
 // ---------------------------------------------------------------------------

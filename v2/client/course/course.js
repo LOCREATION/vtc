@@ -11,6 +11,8 @@
 //   que la base (qui reste seule juge du montant).
 // - « Messages » : conversation avec le chauffeur pendant la course et 24 heures
 //   après (commun/discussion.js), réponses rapides comprises.
+// - Course terminée ou annulée : « Signaler un problème sur cette course »
+//   ouvre une nouvelle demande au support dans l'espace client (?signaler=…).
 // =============================================================================
 import { supabase, profilConnecte, messageErreur } from '../../commun/supabase.js';
 import { RACINE } from '../../commun/config.js';
@@ -229,6 +231,9 @@ function afficherRecapitulatif() {
     });
     $('recommander').href = lienAvecLangue(`${RACINE}client/commande/?${lien}`);
   }
+  // Un problème après la course : « Mes demandes au support », course déjà choisie
+  $('signaler').hidden = !fini;
+  if (fini) $('signaler').href = lienAvecLangue(`${RACINE}client/?signaler=${encodeURIComponent(c.id)}`);
 }
 
 // ---------------------------------------------------------------------------

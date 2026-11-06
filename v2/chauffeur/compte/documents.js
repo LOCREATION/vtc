@@ -20,7 +20,7 @@ import { supabase, messageErreur } from '../../commun/supabase.js';
 import { el, afficherMessage } from '../../commun/outils.js';
 import { jourParis, dateCourte } from '../commun/periodes.js';
 import { TYPES_DOCUMENT_CHAUFFEUR, DOCUMENTS_A_ECHEANCE, STATUTS_DOCUMENT } from '../commun/libelles.js';
-import { ouvrirFichier, extension } from '../commun/fichiers.js';
+import { ouvrirFichier, extension } from '../../commun/fichiers.js';
 
 const TAILLE_MAX = 10 * 1024 * 1024;                     // 10 Mo, comme le dossier
 const TYPES_FICHIER = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'];
