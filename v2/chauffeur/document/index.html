@@ -4,10 +4,13 @@
      Espace chauffeur : documents imprimables
        - feuille de route d'une course : ?type=feuille&course=<identifiant>
        - relevé d'activité d'une période : ?type=releve&du=AAAA-MM-JJ&au=AAAA-MM-JJ
+       - bulletin de paie (salarié) : ?type=bulletin&id=<identifiant>
+       - contrat de travail ou avenant (salarié) : ?type=contrat&id=<identifiant>
      Ouverts dans un nouvel onglet depuis l'espace chauffeur (le service
      continue dans le premier). Bouton « Imprimer ou enregistrer en PDF ».
      Même mise en page A4 que les documents de l'administration
-     (admin/commun/document.css) : en-tête à l'identité exacte de l'entreprise.
+     (admin/commun/document.css, et admin/rh/rh.css pour le bulletin et le
+     contrat) : en-tête à l'identité exacte de l'entreprise.
      ============================================================================= -->
 <html lang="fr">
 <head>
@@ -19,6 +22,7 @@
   <link rel="icon" href="../../commun/img/icone.svg" type="image/svg+xml">
   <link rel="stylesheet" href="../../commun/styles.css">
   <link rel="stylesheet" href="../../admin/commun/document.css">
+  <link rel="stylesheet" href="../../admin/rh/rh.css">
   <link rel="stylesheet" href="document.css">
   <script type="module" src="document.js"></script>
 </head>

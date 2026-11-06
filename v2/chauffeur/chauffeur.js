@@ -122,7 +122,9 @@ async function ouvrirOnglet(code, { historique = 'ajouter' } = {}) {
   });
   const adresse = code === 'accueil' ? location.pathname : `${location.pathname}?onglet=${code}`;
   if (historique === 'ajouter' && adresse !== location.pathname + location.search) history.pushState({ onglet: code }, '', adresse);
-  else if (historique === 'remplacer') history.replaceState({ onglet: code }, '', adresse);
+  // À l'ouverture de la page, l'ancre éventuelle est gardée (#compte-documents :
+  // lien d'une notification vers une section de l'onglet)
+  else if (historique === 'remplacer') history.replaceState({ onglet: code }, '', adresse + location.hash);
   window.scrollTo(0, 0);
 
   if (code === 'accueil') {
@@ -136,7 +138,12 @@ async function ouvrirOnglet(code, { historique = 'ajouter' } = {}) {
     // Onglet rouvert : ses chiffres sont relus (une course a pu se terminer)
     await modulesCharges[code].afficher(conteneur, contexte);
   } catch (erreur) {
-    conteneur.replaceChildren(el('p', { classe: 'alerte', role: 'alert', texte: messageErreur(erreur) }));
+    // L'onglet est reconstruit à la prochaine ouverture (ou par « Réessayer »)
+    delete conteneur.dataset.pret;
+    const reessayer = el('button', { type: 'button', classe: 'bouton bouton-secondaire', texte: 'Réessayer' });
+    reessayer.addEventListener('click', () => ouvrirOnglet(code, { historique: 'aucun' }));
+    conteneur.replaceChildren(el('div', { classe: 'panneau' },
+      el('p', { classe: 'alerte', role: 'alert', texte: messageErreur(erreur) }), reessayer));
   }
 }
 

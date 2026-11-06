@@ -178,7 +178,8 @@ img, svg { display: block; }
 @media (min-width: 600px) { .feuille { padding: 28px; } }
 
 /* ---------- Messages ---------- */
-.zone-messages { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 100; display: grid; gap: 8px; width: min(92vw, 480px); }
+.zone-messages { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 100; display: grid; gap: 8px; width: min(92vw, 480px);
+  pointer-events: none; }          /* un message ne bloque jamais le bouton qu'il recouvre */
 .message { padding: 14px 16px; border-radius: var(--rayon-champ); font-weight: 500; color: var(--blanc); background: var(--nuit); box-shadow: 0 10px 24px rgba(10, 26, 56, 0.25); }
 .message-succes { background: var(--vert); }
 .message-erreur { background: var(--rouge); }

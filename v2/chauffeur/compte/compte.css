@@ -1,11 +1,58 @@
 /* =============================================================================
    LOC RÉACTION S.A.S — Version 2
    Espace chauffeur : onglet Compte
+   Profil, fiche chauffeur, documents, paie, heures et absences, contact.
    ============================================================================= */
 .entete-panneau { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.entete-panneau .bouton-texte { padding-right: 0; }
+.entete-panneau .bouton-texte { padding-right: 0; text-align: right; }
 .compte-formulaire { display: grid; gap: 14px; }
+/* Champs côte à côte : chacun reste en haut de sa colonne (un message
+   d'erreur sous l'un ne décale pas l'autre) */
+.compte-formulaire .champ { align-content: start; }
 .actions-compte { display: flex; flex-wrap: wrap; gap: 10px; }
 .actions-compte .bouton { flex: 1 1 160px; }
 .compte-alertes { display: grid; gap: 8px; }
 .compte-alertes:empty { display: none; }
+/* Une section atteinte par une ancre (#compte-documents) n'est pas cachée
+   sous le haut de l'écran */
+.vue-onglet .panneau { scroll-margin-top: 12px; }
+
+/* ---------- Sous-titres d'une section (bulletins, contrat) ---------- */
+.sous-titre-compte { font-size: 17px; font-weight: 600; color: var(--texte-2); margin: 4px 0 0; }
+
+/* ---------- Pièces : documents, bulletins, contrats, absences ---------- */
+.liste-pieces { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.liste-pieces:empty { display: none; }
+.piece { background: var(--surface-2); border-radius: var(--rayon-champ); padding: 14px; display: grid; gap: 6px; min-width: 0; }
+.piece-entete { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 10px; }
+.piece-entete strong { font-size: 17px; }
+.piece-details { color: var(--texte-2); font-size: 15px; overflow-wrap: anywhere; margin: 0; }
+.piece-motif { margin: 0; padding: 8px 10px; border-radius: 8px; background: #4A1A1A; color: #FFD6D3; font-size: 15px; overflow-wrap: anywhere; }
+.piece .actions-compte { margin-top: 4px; }
+
+/* État d'une pièce : en vérification ou à signer (ambre), validé ou accepté
+   (vert), refusé (rouge), terminé (neutre). Le texte dit l'état : la couleur
+   ne fait que le souligner. */
+.etat-piece {
+  display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px; border-radius: var(--rayon-pastille);
+  font-size: 14px; font-weight: 600; white-space: nowrap; background: var(--surface); color: var(--texte-2);
+}
+.etat-piece[data-statut='en_attente'] { background: #4A3A12; color: #FFE7A8; }
+.etat-piece[data-statut='valide'] { background: #13432A; color: #A7F3C0; }
+.etat-piece[data-statut='refuse'] { background: #4A1A1A; color: #FFD6D3; }
+
+/* Boutons des pièces : plus compacts, côte à côte sur un téléphone */
+.bouton-compact { min-height: 44px; padding: 0 14px; font-size: 15px; }
+.actions-compte .bouton-compact { flex: 0 1 auto; }
+.piece .bouton-texte { min-height: 44px; padding: 0 4px; }
+
+/* ---------- Formulaires : fichier, deux dates côte à côte ---------- */
+.saisie-fichier { padding: 8px; font-size: 15px; }
+.saisie-fichier::file-selector-button {
+  margin-right: 12px; min-height: 36px; padding: 0 14px; border: 0; border-radius: var(--rayon-pastille);
+  background: var(--or); color: var(--nuit); font: 600 15px var(--police); cursor: pointer;
+}
+.champs-cote { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.champs-cote .saisie { min-width: 0; }
+/* Sélecteurs de date et listes du téléphone aux couleurs de nuit */
+.theme-nuit .saisie { color-scheme: dark; }
