@@ -4,6 +4,7 @@
 import asyncio, base64, json, os, subprocess, sys, tempfile, time
 from urllib.parse import urlparse, parse_qsl
 from playwright.async_api import async_playwright
+from banc import _filtre                     # filtres PostgREST (eq, in, is…) traduits en SQL
 
 BANC = os.path.dirname(os.path.abspath(__file__))
 CAPTURES = os.path.join(BANC, 'captures')
@@ -126,6 +127,13 @@ async def router(route):
             vals = ', '.join(f'$v${v}$v$' for v in ligne.values())
             ok, sortie = en_tant_que(CLIENT, f'insert into public.{table} ({cols}) values ({vals})')
             return await route.fulfill(status=201 if ok else 400, headers=entetes, body='' if ok else json.dumps({'message': sortie}))
+        if rq.method == 'PATCH':                     # modification (messages reçus marqués « lus »)
+            table = urlparse(url).path.split('/rest/v1/')[1]
+            filtres = [_filtre(k, v) for k, v in parse_qsl(urlparse(url).query) if k not in ('select', 'columns', 'order', 'limit', 'offset')]
+            valeurs = json.loads(rq.post_data or '{}')
+            affectations = ', '.join(f'"{c}" = ' + ('null' if v is None else f'$v${v}$v$') for c, v in valeurs.items())
+            ok, sortie = en_tant_que(CLIENT, f'update public.{table} set {affectations} where {" and ".join(filtres) or "false"}')
+            return await route.fulfill(status=204 if ok else 400, headers=entetes, body='' if ok else json.dumps({'message': sortie}))
     if url.startswith(f'{API}/auth/v1/user'):
         return await route.fulfill(status=200, headers=entetes, body=json.dumps({'id': CLIENT, 'aud': 'authenticated', 'role': 'authenticated'}))
     if url.startswith('http://localhost:8765/'):
@@ -221,6 +229,35 @@ async def main():
             verifier((await page.get_attribute('#appeler', 'href')) == 'tel:+33644444444', 'suivi : appel direct de la chauffeuse')
             verifier(await page.locator('.repere-voiture').count() == 1, 'suivi : voiture sur la carte')
             await page.screenshot(path=f'{CAPTURES}/suivi-acceptee.png', full_page=True)
+
+            print('Messages avec la chauffeuse')
+            verifier(await page.is_visible('#ouvrir-discussion'), 'suivi : bouton « Messages » une fois la chauffeuse attribuée')
+            sql_chauffeuse(f"insert into public.messages (course_id, auteur_id, contenu) "
+                           f"values ('{id_course}', auth.uid(), 'Bonjour Claire, j''arrive dans 5 minutes.')")
+            # Relecture de secours toutes les 10 secondes (temps réel injoignable ici)
+            await page.wait_for_selector('#discussion-non-lus:not([hidden])', timeout=15000)
+            verifier(await page.inner_text('#discussion-non-lus') == '1', 'message de la chauffeuse : « 1 » non lu sur le bouton « Messages »')
+            verifier('Nouveau message de Nadia' in await page.inner_text('#zone-messages'), 'message de la chauffeuse : annonce « Nouveau message de Nadia »')
+            await page.click('#ouvrir-discussion')
+            await page.wait_for_selector('dialog#discussion[open]')
+            verifier(await page.inner_text('#discussion-titre') == 'Messages avec Nadia', 'conversation : titre « Messages avec Nadia »')
+            verifier('j\'arrive dans 5 minutes' in await page.inner_text('#discussion-fil'), 'conversation : message de la chauffeuse affiché')
+            await page.wait_for_selector('#discussion-non-lus[hidden]', state='attached')
+            verifier(sql_admin(f"select count(*) from public.messages where course_id = '{id_course}' and auteur_id = '{CHAUFFEUSE}' "
+                               f"and lu_le is not null") == '1', 'fenêtre ouverte : message de la chauffeuse marqué « lu » dans la base')
+            await page.locator('#discussion-raccourcis button', has_text="Je suis devant l'entrée.").click()
+            await page.wait_for_selector('#discussion-fil li[data-auteur="moi"]')
+            verifier(sql_admin(f"select count(*) from public.messages where course_id = '{id_course}' and auteur_id = '{CLIENT}' "
+                               f"and contenu = 'Je suis devant l''entrée.'") == '1', 'réponse rapide « Je suis devant l\'entrée. » enregistrée')
+            await page.fill('#discussion-texte', 'Manteau rouge, à côté de la pharmacie.')
+            await page.click('#discussion-envoyer')
+            await page.wait_for_function("document.querySelectorAll('#discussion-fil li[data-auteur=\"moi\"]').length === 2")
+            verifier(await page.input_value('#discussion-texte') == '', 'message libre envoyé : champ vidé, message affiché')
+            await page.evaluate("document.getElementById('zone-messages')?.replaceChildren()")
+            await page.screenshot(path=f'{CAPTURES}/suivi-messages.png')
+            await page.click('#fermer-discussion')
+            await page.wait_for_selector('dialog#discussion:not([open])', state='attached')
+
             await page.click('#annuler')
             texte_frais = await page.inner_text('#annulation-frais')
             verifier('5,00' in texte_frais.replace(' ', '').replace('\xa0', ''), f'annulation : frais annoncés ({texte_frais})')
@@ -230,6 +267,12 @@ async def main():
             await page.wait_for_selector('#recap-factures .facture')
             verifier('Facture FA-' in await page.inner_text('#recap-factures'), 'annulation : facture des frais affichée')
             await page.screenshot(path=f'{CAPTURES}/suivi-annulee.png', full_page=True)
+            await page.click('#ouvrir-discussion')
+            await page.wait_for_selector('dialog#discussion[open]')
+            verifier(await page.is_hidden('#discussion-formulaire') and await page.is_visible('#discussion-fermee')
+                     and 'pharmacie' in await page.inner_text('#discussion-fil'),
+                     'course annulée : la conversation se relit, mais ne s\'écrit plus')
+            await page.click('#fermer-discussion')
 
             print('Fin de course et note')
             ok, sortie = appel_rpc('commander_course', {'p_categorie': 'berline_hybride', 'p_depart_adresse': '10 Rue de Rivoli 75004 Paris',
@@ -251,7 +294,19 @@ async def main():
             verifier(note == '4', 'note enregistrée (4 sur 5)')
             verifier('Facture FA-' in await page.inner_text('#recap-factures'), 'facture de la course affichée (HT, TVA, TTC)')
             verifier(not await page.is_hidden('#recommander'), '« Commander à nouveau » proposé')
+            verifier(await page.is_visible('#ouvrir-discussion'), 'course terminée : « Messages » reste ouvert 24 heures (objet oublié…)')
             await page.screenshot(path=f'{CAPTURES}/suivi-terminee.png', full_page=True)
+            # Plus de 24 heures après, sans aucun message : plus de bouton « Messages »
+            code, fin, erreur = psql(f"select terminee_le from public.courses where id = '{id2}'")
+            assert code == 0, erreur
+            code, _, erreur = psql(f"update public.courses set terminee_le = now() - interval '25 hours' where id = '{id2}'")
+            assert code == 0, erreur
+            async with page.expect_response(lambda r: '/rest/v1/messages' in r.url):
+                await page.reload()
+            await page.wait_for_timeout(300)
+            verifier(await page.is_hidden('#ouvrir-discussion'), 'course terminée depuis plus de 24 heures, sans message : pas de bouton « Messages »')
+            code, _, erreur = psql(f"update public.courses set terminee_le = '{fin}' where id = '{id2}'")
+            assert code == 0, erreur
             await nav.close()
     finally:
         serveur.terminate()

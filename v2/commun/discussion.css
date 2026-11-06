@@ -1,0 +1,56 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Conversation d'une course entre le client et le chauffeur (discussion.js)
+   Couleurs claires du suivi du client ; couleurs de nuit dans l'espace
+   chauffeur (.theme-nuit).
+   ============================================================================= */
+.bouton-discussion { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.discussion-pastille {
+  min-width: 24px; height: 24px; padding: 0 7px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center;
+  background: #B3261E; color: #FFFFFF; font-size: 14px; font-weight: 700; line-height: 1;
+}
+
+/* Fenêtre : panneau qui monte du bas sur un téléphone, fenêtre centrée ailleurs */
+dialog.discussion {
+  border: none; padding: 0; margin: auto auto 0; width: 100%; max-width: 560px; height: min(86dvh, 680px);
+  border-radius: 18px 18px 0 0; background: #FFFFFF; color: var(--nuit); overflow: hidden;
+}
+dialog.discussion[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
+dialog.discussion::backdrop { background: rgba(10, 26, 56, 0.55); }
+@media (min-width: 700px) {
+  dialog.discussion { margin: auto; border-radius: var(--rayon-feuille); }
+}
+.discussion-entete { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px 10px 18px; border-bottom: 1px solid var(--trait); }
+.discussion-entete h2 { font-size: 20px; font-weight: 700; overflow-wrap: anywhere; }
+.discussion-corps { overflow-y: auto; padding: 14px 16px; overscroll-behavior: contain; }
+.discussion-vide { margin: 24px 0; text-align: center; color: var(--gris); }
+.discussion-fil { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.discussion-message { display: grid; gap: 3px; max-width: 82%; justify-self: start; }
+.discussion-message[data-auteur='moi'] { justify-self: end; justify-items: end; }
+.discussion-bulle { margin: 0; padding: 10px 14px; border-radius: 16px 16px 16px 4px; background: #EEF1F6; overflow-wrap: anywhere; white-space: pre-wrap; }
+.discussion-message[data-auteur='moi'] .discussion-bulle { border-radius: 16px 16px 4px 16px; background: var(--or); color: var(--nuit); }
+.discussion-message[data-auteur='equipe'] .discussion-bulle { background: transparent; border: 1.5px solid var(--or); }
+.discussion-auteur { font-size: 13px; font-weight: 700; color: #6E5200; }
+.discussion-heure { font-size: 13px; color: var(--gris); }
+.discussion-bas { display: grid; gap: 10px; padding: 10px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--trait); }
+.discussion-raccourcis { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.discussion-raccourcis[hidden] { display: none; }
+.discussion-raccourci {
+  flex: 0 0 auto; min-height: 40px; padding: 0 14px; border-radius: 20px; border: 1.5px solid var(--trait);
+  background: transparent; color: inherit; font: 500 15px var(--police); cursor: pointer; white-space: nowrap;
+}
+.discussion-raccourci:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
+.discussion-saisie { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; }
+.discussion-saisie[hidden] { display: none; }
+.discussion-saisie .saisie { resize: none; min-height: 48px; max-height: 120px; padding-top: 12px; }
+.discussion-saisie .bouton { min-height: 48px; padding: 0 18px; }
+.discussion-fermee { margin: 0; color: var(--gris); font-size: 15px; }
+
+/* Espace chauffeur : couleurs de nuit */
+.theme-nuit dialog.discussion { background: var(--surface); color: var(--blanc); }
+.theme-nuit dialog.discussion::backdrop { background: rgba(4, 10, 24, 0.75); }
+.theme-nuit .discussion-entete, .theme-nuit .discussion-bas { border-color: var(--ligne); }
+.theme-nuit .discussion-bulle { background: var(--surface-2); }
+.theme-nuit .discussion-auteur { color: var(--or); }
+.theme-nuit .discussion-vide, .theme-nuit .discussion-heure, .theme-nuit .discussion-fermee { color: var(--texte-2); }
+.theme-nuit .discussion-raccourci { border-color: var(--ligne); }

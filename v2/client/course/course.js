@@ -9,11 +9,14 @@
 //   qu'entre l'acceptation et la fin de la course.
 // - L'annulation annonce les frais avant de confirmer, selon les mêmes règles
 //   que la base (qui reste seule juge du montant).
+// - « Messages » : conversation avec le chauffeur pendant la course et 24 heures
+//   après (commun/discussion.js), réponses rapides comprises.
 // =============================================================================
 import { supabase, profilConnecte, messageErreur } from '../../commun/supabase.js';
 import { RACINE } from '../../commun/config.js';
 import { t, appliquerTraductions, langueActive, adopterLangueProfil, lienAvecLangue } from '../../commun/i18n.js';
 import { euros, nombre, el, afficherMessage, dateHeure, distanceKm } from '../../commun/outils.js';
+import { creerDiscussion } from '../../commun/discussion.js';
 import '../../commun/pwa.js';
 
 const $ = (id) => document.getElementById(id);
@@ -22,7 +25,8 @@ const STATUTS_ACTIFS = ['acceptee', 'arrivee', 'en_cours'];
 const etat = {
   course: null, arrets: [], position: null, tarif: null, factures: [], noteDonnee: null,
   parametres: { coefficient_detour: 1.3, vitesse_moyenne_kmh: 27.3, annulation_gratuite_planifiee_min: 120 },
-  carte: null, reperes: {}, canalCourse: null, canalPosition: null, minuteur: null, noteChoisie: 0
+  carte: null, reperes: {}, canalCourse: null, canalPosition: null, minuteur: null, noteChoisie: 0,
+  discussion: null
 };
 
 appliquerTraductions();
@@ -54,6 +58,8 @@ async function demarrer() {
   await chargerAnnexes();
 
   $('suivi').hidden = false;
+  etat.discussion = creerDiscussion({ role: 'client', moi: profil.id, place: $('actions'), avant: $('partager'),
+                                      interlocuteur: (c) => c.chauffeur_prenom || '' });
   initialiserCarte();
   preparerNote();
   preparerAnnulation();
@@ -191,6 +197,7 @@ function afficherChauffeur() {
     $('appeler').textContent = t('suivi.appeler', { prenom: c.chauffeur_prenom || '' });
   }
   $('partager').hidden = !STATUTS_ACTIFS.includes(c.statut);
+  if (etat.discussion) etat.discussion.majCourse(c);
 }
 
 function afficherRecapitulatif() {

@@ -4,7 +4,7 @@
 # -----------------------------------------------------------------------------
 # Recrée une base vide « loc_v2 », y installe l'imitation de Supabase
 # (00_environnement_local.sql), applique toutes les migrations dans l'ordre,
-# puis joue les scénarios de test (fichiers 1x_*.sql).
+# puis joue les scénarios de test (fichiers 10_*.sql à 99_*.sql, dans l'ordre).
 # Au moindre échec, le script s'arrête et affiche l'erreur.
 # Usage : bash supabase/tests/lancer_tests_locaux.sh
 # =============================================================================
@@ -32,7 +32,7 @@ for migration in "$DOSSIER"/migrations/*.sql; do
 done
 
 # Scénarios de test
-for test in "$DOSSIER"/tests/1*_*.sql; do
+for test in "$DOSSIER"/tests/[1-9][0-9]_*.sql; do
   [ -e "$test" ] || continue
   executer "$test"
 done

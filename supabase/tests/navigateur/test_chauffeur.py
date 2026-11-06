@@ -4,7 +4,7 @@
 # un autre onglet, feuille de route et relevé en PDF ; onglet Compte de la
 # salariée : documents (dépôt, vérification, retrait), bulletins et contrat
 # imprimables, heures, demande et retrait d'absence ; liens des
-# notifications ; déconnexion.
+# notifications ; messages avec le client pendant la course ; déconnexion.
 # Joué avec la chauffeuse des scénarios de test (Nadia, salariée).
 # Tout ce qui est créé ici est retiré : le parcours de l'administration
 # part ensuite du même état.
@@ -507,6 +507,49 @@ values ('sansfiche{marque}@exemple.test', '{{"prenom":"Malik","nom":"Benali","te
         systeme(f"delete from auth.users where id in ('{uid}', '{sans_fiche}');")
 
 
+async def discussion_chauffeur(page, course):
+    """Messages avec le client pendant la course (commun/discussion.js) :
+    message reçu (nombre de non lus, annonce), lecture, réponse rapide,
+    message libre, « Lu » quand le client a lu."""
+    print('Messages avec le client')
+    id_course = course['id']
+    verifier(await page.is_visible('#ouvrir-discussion'), 'course acceptée : bouton « Messages » à côté de « Appeler »')
+    ok, sortie = en_tant_que(CLIENT, f"insert into public.messages (course_id, auteur_id, contenu) "
+                                     f"values ('{id_course}', auth.uid(), 'Je suis devant la pharmacie, manteau rouge.')")
+    assert ok, sortie
+    # Relecture de secours toutes les 10 secondes (temps réel injoignable ici)
+    await page.wait_for_selector('#discussion-non-lus:not([hidden])', timeout=15000)
+    verifier(await page.inner_text('#discussion-non-lus') == '1', 'message du client : « 1 » non lu sur le bouton « Messages »')
+    verifier('Nouveau message de Claire' in await page.inner_text('#zone-messages'), 'message du client : annonce « Nouveau message de Claire »')
+    await page.click('#ouvrir-discussion')
+    await page.wait_for_selector('dialog#discussion[open]')
+    verifier(await page.inner_text('#discussion-titre') == 'Messages avec Claire', 'conversation : titre « Messages avec Claire »')
+    verifier('Je suis devant la pharmacie, manteau rouge.' in await page.inner_text('#discussion-fil'), 'conversation : message du client affiché')
+    await page.wait_for_selector('#discussion-non-lus[hidden]', state='attached')
+    verifier(valeur(f"select count(*) from public.messages where course_id = '{id_course}' and auteur_id = '{CLIENT}' and lu_le is not null") == '1',
+             'fenêtre ouverte : message du client marqué « lu » dans la base')
+    await page.locator('#discussion-raccourcis button', has_text='Je suis sur place.').click()
+    await page.wait_for_selector('#discussion-fil li[data-auteur="moi"]')
+    verifier(valeur(f"select count(*) from public.messages where course_id = '{id_course}' and auteur_id = '{CHAUFFEUSE}' "
+                    f"and contenu = 'Je suis sur place.'") == '1', 'réponse rapide « Je suis sur place. » enregistrée')
+    await page.fill('#discussion-texte', 'Je suis garée juste devant, berline noire.')
+    await page.click('#discussion-envoyer')
+    await page.wait_for_function("document.querySelectorAll('#discussion-fil li[data-auteur=\"moi\"]').length === 2")
+    verifier(await page.input_value('#discussion-texte') == '', 'message libre envoyé : champ vidé, message affiché')
+    # Le client lit les messages : « Lu » sous le dernier message de la chauffeuse
+    ok, sortie = en_tant_que(CLIENT, f"update public.messages set lu_le = now() where course_id = '{id_course}' "
+                                     f"and auteur_id <> auth.uid() and lu_le is null")
+    assert ok, sortie
+    await page.wait_for_function("(document.querySelector('#discussion-fil li[data-auteur=\"moi\"]:last-child .discussion-heure') || {}).textContent"
+                                 "?.includes('· Lu')", timeout=15000)
+    verifier(await page.locator('#discussion-fil .discussion-heure', has_text='· Lu').count() == 1,
+             'le client a lu : « Lu » sous le dernier message seulement')
+    await page.evaluate("document.getElementById('zone-messages')?.replaceChildren()")
+    await page.screenshot(path=f'{CAPTURES}/chauffeur-messages.png')
+    await page.click('#fermer-discussion')
+    await page.wait_for_selector('dialog#discussion:not([open])', state='attached')
+
+
 def preparer():
     # État connu : aucune course en cours, personne en ligne, délai de réponse de 30 s
     systeme("""update public.courses set statut = 'annulee', annulee_par = 'admin', annulee_le = now()
@@ -577,6 +620,7 @@ async def main():
             verifier(await page.get_attribute('#appeler-client', 'href') == 'tel:+33611111111', 'téléphone du client visible après acceptation')
             verifier('ll=48.8556,2.36' in (await page.get_attribute('#nav-waze', 'href')), 'navigation Waze vers le point de prise en charge')
             await page.screenshot(path=f'{CAPTURES}/chauffeur-course-en-route.png', full_page=True)
+            await discussion_chauffeur(page, course)
             await page.click('#action-etape')
             await page.wait_for_function("document.getElementById('etape-titre').textContent.startsWith('Arrivé')")
             verifier(not await page.is_hidden('#attente'), 'arrivé : compteur d\'attente affiché')
@@ -601,6 +645,7 @@ async def main():
             feuille = await page.inner_text('#feuille')
             verifier('LOC RÉACTION S.A.S' in feuille and 'SIREN 100052570' in feuille and 'Claire' in feuille and course['numero'] in feuille,
                      'feuille de route : exploitant, client, réservation, prise en charge')
+            verifier(await page.is_visible('#ouvrir-discussion'), 'course terminée : « Messages » reste ouvert (24 heures après la fin)')
             await page.screenshot(path=f'{CAPTURES}/chauffeur-course-terminee.png', full_page=True)
 
             print('Délai dépassé')

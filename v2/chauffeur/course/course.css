@@ -6,8 +6,11 @@
 .etape-titre { font-family: var(--police-titre); font-weight: 700; font-size: clamp(28px, 7vw, 36px); line-height: 1.1; }
 .etape-texte { color: var(--texte-2); }
 .navigation { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.client { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 12px; border-top: 1px solid var(--ligne); }
+/* Client : prénom, puis « Appeler » et « Messages » côte à côte (comme Waze et Google Maps) */
+.client { display: grid; gap: 12px; padding-top: 12px; border-top: 1px solid var(--ligne); }
+.client p { margin: 0; overflow-wrap: anywhere; }
 .client strong { font-size: 20px; }
+.actions-client { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
 .etiquette-nuit { color: var(--texte-2); margin-right: 6px; }
 .bouton-etape { min-height: 64px; font-size: 21px; }
 .attente { font-family: var(--police-titre); font-size: 24px; font-weight: 600; }

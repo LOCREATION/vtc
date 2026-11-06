@@ -16,10 +16,10 @@ de l'état laissé par le précédent) :
 
 ```
 npm install && npm run preparer
-bash ../lancer_tests_locaux.sh     # base locale neuve + 834 vérifications
+bash ../lancer_tests_locaux.sh     # base locale neuve + 844 vérifications
 python3 test_pages.py              # accueil, connexion et les trois entrées (33 vérifications)
-python3 test_client.py             # commande et suivi (18 vérifications)
-python3 test_chauffeur.py          # espace chauffeur, nouveau chauffeur (93 vérifications)
+python3 test_client.py             # commande, suivi et messages avec le chauffeur (29 vérifications)
+python3 test_chauffeur.py          # espace chauffeur, messages avec le client, nouveau chauffeur (103 vérifications)
 python3 test_admin.py              # administration (309 vérifications)
 ```
 
@@ -33,5 +33,9 @@ Administration : le service de connexion de Supabase est imité
 (`AuthSimulee` dans `banc.py`) — mot de passe, double authentification par
 application (code `123456`), niveaux « aal1 » et « aal2 » du jeton. La base
 locale refuse toute action d'administration sans « aal2 », comme en ligne.
+
+Messages entre le client et le chauffeur : le temps réel de Supabase n'est
+pas joignable ici, la page les reçoit par sa relecture de secours (toutes les
+10 secondes) ; ces essais attendent donc jusqu'à 15 secondes à trois reprises.
 
 Les captures d'écran sont enregistrées dans `captures/`.
