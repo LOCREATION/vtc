@@ -341,6 +341,42 @@ async def solde_parrainage_client(ctx, page):
     verifier(True, 'adresse /client/compte/#compte-parrainage : onglet Compte, à la section du parrainage')
 
 
+async def compte_pro_client(page):
+    """Compte > Compte professionnel (client/compte/pro.js), lecture seule :
+    Claire, gestionnaire d'un compte (raison sociale, statut, rôle, SIRET,
+    plafond, courses du mois sur facture mensuelle, facturation)."""
+    print('Compte professionnel')
+    compte = valeur(f"select compte_pro_id from public.comptes_pro_membres where profil_id = '{CLIENT}' limit 1")
+    if not compte:
+        print('  (Claire n\'est rattachée à aucun compte professionnel : vérification sautée)')
+        return
+    raison, siret, courriel = ligne_sql(f"select raison_sociale || '|' || coalesce(siret, '') || '|' || email_facturation "
+                                        f"from public.comptes_pro where id = '{compte}'")
+    n, montant = ligne_sql(f"""select count(*) || '|' || replace(to_char(coalesce(sum(case when statut = 'annulee' then frais_annulation
+                                   else prix_total + frais_attente end), 0), 'FM999990.00'), '.', ',')
+                                 from public.courses where compte_pro_id = '{compte}' and mode_paiement = 'facture_mensuelle'
+                                   and cree_le >= now() - interval '32 days'
+                                   and to_char(cree_le at time zone 'Europe/Paris', 'YYYY-MM') = to_char(now() at time zone 'Europe/Paris', 'YYYY-MM')""")
+    attendu = 'Aucune course du compte' if n == '0' else (f'1 course du compte, {montant} €' if n == '1' else f'{n} courses du compte, {montant} €')
+    await page.goto(SITE + 'client/compte/#compte-pro')
+    await page.wait_for_selector(f'#compte-pro-{compte}')
+    carte = espaces(await page.inner_text(f'#compte-pro-{compte}'))
+    verifier(raison in carte and 'Actif' in carte and 'gestionnaire' in carte and '« Facture mensuelle »' in carte
+             and await page.is_hidden('#compte-pro-aucun'),
+             f'compte professionnel : {raison}, actif, Claire gestionnaire, « Facture mensuelle » à la commande')
+    verifier((not siret or f'{siret[:3]} {siret[3:6]} {siret[6:9]} {siret[9:]}' in carte) and attendu in carte and courriel in carte,
+             f'compte professionnel : SIRET lisible, ce mois-ci « {attendu} », facturation ({courriel})')
+    if n != '0':
+        premier = valeur(f"""select numero from public.courses where compte_pro_id = '{compte}' and mode_paiement = 'facture_mensuelle'
+                              and to_char(cree_le at time zone 'Europe/Paris', 'YYYY-MM') = to_char(now() at time zone 'Europe/Paris', 'YYYY-MM')
+                            order by cree_le desc limit 1""")
+        verifier(await page.locator(f'#compte-pro-{compte} .pro-courses li').count() == min(int(n), 10)
+                 and premier in await page.inner_text(f'#compte-pro-{compte} .pro-courses li:first-child'),
+                 f'gestionnaire : les {min(int(n), 10)} dernières courses du mois, la plus récente d\'abord ({premier})')
+    await page.evaluate("document.getElementById('compte-pro').scrollIntoView({ block: 'start' })")
+    await page.screenshot(path=f'{CAPTURES}/client-compte-pro.png')
+
+
 def commander(**autres):
     corps = {'p_categorie': 'berline_hybride', 'p_depart_adresse': '10 Rue de Rivoli 75004 Paris',
              'p_depart_lat': 48.8556, 'p_depart_lng': 2.36, 'p_arrivee_adresse': 'Gare de Lyon',
@@ -493,6 +529,7 @@ async def main():
             demande = await support_client(page, debut, demandes_creees)
             await proches_client(page)
             await solde_parrainage_client(ctx, page)
+            await compte_pro_client(page)
 
             print('Langue')
             await page.click('#onglets [data-onglet="compte"]')
@@ -582,6 +619,15 @@ insert into auth.users (email, raw_user_meta_data) values ('nouveau{int(time.tim
                 await page.evaluate("document.getElementById('zone-messages')?.replaceChildren()")
                 await page.evaluate("document.getElementById('compte-parrainage').scrollIntoView({ block: 'start' })")
                 await page.screenshot(path=f'{CAPTURES}/client-parrainage-filleul.png')
+                verifier(await page.is_visible('#compte-pro-aucun') and await page.locator('#compte-pro-liste article').count() == 0,
+                         'nouveau client sans compte professionnel : ce qu\'apporte un compte, « Demander un compte professionnel »')
+                await page.click('#compte-pro-demander')
+                await page.wait_for_selector('dialog#support[open] #support-vue-nouvelle:not([hidden])')
+                verifier(await page.input_value('#support-type') == 'compte'
+                         and await page.input_value('#support-sujet') == 'Ouverture d\'un compte professionnel'
+                         and await page.evaluate("document.activeElement.id") == 'support-message',
+                         '« Demander un compte professionnel » : nouvelle demande au support, type et sujet déjà remplis')
+                await page.click('#support-fermer')
                 await ctx.close()
             finally:
                 systeme(f"delete from auth.users where id = '{nouveau}';")
