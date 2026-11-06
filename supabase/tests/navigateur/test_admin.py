@@ -325,9 +325,17 @@ async def courses(nav):
     verifier('Prix annoncé' in await page.inner_text('#vue-fiche'), 'fiche : détail du prix')
     await page.get_by_role('button', name='Confirmer l\'encaissement').first.click()
     await page.locator('dialog.fenetre').get_by_role('button', name='Confirmer').click()
+    # Attente du message de la page (succès ou erreur), puis de l'état de la base
+    await page.wait_for_function("(document.getElementById('zone-messages')?.textContent || '').length > 0")
+    statut = ''
+    for _ in range(80):
+        statut = valeur(f"select statut from public.paiements where course_id = '{id_course}' and nature = 'course'")
+        if statut == 'encaisse':
+            break
+        await page.wait_for_timeout(100)
+    message = await page.inner_text('#zone-messages')
+    verifier(statut == 'encaisse' and 'Encaissement confirmé' in message, f'fiche : encaissement confirmé ({message.strip()})')
     await page.wait_for_selector('text=Encaissé')
-    verifier(valeur(f"select statut from public.paiements where course_id = '{id_course}' and nature = 'course'") == 'encaisse',
-             'fiche : encaissement confirmé')
     await page.get_by_role('button', name='Rembourser').first.click()
     await page.wait_for_selector('dialog.fenetre[open]')
     champ_montant = page.locator('dialog.fenetre input[name=montant]')
