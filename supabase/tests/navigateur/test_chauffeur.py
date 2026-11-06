@@ -1,13 +1,18 @@
 # Banc d'essai de l'espace chauffeur v2 : service, demande entrante, course
 # complète, encaissement, note, feuille de route, délai dépassé, refus,
 # réservation prise ; onglets Revenus, Courses et Compte, demande reçue sur
-# un autre onglet, feuille de route et relevé en PDF, déconnexion.
-# Joué avec la chauffeuse des scénarios de test.
+# un autre onglet, feuille de route et relevé en PDF ; onglet Compte de la
+# salariée : documents (dépôt, vérification, retrait), bulletins et contrat
+# imprimables, heures, demande et retrait d'absence ; liens des
+# notifications ; déconnexion.
+# Joué avec la chauffeuse des scénarios de test (Nadia, salariée).
+# Tout ce qui est créé ici est retiré : le parcours de l'administration
+# part ensuite du même état.
 import asyncio, json, re, time
 from decimal import Decimal
 from playwright.async_api import async_playwright
-from banc import (SITE, CAPTURES, CLIENT, CHAUFFEUSE, ADMIN, systeme, en_tant_que, appel_rpc,
-                  session_injectee, routeur, serveur_local, verifier)
+from banc import (SITE, CAPTURES, CLIENT, CHAUFFEUSE, ADMIN, PNG_GRIS, FICHIERS_DEPOSES, FICHIERS_RETIRES,
+                  systeme, en_tant_que, appel_rpc, session_injectee, routeur, serveur_local, verifier)
 
 console = []
 
@@ -126,8 +131,8 @@ async def onglets_chauffeur(ctx, page, course, reservation):
     texte = await doc.inner_text('#document')
     verifier('FEUILLE DE ROUTE' in texte.upper() and course['numero'] in texte and 'Claire' in texte and 'LOC RÉACTION S.A.S' in texte,
              'feuille de route PDF : entreprise, course, client')
-    verifier('Justificatif de la réservation préalable' in texte and 'Prise en charge' in texte and 'Réservée le' in texte,
-             'feuille de route PDF : réservation préalable, date et lieu de prise en charge')
+    verifier('Justificatif de la réservation préalable' in texte and 'Prise en charge' in texte and 'Réservée le' in texte
+             and 'null' not in texte, 'feuille de route PDF : réservation préalable, date et lieu de prise en charge')
     registre = valeur("select coalesce(registre_vtc_numero, '') from public.societe where id = 1")
     if registre:
         verifier(f'Registre des exploitants VTC n° {registre}' in texte, 'feuille de route PDF : n° du registre VTC')
@@ -140,7 +145,7 @@ async def onglets_chauffeur(ctx, page, course, reservation):
     await doc.goto(SITE + 'chauffeur/' + releve)
     await doc.wait_for_selector('#document .doc')
     texte = await doc.inner_text('#document')
-    verifier(f'Chiffred\'affairesdescourses{montant_fr(mois)}' in normaliser(texte) and course['numero'] in texte,
+    verifier(f'Chiffred\'affairesdescourses{montant_fr(mois)}' in normaliser(texte) and course['numero'] in texte and 'null' not in texte,
              f'relevé du mois PDF : chiffre d\'affaires {montant_fr(mois)}, détail des courses')
     await doc.screenshot(path=f'{CAPTURES}/chauffeur-releve-telephone.png', full_page=True)
     await doc.close()
@@ -166,6 +171,7 @@ async def onglets_chauffeur(ctx, page, course, reservation):
     verifier(valeur(f"select telephone from public.profils where id = '{CHAUFFEUSE}'") == '+33699887766',
              'compte : téléphone enregistré dans la base')
     systeme(f"update public.profils set telephone = nullif($t${telephone}$t$, '') where id = '{CHAUFFEUSE}';")
+    await compte_salariee(ctx, page)
     await page.click('#onglets [data-onglet="accueil"]')
     await page.wait_for_selector('#vue-accueil:not([hidden])')
     verifier(page.url.endswith('/chauffeur/'), 'retour à l\'accueil : adresse sans onglet')
@@ -174,6 +180,229 @@ async def onglets_chauffeur(ctx, page, course, reservation):
     verifier(True, 'bouton Retour du téléphone : onglet précédent (Compte)')
     await page.click('#onglets [data-onglet="accueil"]')
     await page.wait_for_selector('#vue-accueil:not([hidden])')
+
+
+def ligne_sql(requete):
+    return valeur(requete).split('|')
+
+
+async def sans_messages(page):
+    """Avant une capture : les messages brefs des étapes précédentes (affichés quelques secondes) sont effacés."""
+    await page.evaluate("document.getElementById('zone-messages')?.replaceChildren()")
+
+
+async def message_affiche(page, texte):
+    """Attend un message bref (zone en bas de l'écran) contenant « texte »."""
+    await page.wait_for_function(f"(document.getElementById('zone-messages')?.textContent || '').includes({json.dumps(texte)})", timeout=8000)
+
+
+async def compte_salariee(ctx, page):
+    """Onglet Compte de la chauffeuse salariée : documents, paie, heures et absences, liens des notifications."""
+    nadia = valeur(f"select id from public.salaries where profil_id = '{CHAUFFEUSE}'")
+    debut = valeur("select clock_timestamp()::text")          # notifications créées par ce parcours : retirées à la fin
+
+    print('Compte : documents')
+    await page.wait_for_selector('#docs-liste .piece')
+    permis = page.locator('#docs-liste .piece', has_text='Permis de conduire')
+    verifier('Validé' in await permis.inner_text() and await permis.get_by_role('button', name='Retirer').count() == 0,
+             'documents : permis validé par LOC RÉACTION, qui ne se retire plus')
+    await page.click('#docs-ajouter')
+    await page.click('#docs-envoyer')
+    verifier(await page.is_visible('#docs-type-erreur') and await page.is_visible('#docs-fichier-erreur'),
+             'dépôt : type de document et fichier demandés avant l\'envoi')
+    await page.select_option('#docs-type', 'carte_vtc')
+    verifier(await page.is_visible('#docs-echeance'), 'carte VTC : fin de validité demandée')
+    await page.fill('#docs-numero', 'VTC-0002')
+    await page.fill('#docs-echeance', '2025-01-31')
+    await page.set_input_files('#docs-fichier', files=[{'name': 'carte-vtc.png', 'mimeType': 'image/png', 'buffer': PNG_GRIS}])
+    await page.click('#docs-envoyer')
+    verifier('plus valable' in await page.inner_text('#docs-echeance-erreur'), 'dépôt : carte périmée refusée avant l\'envoi')
+    echeance = valeur("select ((now() at time zone 'Europe/Paris')::date + 700)::text")
+    await page.fill('#docs-echeance', echeance)
+    verifier(await page.is_hidden('#docs-echeance-erreur'), 'date corrigée : son message d\'erreur disparaît')
+    await sans_messages(page)
+    await capture_complete(page, f'{CAPTURES}/chauffeur-compte-depot-telephone.png')
+    await page.click('#docs-envoyer')
+    await page.wait_for_selector('#docs-formulaire', state='hidden')
+    await message_affiche(page, 'Carte professionnelle VTC envoyée : LOC RÉACTION la vérifie.')
+    carte = ligne_sql(f"""select id || '|' || statut || '|' || fichier_chemin || '|' || coalesce(numero, '') || '|' || expire_le
+                           from public.documents where chauffeur_id = '{CHAUFFEUSE}' and type = 'carte_vtc' order by cree_le desc limit 1""")
+    verifier(carte[1] == 'en_attente' and re.match(rf'^{CHAUFFEUSE}/carte_vtc-\d+\.png$', carte[2]) is not None
+             and carte[3] == 'VTC-0002' and carte[4] == echeance and f'documents/{carte[2]}' in FICHIERS_DEPOSES,
+             'carte VTC déposée : en vérification, numéro et date enregistrés, fichier dans le dossier privé de la chauffeuse')
+    await page.wait_for_function("document.getElementById('docs-liste').textContent.includes('En cours de vérification')")
+    piece = page.locator('#docs-liste .piece', has_text='Carte professionnelle VTC')
+    async with page.expect_popup() as fenetre:
+        await piece.get_by_role('button', name='Voir').click()
+    vue = await fenetre.value
+    await vue.wait_for_url(re.compile('object/sign/documents/'))
+    verifier(f'object/sign/documents/{carte[2]}' in vue.url, 'Voir : la pièce s\'ouvre par un lien temporaire')
+    await vue.close()
+
+    # Vérification par l'administration : refus motivé, vu depuis le lien de la notification
+    ok, sortie = appel_rpc('admin_verifier_document', {'p_document': carte[0], 'p_statut': 'refuse',
+                                                       'p_commentaire': 'Photo floue : envoyez une photo nette du recto et du verso.'}, ADMIN)
+    assert ok, sortie
+    lien = valeur(f"select lien from public.notifications where destinataire_id = '{CHAUFFEUSE}' and titre = 'Document refusé' order by cree_le desc limit 1")
+    verifier(lien == '/chauffeur/documents/', 'notification « Document refusé » : lien vers les documents')
+    await page.goto(SITE + lien.lstrip('/'))
+    await page.wait_for_url(re.compile(r'/chauffeur/\?onglet=compte#compte-documents$'))
+    await page.wait_for_function("document.getElementById('docs-liste')?.textContent.includes('Refusé')", timeout=8000)
+    await page.wait_for_function("Math.abs(document.getElementById('compte-documents').getBoundingClientRect().top) < 60", timeout=5000)
+    verifier(await page.is_visible('#vue-compte'), 'lien de la notification : onglet Compte, section Mes documents en haut de l\'écran')
+    piece = page.locator('#docs-liste .piece', has_text='Carte professionnelle VTC')
+    texte = await piece.inner_text()
+    verifier('Refusé' in texte and 'Motif : Photo floue' in texte and await piece.get_by_role('button', name='Retirer').count() == 0,
+             'document refusé : motif de LOC RÉACTION affiché')
+    await sans_messages(page)
+    await capture_complete(page, f'{CAPTURES}/chauffeur-compte-documents-telephone.png')
+
+    # Retrait d'une pièce en vérification ; puis retrait d'une pièce validée entre-temps
+    for type_piece, libelle in (('justificatif_domicile', 'Justificatif de domicile'), ('piece_identite', 'Pièce d\'identité')):
+        await page.click('#docs-ajouter')
+        await page.select_option('#docs-type', type_piece)
+        if type_piece == 'piece_identite':
+            await page.fill('#docs-echeance', echeance)
+        await page.set_input_files('#docs-fichier', files=[{'name': f'{type_piece}.pdf', 'mimeType': 'application/pdf', 'buffer': b'%PDF-1.4 essai'}])
+        await page.click('#docs-envoyer')
+        await page.wait_for_selector('#docs-formulaire', state='hidden')
+        await page.wait_for_function(f"document.getElementById('docs-liste').textContent.includes({json.dumps(libelle)})")
+    domicile = ligne_sql(f"select id || '|' || fichier_chemin from public.documents where chauffeur_id = '{CHAUFFEUSE}' and type = 'justificatif_domicile'")
+    await page.locator('#docs-liste .piece', has_text='Justificatif de domicile').get_by_role('button', name='Retirer').click()
+    await message_affiche(page, 'Document retiré.')
+    await page.wait_for_function("!document.getElementById('docs-liste').textContent.includes('Justificatif de domicile')")
+    verifier(valeur(f"select count(*) from public.documents where id = '{domicile[0]}'") == '0' and f'documents/{domicile[1]}' in FICHIERS_RETIRES,
+             'retrait d\'une pièce en vérification : ligne et fichier retirés')
+    identite = valeur(f"select id from public.documents where chauffeur_id = '{CHAUFFEUSE}' and type = 'piece_identite'")
+    ok, sortie = appel_rpc('admin_verifier_document', {'p_document': identite, 'p_statut': 'valide'}, ADMIN)
+    assert ok, sortie
+    await page.locator('#docs-liste .piece', has_text='Pièce d\'identité').get_by_role('button', name='Retirer').click()
+    await message_affiche(page, 'déjà vérifié ce document')
+    await page.wait_for_function("document.getElementById('docs-liste').textContent.includes('Validé') && document.querySelectorAll('#docs-liste .etat-piece[data-statut=\"valide\"]').length === 2")
+    verifier(valeur(f"select statut from public.documents where id = '{identite}'") == 'valide'
+             and 'Validé' in await page.locator('#docs-liste .piece', has_text='Pièce d\'identité').inner_text(),
+             'pièce validée entre-temps : non retirée, message clair, liste à jour')
+    systeme(f"""delete from public.documents where id in ('{carte[0]}', '{identite}');
+               delete from public.notifications where destinataire_id = '{CHAUFFEUSE}' and titre in ('Document refusé', 'Document validé')
+                 and cree_le >= '{debut}';""")
+
+    print('Compte : paie')
+    await page.wait_for_selector('#compte-paie:not([hidden]) #paie-bulletins .piece')
+    bulletins = valeur(f"select count(*) from public.bulletins where salarie_id = '{nadia}' and statut <> 'brouillon'")
+    dernier = ligne_sql(f"""select id || '|' || net_a_payer || '|' || coalesce(pdf_chemin, '') from public.bulletins
+                             where salarie_id = '{nadia}' and statut <> 'brouillon' order by periode desc limit 1""")
+    verifier(await page.locator('#paie-bulletins .piece').count() == int(bulletins)
+             and montant_fr(dernier[1]) in normaliser(await page.inner_text('#paie-bulletins .piece >> nth=0')),
+             f'paie : {bulletins} bulletins validés, le plus récent en tête avec son net à payer')
+    lien_bulletin = await page.get_attribute('#paie-bulletins .piece >> nth=0 >> a', 'href')
+    verifier(lien_bulletin == f'document/?type=bulletin&id={dernier[0]}', 'paie : bulletin imprimable')
+    contrat = ligne_sql(f"""select id || '|' || type || '|' || statut || '|' || coalesce(pdf_chemin, '') from public.contrats
+                             where salarie_id = '{nadia}' and statut <> 'brouillon' order by date_debut desc limit 1""")
+    texte = await page.inner_text('#paie-contrats')
+    verifier(contrat[1] in texte and ('Signé' in texte if contrat[2] == 'signe' else True) and ('PDF signé' in texte) == bool(contrat[3]),
+             f'paie : contrat {contrat[1]} ({contrat[2]}), PDF signé disponible')
+    await page.evaluate("document.getElementById('compte-paie').scrollIntoView()")
+    await sans_messages(page)
+    await page.screenshot(path=f'{CAPTURES}/chauffeur-compte-paie-telephone.png')
+
+    doc = await ctx.new_page()
+    doc.on('pageerror', lambda e: console.append(f'pageerror (document) : {e}'))
+    await doc.goto(SITE + 'chauffeur/' + lien_bulletin)
+    await doc.wait_for_selector('#document .doc.bulletin')
+    texte = await doc.inner_text('#document')
+    verifier('BULLETIN DE PAIE' in texte.upper() and 'NADIA MOREAU' in texte.upper() and 'LOC RÉACTION S.A.S' in texte
+             and montant_fr(dernier[1]) in normaliser(texte) and 'null' not in texte,
+             'bulletin imprimable : employeur, salariée, net à payer comme dans la base')
+    verifier((await doc.locator('.barre-document button', has_text='PDF remis').count() == 1) == bool(dernier[2]),
+             'bulletin : « PDF remis » quand LOC RÉACTION l\'a joint')
+    await doc.screenshot(path=f'{CAPTURES}/chauffeur-bulletin-telephone.png', full_page=True)
+    await doc.emulate_media(media='print')
+    verifier(await doc.is_hidden('.barre-document') and await doc.is_visible('#document .doc'), 'impression du bulletin : le document seul')
+    await doc.emulate_media(media='screen')
+    await doc.goto(SITE + f'chauffeur/document/?type=contrat&id={contrat[0]}')
+    await doc.wait_for_selector('#document .doc')
+    texte = await doc.inner_text('#document')
+    verifier('CONTRAT DE TRAVAIL À DURÉE INDÉTERMINÉE' in texte.upper() and 'NADIA' in texte.upper() and 'LOC RÉACTION S.A.S' in texte
+             and 'Article 1' in texte and 'null' not in texte, 'contrat imprimable : texte établi par LOC RÉACTION, parties, articles')
+    if contrat[3]:
+        async with doc.expect_popup() as fenetre:
+            await doc.locator('.barre-document button', has_text='PDF signé').click()
+        vue = await fenetre.value
+        await vue.wait_for_url(re.compile('object/sign/paie/'))
+        verifier(f'object/sign/paie/{contrat[3]}' in vue.url, 'contrat : PDF signé ouvert par un lien temporaire')
+        await vue.close()
+    await doc.screenshot(path=f'{CAPTURES}/chauffeur-contrat-telephone.png', full_page=True)
+    await doc.goto(SITE + 'chauffeur/document/?type=bulletin&id=00000000-0000-4000-8000-000000000000')
+    await doc.wait_for_selector('#erreur:not([hidden]) .alerte')
+    verifier('introuvable' in await doc.inner_text('#erreur'), 'bulletin inconnu : message clair')
+    await doc.close()
+
+    print('Compte : heures et absences')
+    absences = valeur(f"select count(*) from public.absences where salarie_id = '{nadia}'")
+    verifier(await page.locator('#absences-liste .piece').count() == int(absences) and 'Acceptée' in await page.inner_text('#absences-liste'),
+             f'absences : {absences} absences, avec la réponse de LOC RÉACTION')
+    verifier(re.match(r"^Heures d(e |')[a-zéû]+$", await page.inner_text('#planning-chiffres div:first-child dt')) is not None,
+             'heures du mois en cours : « ' + await page.inner_text('#planning-chiffres div:first-child dt') + ' »')
+    await page.click('#absence-demander')
+    hier = valeur("select ((now() at time zone 'Europe/Paris')::date - 1)::text")
+    await page.fill('#absence-debut', hier)
+    await page.fill('#absence-fin', hier)
+    await page.click('#absence-envoyer')
+    verifier('déjà passé' in await page.inner_text('#absence-debut-erreur'), 'demande : premier jour passé refusé avant l\'envoi')
+    lundi = valeur("select date_trunc('week', (now() at time zone 'Europe/Paris')::date + 63)::date::text")
+    mardi = valeur(f"select ('{lundi}'::date + 1)::text")
+    await page.select_option('#absence-type', 'conges_payes')
+    await page.fill('#absence-debut', lundi)
+    verifier(await page.is_hidden('#absence-debut-erreur'), 'premier jour corrigé : son message d\'erreur disparaît')
+    await page.fill('#absence-fin', mardi)
+    await page.fill('#absence-commentaire', 'Rendez-vous à la préfecture')
+    await sans_messages(page)
+    await capture_complete(page, f'{CAPTURES}/chauffeur-absence-telephone.png')
+    await page.click('#absence-envoyer')
+    await page.wait_for_selector('#absence-formulaire', state='hidden')
+    demande = ligne_sql(f"""select id || '|' || statut || '|' || jours || '|' || prive.jours_ouvrables(debut, fin) || '|' || coalesce(commentaire, '')
+                             from public.absences where salarie_id = '{nadia}' and debut = '{lundi}'""")
+    verifier(demande[1] == 'demandee' and Decimal(demande[2]) == Decimal(demande[3]) and demande[4] == 'Rendez-vous à la préfecture',
+             f'demande de congés payés enregistrée : en attente, {demande[3]} jours ouvrables comptés par la base')
+    await page.wait_for_function("document.getElementById('absences-liste').textContent.includes('En attente de réponse')")
+    verifier(await page.inner_text('#planning-chiffres div:nth-child(2) dd') == '1', 'heures et absences : 1 demande en attente')
+    await page.click('#absence-demander')
+    await page.fill('#absence-debut', mardi)
+    await page.fill('#absence-fin', mardi)
+    await page.click('#absence-envoyer')
+    await message_affiche(page, 'Une absence est déjà enregistrée')
+    verifier(await page.is_visible('#absence-formulaire'), 'jours déjà demandés : refusés par la base, message affiché, formulaire gardé')
+    await page.click('#absence-formulaire >> text=Annuler')
+    await page.locator('#absences-liste .piece', has_text='En attente de réponse').get_by_role('button', name='Retirer la demande').click()
+    await message_affiche(page, 'Demande retirée.')
+    await page.wait_for_function("!document.getElementById('absences-liste').textContent.includes('En attente de réponse')")
+    verifier(valeur(f"select count(*) from public.absences where id = '{demande[0]}'") == '0', 'demande retirée : plus dans la base')
+
+    # Demande acceptée pendant que l'écran est ouvert : le retrait est refusé, la liste se met à jour
+    ok, sortie = en_tant_que(CHAUFFEUSE, f"insert into public.absences (salarie_id, type, debut, fin) values ('{nadia}', 'sans_solde', '{lundi}', '{lundi}') returning id")
+    assert ok, sortie
+    sans_solde = sortie.strip().splitlines()[0]
+    await page.click('#onglets [data-onglet="accueil"]')
+    await page.click('#onglets [data-onglet="compte"]')
+    await page.wait_for_function("document.getElementById('absences-liste').textContent.includes('En attente de réponse')")
+    ok, sortie = appel_rpc('admin_decider_absence', {'p_absence': sans_solde, 'p_decision': 'validee'}, ADMIN)
+    assert ok, sortie
+    await page.locator('#absences-liste .piece', has_text='En attente de réponse').get_by_role('button', name='Retirer la demande').click()
+    await message_affiche(page, 'déjà répondu à cette demande')
+    await page.wait_for_function("!document.getElementById('absences-liste').textContent.includes('En attente de réponse')")
+    verifier(valeur(f"select statut from public.absences where id = '{sans_solde}'") == 'validee',
+             'demande acceptée entre-temps : non retirée, message clair, liste à jour')
+    systeme(f"""delete from public.absences where id = '{sans_solde}';
+               delete from public.notifications where destinataire_id = '{CHAUFFEUSE}' and titre = 'Demande d''absence acceptée'
+                 and cree_le >= '{debut}';""")
+
+    print('Liens des notifications')
+    await page.goto(SITE + 'chauffeur/revenus/')
+    await page.wait_for_url(re.compile(r'/chauffeur/\?onglet=revenus$'))
+    await page.wait_for_selector('#vue-revenus:not([hidden]) #revenus-ca')
+    verifier(True, 'lien « Pourboire reçu » (/chauffeur/revenus/) : onglet Revenus')
+    await page.click('#onglets [data-onglet="compte"]')
+    await page.wait_for_selector('#vue-compte:not([hidden]) #compte-profil dd')
 
 
 def preparer():
@@ -331,6 +560,10 @@ async def main():
     finally:
         serveur.terminate()
     utiles = [c for c in console if 'WebSocket' not in c and 'realtime' not in c.lower() and 'ERR_FAILED' not in c]
-    print('Erreurs de la console (hors temps réel, injoignable ici) :', utiles or 'aucune')
+    # Refus attendu (une seule fois) : demande d'absence sur des jours déjà demandés, refusée par la base
+    attendu = 'error: Failed to load resource: the server responded with a status of 400 (Bad Request)'
+    if attendu in utiles:
+        utiles.remove(attendu)
+    print('Erreurs de la console (hors temps réel, injoignable ici, et hors refus attendu de la base) :', utiles or 'aucune')
 
 asyncio.run(main())

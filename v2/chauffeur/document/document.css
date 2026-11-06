@@ -25,3 +25,6 @@
 /* Relevé : le trajet garde une largeur lisible (le tableau défile) */
 .doc-table td.doc-trajet { min-width: 220px; }
 @media print { .doc-table td.doc-trajet { min-width: 0; } }
+/* Bulletin ou contrat disponible en PDF seulement (classé par l'administration) */
+.doc-seul-pdf { display: grid; gap: 14px; }
+.doc-seul-pdf p { margin: 0; }

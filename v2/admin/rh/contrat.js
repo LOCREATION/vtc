@@ -228,7 +228,7 @@ function entete(titre, sousTitre) {
     sousTitre ? el('p', { classe: 'doc-sous-titre', texte: sousTitre }) : null);
 }
 
-function documentContrat(k, c) {
+export function documentContrat(k, c) {
   const so = c.societe;
   const s = c.salarie;
   const a = accords(s.civilite);
@@ -297,7 +297,7 @@ function documentContrat(k, c) {
     signatures(c));
 }
 
-function documentAvenant(k, c) {
+export function documentAvenant(k, c) {
   const so = c.societe;
   const s = c.salarie;
   const a = accords(s.civilite);

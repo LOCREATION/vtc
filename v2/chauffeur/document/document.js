@@ -9,7 +9,16 @@
 // 2. Relevé d'activité d'une période (?type=releve&du=…&au=…) : totaux (comme
 //    l'onglet Revenus), tableau jour par jour, détail des courses terminées
 //    et annulées.
-// Le chauffeur ne lit que ses propres courses (règles d'accès de la base).
+// 3. Bulletin de paie (?type=bulletin&id=…), salarié seulement : le bulletin
+//    tel qu'il a été calculé et validé (identités de l'employeur et du
+//    salarié au moment du calcul), même mise en page que dans
+//    l'administration (admin/rh/bulletin.js) ; « PDF remis » s'il est joint.
+// 4. Contrat de travail ou avenant (?type=contrat&id=…), salarié seulement :
+//    le texte établi par l'administration (admin/rh/contrat.js) ; « PDF
+//    signé » dès qu'il est classé. Un contrat signé avant l'application
+//    n'existe qu'en PDF signé.
+// Le chauffeur ne lit que ses propres courses, ses bulletins validés et ses
+// contrats remis (règles d'accès de la base).
 // Une mention manquante dans les paramètres de l'entreprise est signalée à
 // l'écran seulement (jamais imprimée).
 // =============================================================================
@@ -20,12 +29,14 @@ import { el, euros, dateHeure } from '../../commun/outils.js';
 import { enteteDocument, barreDocument, blocTotaux, enteteTableau, tableauDefilant } from '../../admin/commun/documents.js';
 import { mentionsCourse } from '../commun/feuille-route.js';
 import { lireHistorique, instantFin } from '../commun/historique.js';
-import { jourParis, ajouterJours, dateCourte, dateLongue, dureeLisible, heuresLisibles } from '../commun/periodes.js';
+import { jourParis, ajouterJours, dateCourte, dateLongue, dureeLisible, heuresLisibles, libellePeriode } from '../commun/periodes.js';
 import { STATUTS_COURSE, arrondi, majorationDe } from '../commun/libelles.js';
+import { ouvrirFichier } from '../commun/fichiers.js';
 
 imposerLangue('fr');                 // espace chauffeur en français
 
 const $ = (id) => document.getElementById(id);
+const IDENTIFIANT = /^[0-9a-f-]{36}$/i;
 const COLONNES_SOCIETE = 'raison_sociale, forme_juridique, capital, siren, siret, rcs, code_ape, tva_intracommunautaire, '
   + 'registre_vtc_numero, adresse, code_postal, ville, telephone, email';
 
@@ -47,11 +58,15 @@ async function demarrer() {
   if (profil.role !== 'chauffeur' || profil.statut !== 'actif') throw new Error('Ces documents sont réservés aux chauffeurs de LOC RÉACTION.');
 
   const parametres = new URLSearchParams(location.search);
-  const societe = (await lire(supabase.from('societe').select(COLONNES_SOCIETE).maybeSingle())) || {};
   const type = parametres.get('type');
-  if (type === 'feuille') await feuilleDeRoute(parametres.get('course'), societe, profil);
-  else if (type === 'releve') await releve(parametres.get('du'), parametres.get('au'), societe, profil);
-  else throw new Error('Document inconnu : ouvrez-le depuis votre espace chauffeur.');
+  if (type === 'bulletin') await bulletin(parametres.get('id'));
+  else if (type === 'contrat') await contrat(parametres.get('id'));
+  else {
+    const societe = (await lire(supabase.from('societe').select(COLONNES_SOCIETE).maybeSingle())) || {};
+    if (type === 'feuille') await feuilleDeRoute(parametres.get('course'), societe, profil);
+    else if (type === 'releve') await releve(parametres.get('du'), parametres.get('au'), societe, profil);
+    else throw new Error('Document inconnu : ouvrez-le depuis votre espace chauffeur.');
+  }
   $('chargement').hidden = true;
 }
 
@@ -59,6 +74,12 @@ async function lire(requete) {
   const { data, error } = await requete;
   if (error) throw error;
   return data;
+}
+
+// Contenu de la page : les éléments absents (null) sont ignorés, sinon le
+// navigateur écrirait le mot « null » dans le document
+function afficherDocument(...elements) {
+  $('document').replaceChildren(...elements.filter(Boolean));
 }
 
 // « Fermer » : ferme l'onglet ouvert depuis l'espace chauffeur ; sinon (lien
@@ -70,6 +91,24 @@ function boutonFermer(onglet) {
     setTimeout(() => { location.href = `../?onglet=${onglet}`; }, 300);
   });
   return bouton;
+}
+
+// PDF rangé par l'administration dans le dossier privé de la paie
+function boutonPdf(chemin, libelle) {
+  const bouton = el('button', { type: 'button', classe: 'bouton bouton-secondaire bouton-petit', texte: libelle });
+  bouton.addEventListener('click', () => ouvrirFichier('paie', chemin).catch((erreur) => {
+    $('erreur').hidden = false;
+    $('erreur').replaceChildren(el('p', { classe: 'alerte', role: 'alert', texte: messageErreur(erreur) }));
+  }));
+  return bouton;
+}
+
+// Document qui n'existe qu'en PDF (classé par l'administration) : pas de
+// texte à imprimer, seulement le fichier
+function seulementPdf(texte, chemin, libelle) {
+  afficherDocument(el('section', { classe: 'doc doc-seul-pdf non-imprimable' },
+    el('p', { texte }),
+    el('div', { classe: 'actions-ligne' }, boutonPdf(chemin, libelle), boutonFermer('compte'))));
 }
 
 // Mentions de l'entreprise qui manquent pour ce document (écran seulement)
@@ -88,7 +127,7 @@ function nomComplet(profil) {
 // 1. Feuille de route
 // ---------------------------------------------------------------------------
 async function feuilleDeRoute(id, societe, profil) {
-  if (!/^[0-9a-f-]{36}$/i.test(id || '')) throw new Error('Course introuvable : ouvrez la feuille de route depuis l\'onglet Courses.');
+  if (!IDENTIFIANT.test(id || '')) throw new Error('Course introuvable : ouvrez la feuille de route depuis l\'onglet Courses.');
   const [c, arrets, fiche] = await Promise.all([
     lire(supabase.from('courses').select('*').eq('id', id).maybeSingle()),
     lire(supabase.from('course_arrets').select('ordre, adresse').eq('course_id', id).order('ordre')),
@@ -104,7 +143,7 @@ async function feuilleDeRoute(id, societe, profil) {
   ].filter(Boolean);
   const court = { dateStyle: 'short', timeStyle: 'short' };
 
-  $('document').replaceChildren(
+  afficherDocument(
     barreDocument(boutonFermer('courses')),
     avertissement(manquants, 'la feuille de route'),
     el('article', { classe: 'doc', 'aria-label': `Feuille de route ${c.numero}` },
@@ -208,7 +247,7 @@ async function releve(du, au, societe, profil) {
     heures === null ? null : ['Heures de travail saisies', heures ? heuresLisibles(heures) : 'aucune']
   ];
 
-  $('document').replaceChildren(
+  afficherDocument(
     barreDocument(boutonFermer('revenus')),
     el('article', { classe: 'doc', 'aria-label': `Relevé d'activité, ${periode}` },
       enteteDocument({
@@ -223,4 +262,47 @@ async function releve(du, au, societe, profil) {
       courses.length ? el('section', { classe: 'doc-bloc', 'aria-label': 'Détail des courses' },
         el('h3', { texte: 'Détail des courses' }),
         tableauDefilant(tableCourses)) : null));
+}
+
+// ---------------------------------------------------------------------------
+// 3. Bulletin de paie
+// ---------------------------------------------------------------------------
+async function bulletin(id) {
+  if (!IDENTIFIANT.test(id || '')) throw new Error('Bulletin introuvable : ouvrez-le depuis l\'onglet Compte.');
+  const d = await lire(supabase.from('bulletins').select('id, salarie_id, periode, statut, pdf_chemin, valide_le, calcul').eq('id', id).maybeSingle());
+  if (!d || d.statut === 'brouillon') throw new Error('Ce bulletin est introuvable ou n\'est pas encore validé.');
+  const mois = libellePeriode('mois', d.periode, d.periode);
+  document.title = `Bulletin de paie, ${mois.toLowerCase()}, LOC RÉACTION`;
+  if (!d.calcul || !d.calcul.salarie) {
+    if (!d.pdf_chemin) throw new Error('Ce bulletin n\'est pas disponible en ligne : demandez-le à LOC RÉACTION.');
+    seulementPdf(`Bulletin de paie de ${mois.toLowerCase()} : il est disponible en PDF.`, d.pdf_chemin, 'Ouvrir le PDF');
+    return;
+  }
+  const { documentBulletin } = await import('../../admin/rh/bulletin.js');
+  afficherDocument(
+    barreDocument(d.pdf_chemin ? boutonPdf(d.pdf_chemin, 'PDF remis') : null, boutonFermer('compte')),
+    documentBulletin(d));
+}
+
+// ---------------------------------------------------------------------------
+// 4. Contrat de travail ou avenant
+// ---------------------------------------------------------------------------
+async function contrat(id) {
+  if (!IDENTIFIANT.test(id || '')) throw new Error('Contrat introuvable : ouvrez-le depuis l\'onglet Compte.');
+  const k = await lire(supabase.from('contrats').select('id, salarie_id, type, date_debut, date_fin, statut, signe_le, pdf_chemin, champs').eq('id', id).maybeSingle());
+  if (!k || k.statut === 'brouillon') throw new Error('Ce contrat est introuvable ou ne vous a pas encore été remis.');
+  const c = k.champs || {};
+  const titre = { CDI: 'Contrat de travail à durée indéterminée', CDD: 'Contrat de travail à durée déterminée', avenant: 'Avenant au contrat de travail' }[k.type];
+  document.title = `${titre || 'Contrat de travail'}, LOC RÉACTION`;
+  if (c.externe || !c.salarie || !titre) {
+    if (!k.pdf_chemin) throw new Error('Ce contrat n\'est pas disponible en ligne : demandez-le à LOC RÉACTION.');
+    seulementPdf('Ce contrat a été signé en dehors de l\'application : il est disponible en PDF signé.', k.pdf_chemin, 'Ouvrir le PDF signé');
+    return;
+  }
+  const { documentContrat, documentAvenant } = await import('../../admin/rh/contrat.js');
+  afficherDocument(
+    barreDocument(k.pdf_chemin ? boutonPdf(k.pdf_chemin, 'PDF signé') : null, boutonFermer('compte')),
+    k.statut === 'envoye' ? el('p', { classe: 'alerte alerte-info non-imprimable', role: 'status',
+      texte: 'À signer : relisez-le, puis signez l\'exemplaire papier que vous remet LOC RÉACTION (mention manuscrite « Lu et approuvé »). Le PDF signé sera ensuite disponible ici.' }) : null,
+    k.type === 'avenant' ? documentAvenant(k, c) : documentContrat(k, c));
 }

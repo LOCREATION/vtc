@@ -107,7 +107,7 @@ function suivi(d) {
       el('span', { texte: x.message })))) : el('p', { classe: 'texte-vert', texte: 'Tous les montants ont été revérifiés : aucun point à signaler.' }));
 }
 
-function documentBulletin(d) {
+export function documentBulletin(d) {
   const c = d.calcul;
   const s = c.salarie;
   const so = c.societe;

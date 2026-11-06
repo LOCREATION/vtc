@@ -8,18 +8,28 @@
 //     permis, note moyenne, taux d'acceptation ; ce qui expire dans les
 //     30 jours, ou a expiré, est signalé. Ces informations sont tenues par
 //     l'administration (la base refuse toute autre modification) ;
+//   - Mes documents : pièces déposées et leur vérification (documents.js) ;
+//   - Ma paie : bulletins et contrat de travail (paie.js), et Heures et
+//     absences : heures du mois, congés demandés (planning.js), pour un
+//     chauffeur salarié de LOC RÉACTION seulement ;
 //   - Contacter LOC RÉACTION : téléphone et e-mail de l'entreprise ;
 //   - Se déconnecter : hors ligne d'abord (chauffeur.js).
-// Lectures : profils, chauffeurs, vehicules (véhicule affecté), societe.
+// Une adresse avec ancre (?onglet=compte#compte-documents, lien des
+// notifications « Document validé ») amène directement à la section.
+// Lectures : profils, chauffeurs, vehicules (véhicule affecté), societe,
+// salaries (fiche salarié du chauffeur, s'il en a une).
 // =============================================================================
 import { supabase, messageErreur } from '../../commun/supabase.js';
 import { el, afficherMessage, nombre, telephoneInternational } from '../../commun/outils.js';
 import { jourParis, ajouterJours, dateCourte } from '../commun/periodes.js';
 import { telephoneLisible } from '../commun/feuille-route.js';
+import { creerSectionDocuments } from './documents.js';
+import { creerSectionPaie } from './paie.js';
+import { creerSectionPlanning } from './planning.js';
 
 const STATUTS_FICHE = { candidat: 'Candidature en cours', valide: 'Validée', suspendu: 'Suspendue', refuse: 'Refusée' };
 const ENERGIES = { hybride: 'hybride', electrique: 'électrique', essence: 'essence', diesel: 'diesel', autre: '' };
-const etat = { contexte: null };
+const etat = { contexte: null, sections: null };
 const $ = (id) => document.getElementById(id);
 
 export async function afficher(conteneur, contexte) {
@@ -29,7 +39,17 @@ export async function afficher(conteneur, contexte) {
     conteneur.dataset.pret = 'oui';
   }
   fermerFormulaire();
+  etat.sections.documents.fermer();
+  etat.sections.planning.fermer();
   await charger();
+  allerALaSection(conteneur);
+}
+
+// Ancre de l'adresse (#compte-documents…) : la section, sous la barre du haut
+function allerALaSection(conteneur) {
+  const id = decodeURIComponent(location.hash.slice(1));
+  const cible = id ? document.getElementById(id) : null;
+  if (cible && conteneur.contains(cible) && !cible.hidden) cible.scrollIntoView({ block: 'start' });
 }
 
 // ---------------------------------------------------------------------------
@@ -49,6 +69,8 @@ function construire(conteneur) {
       el('button', { type: 'button', classe: 'bouton bouton-secondaire', id: 'compte-annuler', texte: 'Annuler', onclick: fermerFormulaire }),
       el('button', { type: 'submit', classe: 'bouton bouton-principal', id: 'compte-enregistrer', texte: 'Enregistrer' })));
   formulaire.addEventListener('submit', (e) => { e.preventDefault(); enregistrer(); });
+  // Un champ corrigé perd son message d'erreur
+  formulaire.addEventListener('input', (e) => { if (e.target.getAttribute('aria-invalid') === 'true') marquer(e.target.id, null); });
 
   const modifier = el('button', { type: 'button', classe: 'bouton bouton-texte', id: 'compte-modifier', texte: 'Modifier' });
   modifier.addEventListener('click', ouvrirFormulaire);
@@ -64,6 +86,12 @@ function construire(conteneur) {
     }
   });
 
+  etat.sections = {
+    documents: creerSectionDocuments(etat.contexte),
+    paie: creerSectionPaie(),
+    planning: creerSectionPlanning()
+  };
+
   conteneur.replaceChildren(
     el('h1', { classe: 'vue-titre', id: 'titre-compte', texte: 'Compte' }),
     el('section', { classe: 'panneau', 'aria-labelledby': 'compte-titre-profil' },
@@ -76,6 +104,9 @@ function construire(conteneur) {
       el('div', { id: 'compte-alertes', classe: 'compte-alertes' }),
       el('dl', { classe: 'lignes-valeurs empilees', id: 'compte-fiche' }),
       el('p', { classe: 'aide', texte: 'Ces informations sont tenues par LOC RÉACTION. Pour les corriger, contactez-nous.' })),
+    etat.sections.documents.section,
+    etat.sections.paie.section,
+    etat.sections.planning.section,
     el('section', { classe: 'panneau', id: 'compte-bloc-contact', 'aria-labelledby': 'compte-titre-contact', hidden: true },
       el('h2', { id: 'compte-titre-contact', texte: 'Contacter LOC RÉACTION' }),
       el('div', { classe: 'actions-compte', id: 'compte-contact' })),
@@ -88,13 +119,14 @@ function construire(conteneur) {
 // ---------------------------------------------------------------------------
 async function charger() {
   const moi = etat.contexte.profil.id;
-  const [profil, fiche, societe] = await Promise.all([
+  const [profil, fiche, societe, salarie] = await Promise.all([
     supabase.from('profils').select('prenom, nom, telephone, email').eq('id', moi).maybeSingle(),
     supabase.from('chauffeurs').select('statut, salarie, chauffeuse, vehicule_id, carte_vtc_numero, carte_vtc_expiration, '
       + 'permis_numero, permis_expiration, note_moyenne, nb_notes, courses_proposees, courses_acceptees').eq('id', moi).maybeSingle(),
-    supabase.from('societe').select('raison_sociale, telephone, email').maybeSingle()
+    supabase.from('societe').select('raison_sociale, telephone, email').maybeSingle(),
+    supabase.from('salaries').select('id').eq('profil_id', moi).maybeSingle()
   ]);
-  for (const r of [profil, fiche, societe]) if (r.error) throw r.error;
+  for (const r of [profil, fiche, societe, salarie]) if (r.error) throw r.error;
   let vehicule = null;
   if (fiche.data && fiche.data.vehicule_id) {
     const lecture = await supabase.from('vehicules').select('marque, modele, couleur, energie, immatriculation, '
@@ -109,6 +141,12 @@ async function charger() {
   $('compte-aide-deconnexion').textContent = etat.contexte.enLigne
     ? 'Vous êtes en ligne : la déconnexion vous passe d\'abord hors ligne.'
     : 'Sur ce téléphone, vous devrez ensuite vous reconnecter avec le code reçu par e-mail.';
+
+  // Documents, paie, heures et absences : une section qui ne se lit pas
+  // n'empêche pas le reste de l'onglet de s'afficher
+  const { documents, paie, planning } = etat.sections;
+  await Promise.all([documents.charger(), paie.charger(salarie.data), planning.charger(salarie.data)]
+    .map((lecture) => lecture.catch((erreur) => afficherMessage(messageErreur(erreur), 'erreur'))));
 }
 
 function lignes(dl, liste) {

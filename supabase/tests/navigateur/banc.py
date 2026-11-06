@@ -371,7 +371,12 @@ def routeur(uid, auth=None):
                 ok, sortie = en_tant_que(qui, insertion, aal)
                 return await route.fulfill(status=201 if ok else 400, headers=entetes, body='' if ok else json.dumps({'message': sortie}))
             if rq.method == 'DELETE':
-                ok, sortie = en_tant_que(qui, f'delete from public.{table} where {" and ".join(filtres) or "false"}', aal)
+                suppression = f'delete from public.{table} where {" and ".join(filtres) or "false"}'
+                if 'return=representation' in (rq.headers.get('prefer') or ''):
+                    # .delete().select() : les lignes réellement retirées (aucune si la règle d'accès les protège)
+                    ok, sortie = en_tant_que(qui, f"with x as ({suppression} returning *) select coalesce(json_agg(x), '[]') from x", aal)
+                    return await route.fulfill(status=200 if ok else 400, headers=entetes, body=sortie if ok else json.dumps({'message': sortie}))
+                ok, sortie = en_tant_que(qui, suppression, aal)
                 return await route.fulfill(status=204 if ok else 400, headers=entetes, body='' if ok else json.dumps({'message': sortie}))
         if url.startswith(f'{API}/auth/v1/user'):
             return await route.fulfill(status=200, headers=entetes, body=json.dumps({'id': uid, 'aud': 'authenticated', 'role': 'authenticated'}))
