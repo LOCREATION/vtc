@@ -9,3 +9,9 @@
 /* Code : grands chiffres espacés, lisibles d'un coup d'œil */
 .saisie-code { font-family: var(--police-titre); font-size: 30px; font-weight: 600; letter-spacing: 0.4em; text-align: center; padding-left: 0.4em; }
 .actions-secondaires { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+/* Espace de la page (client, chauffeur, administration) au-dessus du titre */
+.etiquette-espace { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6E5200; }          /* or foncé lisible sur blanc (7:1) */
+/* Les autres entrées du site, sous le formulaire */
+.autres-entrees { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding-top: 14px; border-top: 1px solid var(--trait); }
+.autres-entrees p { margin: 0; width: 100%; color: var(--gris); font-size: 15px; }
+.lien-entree { font-weight: 600; min-height: 40px; display: inline-flex; align-items: center; }

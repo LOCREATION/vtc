@@ -44,7 +44,7 @@ async function demarrer() {
   const { data: { session } } = await supabase.auth.getSession();
   etat.profil = session ? await profilConnecte() : null;
   if (!etat.profil) {
-    location.replace(`${RACINE}connexion/?suite=${encodeURIComponent(location.pathname.slice(RACINE.length) + location.search)}`);
+    location.replace(`${RACINE}chauffeur/connexion/?suite=${encodeURIComponent(location.pathname.slice(RACINE.length) + location.search)}`);
     return;
   }
   if (!/^[0-9a-f-]{36}$/i.test(idCourse || '')) { $('introuvable').hidden = false; return; }

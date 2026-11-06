@@ -1,0 +1,28 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Espace chauffeur : dossier d'un compte qui n'est pas (ou plus) chauffeur en
+   service (candidature, dossier en cours d'examen, refus, suspension)
+   Panneaux, pièces et états : mêmes styles que l'onglet Compte
+   (../compte/compte.css).
+   ============================================================================= */
+.contenu-dossier { display: grid; gap: 12px; align-content: start; padding: 0 var(--marge) 32px; max-width: 760px; margin: 0 auto; min-width: 0; }
+.dossier-entete { display: grid; gap: 2px; padding-top: 4px; }
+.dossier-sous-titre { margin: 0; color: var(--texte-2); }
+.dossier-texte { margin: 0; }
+
+/* Carte VTC : oui / pas encore, deux grands boutons faciles à toucher */
+.choix-carte { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; min-width: 0; }
+.choix-carte legend { font-weight: 600; font-size: 15px; padding: 0; margin-bottom: 8px; }
+.options-carte { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.option-carte { display: flex; align-items: center; gap: 10px; min-height: var(--hauteur-tactile); padding: 0 14px;
+  border: 1.5px solid var(--ligne); border-radius: var(--rayon-champ); background: var(--surface-2); font-weight: 600; cursor: pointer; }
+.option-carte input { width: 20px; height: 20px; accent-color: var(--or); margin: 0; }
+.option-carte:has(input:checked) { border-color: var(--or); }
+.option-carte:has(input:focus-visible) { outline: 3px solid var(--or); outline-offset: 2px; }
+.choix-carte[aria-invalid='true'] .option-carte { border-color: #FF8A80; }
+
+/* Documents à fournir : une ligne par pièce et son état */
+.pieces-demandees { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.piece-demandee { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px;
+  padding: 10px 12px; border-radius: var(--rayon-champ); background: var(--surface-2); }
+.piece-demandee-nom { font-weight: 600; }

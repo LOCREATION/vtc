@@ -1,0 +1,16 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Espace chauffeur : page de connexion aux couleurs de nuit de l'espace
+   La mise en page des étapes est celle de la connexion du client
+   (../../connexion/connexion.css).
+   ============================================================================= */
+.theme-nuit .feuille { background: var(--surface); border-color: var(--ligne); color: var(--blanc); }
+.theme-nuit .etape .intro, .theme-nuit .autres-entrees p, .theme-nuit .champ .aide { color: var(--texte-2); }
+.theme-nuit .etiquette-espace { color: var(--or); }
+.theme-nuit .autres-entrees { border-top-color: var(--ligne); }
+.barre .pastille-espace { margin: 0 0 0 auto; display: inline-flex; align-items: center; min-height: 34px; padding: 0 14px;
+  border-radius: var(--rayon-pastille); background: var(--surface-2); font-weight: 600; font-size: 15px; }
+/* Nouveau chauffeur : ce qui se passe après le code */
+.devenir { display: grid; gap: 6px; padding: 14px; border-radius: var(--rayon-champ); background: var(--surface-2); }
+.devenir h2 { font-size: 18px; font-weight: 600; }
+.devenir p { margin: 0; color: var(--texte-2); font-size: 15px; }

@@ -1,8 +1,10 @@
 <!doctype html>
 <!-- =============================================================================
      LOC RÉACTION S.A.S — Version 2
-     Connexion et inscription par code reçu par e-mail (sans mot de passe)
-     Étapes : adresse e-mail → code reçu → profil (première fois seulement)
+     Espace client : connexion et inscription par code reçu par e-mail (sans
+     mot de passe). Étapes : adresse e-mail → code reçu → profil (première
+     fois seulement). Le chauffeur et l'administration ont leur propre entrée
+     (chauffeur/connexion/, admin/) : liens sous le formulaire.
      ============================================================================= -->
 <html lang="fr">
 <head>
@@ -34,6 +36,7 @@
   <main class="contenu connexion">
     <!-- Étape 1 : adresse e-mail -->
     <form class="feuille etape" id="etape-email" novalidate>
+      <p class="etiquette-espace" data-i18n="connexion.espace">Espace client</p>
       <h1 data-i18n="connexion.titre">Se connecter ou créer un compte</h1>
       <p class="intro" data-i18n="connexion.intro">Pas de mot de passe : nous vous envoyons un code de connexion par e-mail.</p>
       <div class="champ">
@@ -42,6 +45,11 @@
         <p class="erreur-champ" id="erreur-email" hidden></p>
       </div>
       <button type="submit" class="bouton bouton-principal bouton-large" id="bouton-email" data-i18n="connexion.recevoir">Recevoir mon code</button>
+      <nav class="autres-entrees" aria-labelledby="autres-entrees-titre">
+        <p id="autres-entrees-titre" data-i18n="connexion.autres">Vous êtes chauffeur ou membre de l'équipe ?</p>
+        <a class="lien-entree" id="vers-chauffeur" href="../chauffeur/connexion/" data-i18n="connexion.vers_chauffeur">Espace chauffeur</a>
+        <a class="lien-entree" id="vers-admin" href="../admin/" data-i18n="connexion.vers_admin">Administration</a>
+      </nav>
     </form>
 
     <!-- Étape 2 : code reçu -->

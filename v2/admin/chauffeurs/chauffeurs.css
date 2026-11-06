@@ -21,3 +21,6 @@
 
 /* Recherche d'un compte (enregistrer un chauffeur) */
 .resultats-comptes { display: grid; gap: 10px; }
+/* Comptes au rôle « chauffeur » sans fiche : à enregistrer, en tête de page */
+.sans-fiche { border-left: 4px solid var(--or); }
+.sans-fiche h2 { font-size: 20px; }

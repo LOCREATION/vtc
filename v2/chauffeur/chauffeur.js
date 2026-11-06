@@ -54,10 +54,9 @@ async function demarrer() {
   const { data: { session } } = await supabase.auth.getSession();
   etat.profil = session ? await profilConnecte() : null;
   if (!etat.profil) {
-    location.replace(`${RACINE}connexion/?suite=${encodeURIComponent(`chauffeur/${location.search}`)}`);
+    location.replace(`${RACINE}chauffeur/connexion/?suite=${encodeURIComponent(`chauffeur/${location.search}`)}`);
     return;
   }
-  if (etat.profil.role !== 'chauffeur' || etat.profil.statut !== 'actif') { $('acces-refuse').hidden = false; return; }
 
   const [fiche, position, parametres] = await Promise.all([
     supabase.from('chauffeurs').select('statut, note_moyenne, nb_notes, courses_proposees, courses_acceptees, '
@@ -65,7 +64,17 @@ async function demarrer() {
     supabase.from('positions').select('en_ligne, latitude, longitude').eq('chauffeur_id', etat.profil.id).maybeSingle(),
     supabase.from('parametres').select('delai_reponse_chauffeur_s').maybeSingle()
   ]);
-  if (!fiche.data || fiche.data.statut !== 'valide') { $('acces-refuse').hidden = false; return; }
+  if (fiche.error) throw fiche.error;
+
+  // Pas (ou plus) chauffeur en service : nouveau chauffeur (candidature),
+  // dossier en cours d'examen, refusé, suspendu, compte à activer… La page
+  // reste l'espace chauffeur : le dossier s'affiche à la place du service.
+  if (etat.profil.role !== 'chauffeur' || etat.profil.statut !== 'actif' || !fiche.data || fiche.data.statut !== 'valide') {
+    $('pastille-etat').hidden = true;
+    const { afficherDossier } = await import('./dossier/dossier.js');
+    await afficherDossier($('dossier'), { profil: etat.profil, fiche: fiche.data, deconnecter });
+    return;
+  }
   etat.fiche = fiche.data;
   if (parametres.data) etat.delaiReponseMs = parametres.data.delai_reponse_chauffeur_s * 1000;
 
@@ -173,7 +182,7 @@ async function deconnecter() {
   await supabase.auth.signOut();
   const { data: { session } } = await supabase.auth.getSession();
   if (session) throw new Error('Déconnexion impossible pour le moment : vérifiez votre connexion et réessayez.');
-  location.replace(`${RACINE}connexion/`);
+  location.replace(`${RACINE}chauffeur/connexion/`);
 }
 
 // ---------------------------------------------------------------------------
