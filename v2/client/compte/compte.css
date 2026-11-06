@@ -1,0 +1,32 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Espace client, onglet Compte : profil, lieux, langue, déconnexion
+   ============================================================================= */
+.entete-bloc { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.entete-bloc h2 { margin: 0; }
+
+/* Libellé au-dessus de la valeur (téléphone étroit) */
+.lignes-client { margin: 0; display: grid; gap: 4px; }
+.lignes-client dt { color: var(--gris); font-size: 14px; margin-top: 6px; }
+.lignes-client dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; }
+
+.formulaire-client { display: grid; gap: 12px; }
+.formulaire-client .champ { display: grid; gap: 6px; }
+.actions-client { display: flex; flex-wrap: wrap; gap: 10px; }
+.actions-client .bouton { flex: 1 1 140px; }
+
+/* Lieux : domicile, travail */
+.lieux-client { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.lieu-client { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 12px 0; border-top: 1px solid var(--trait); }
+.lieu-client:first-child { border-top: none; }
+.lieu-texte { display: grid; gap: 2px; min-width: 0; }
+.lieu-type { font-weight: 600; }
+.lieu-adresse { overflow-wrap: anywhere; }
+.lieu-precision { color: var(--gris); font-size: 14px; }
+.lieu-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; }
+.formulaire-lieu { padding: 14px; border-radius: var(--rayon-champ); background: var(--bitume); }
+.formulaire-lieu h3 { margin: 0; font-size: 18px; font-weight: 700; }
+.bouton-retirer { color: var(--rouge); }
+
+/* Langue */
+.choix-langue { border: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 20px; }

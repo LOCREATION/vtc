@@ -1,0 +1,23 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Espace client, onglet Activité : en cours, à venir, historique par jour
+   ============================================================================= */
+.activite-section { display: grid; gap: 10px; }
+.activite-jour { margin: 8px 0 0; font-size: 16px; font-weight: 600; color: var(--gris); }
+.activite-liste { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+
+/* Une course : toute la carte ouvre son suivi */
+.course-client {
+  display: grid; gap: 4px; padding: 14px 16px; border-radius: 14px; background: var(--blanc); border: 1px solid var(--trait);
+  color: var(--nuit); text-decoration: none; min-width: 0;
+}
+.course-client:hover { color: var(--nuit); border-color: var(--nuit-2); }
+.course-client-entete { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.course-client-heure { font-weight: 600; }
+.course-client-etat { padding: 2px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; background: #EEF1F6; color: var(--nuit); white-space: nowrap; }
+.course-client-etat[data-statut='terminee'] { background: #E3F2E8; color: #1A6B3A; }
+.course-client-etat[data-statut='annulee'] { background: #F6E4E2; color: #8C1D18; }
+.course-client-etat[data-statut='acceptee'], .course-client-etat[data-statut='arrivee'], .course-client-etat[data-statut='en_cours'] { background: #FFF1C9; color: #5A4708; }
+.course-client-trajet { overflow-wrap: anywhere; }
+.course-client-trajet .fleche { color: var(--gris); }
+.course-client-infos { color: var(--gris); font-size: 15px; }

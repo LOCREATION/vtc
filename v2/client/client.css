@@ -1,0 +1,40 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Espace client : barre du haut, onglets en bas de l'écran, colonne des vues
+   (couleurs claires du site public)
+   ============================================================================= */
+
+/* Barre du haut : la marque et la cloche */
+.espace-client .entete .contenu { gap: 12px; }
+
+/* Compte d'un autre espace */
+.autre-espace { display: grid; gap: 14px; justify-items: start; padding-top: 24px; }
+
+/* Vues : une colonne lisible, sous la barre du haut */
+.vue-client { display: grid; gap: 14px; align-content: start; padding: 4px var(--marge) 24px; max-width: 760px; margin: 0 auto; min-width: 0; }
+.vue-client h1 { font-size: clamp(30px, 7vw, 40px); font-weight: 700; }
+.vue-client h2 { font-size: 22px; font-weight: 700; }
+
+/* Bloc blanc d'une vue */
+.bloc-client { display: grid; gap: 12px; padding: 18px; border-radius: var(--rayon-feuille); background: var(--blanc); border: 1px solid var(--trait); min-width: 0; }
+.bloc-client > h2 { margin: 0; }
+.aide-client { margin: 0; color: var(--gris); font-size: 15px; }
+
+/* Barre d'onglets en bas de l'écran, au-dessus de la zone du geste système */
+.onglets-bas {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  background: var(--blanc); border-top: 1px solid var(--trait);
+  padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+@media (min-width: 760px) { .onglets-bas { grid-template-columns: repeat(3, minmax(0, 170px)); justify-content: center; } }
+.onglet-bas {
+  display: grid; justify-items: center; align-content: center; gap: 3px; min-height: 62px; padding: 6px 4px;
+  color: var(--gris); text-decoration: none; font-size: 13px; font-weight: 600; border-top: 3px solid transparent;
+}
+.onglet-bas[aria-current='page'] { color: var(--nuit); border-top-color: var(--or); }
+.onglet-bas:hover { color: var(--nuit); }
+.onglet-bas:focus-visible { outline: 3px solid var(--or); outline-offset: -3px; }
+/* Place pour la barre : le bas du contenu et les messages restent visibles */
+body.avec-onglets main { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+body.avec-onglets .zone-messages { bottom: calc(82px + env(safe-area-inset-bottom)); }
