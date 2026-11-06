@@ -44,7 +44,8 @@ const TEXTES = {
     'discussion.r_client_3': 'Pouvez-vous m\'appeler ?',
     'discussion.r_client_4': 'J\'ai un bagage volumineux.',
     'pied.contact': 'Écrire à LOC RÉACTION',
-    'pied.espace_chauffeur': 'Espace chauffeur et devenir chauffeur',
+    'pied.devenir_chauffeur': 'Devenir chauffeur',
+    'pied.espace_chauffeur': 'Espace chauffeur',
     'pied.administration': 'Administration',
     'pied.capital': 'au capital de {capital}',
 
@@ -253,7 +254,8 @@ const TEXTES = {
     'discussion.r_client_3': 'Could you call me?',
     'discussion.r_client_4': 'I have a large bag.',
     'pied.contact': 'Email LOC RÉACTION',
-    'pied.espace_chauffeur': 'Driver area and becoming a driver',
+    'pied.devenir_chauffeur': 'Become a driver',
+    'pied.espace_chauffeur': 'Driver area',
     'pied.administration': 'Administration',
     'pied.capital': 'share capital {capital}',
 

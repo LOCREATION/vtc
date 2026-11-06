@@ -14,3 +14,4 @@
 .devenir { display: grid; gap: 6px; padding: 14px; border-radius: var(--rayon-champ); background: var(--surface-2); }
 .devenir h2 { font-size: 18px; font-weight: 600; }
 .devenir p { margin: 0; color: var(--texte-2); font-size: 15px; }
+.lien-devenir { justify-self: start; min-height: 44px; display: inline-flex; align-items: center; font-weight: 600; }

@@ -127,8 +127,9 @@ async def accueil(navigateur, largeur, hauteur, mobile, suffixe):
     verifier(await page.locator('#raccourcis .pastille').count() == 4, f'accueil {suffixe} : 4 raccourcis aéroports lus dans la base')
     verifier('RCS Pontoise' in await page.inner_text('#pied-identite'), f'accueil {suffixe} : identité légale lue dans la base')
     verifier(await page.evaluate("document.getElementById('pied-chauffeur').href") == SITE + 'chauffeur/connexion/'
-             and await page.evaluate("document.getElementById('pied-admin').href") == SITE + 'admin/',
-             f'accueil {suffixe} : entrées de l\'espace chauffeur et de l\'administration en bas de page')
+             and await page.evaluate("document.getElementById('pied-admin').href") == SITE + 'admin/'
+             and await page.evaluate("document.getElementById('pied-devenir').href") == SITE + 'devenir-chauffeur/',
+             f'accueil {suffixe} : « Devenir chauffeur », entrées de l\'espace chauffeur et de l\'administration en bas de page')
     # Départ par saisie et suggestion, arrivée par raccourci Roissy
     await page.fill('#depart', '10 rue de riv')
     await page.wait_for_selector('.suggestion >> text=10 Rue de Rivoli')
@@ -214,8 +215,9 @@ async def entrees(navigateur):
     await page.goto(SITE + 'chauffeur/connexion/')
     verifier(await page.inner_text('#etape-email h1') == 'Se connecter ou devenir chauffeur'
              and 'Pas encore chauffeur' in await page.inner_text('#etape-email')
-             and await page.evaluate("document.getElementById('vers-client').href") == SITE + 'connexion/',
-             'entrée chauffeur : se connecter ou devenir chauffeur, lien vers l\'espace client')
+             and await page.evaluate("document.getElementById('vers-client').href") == SITE + 'connexion/'
+             and await page.evaluate("document.getElementById('vers-devenir').href") == SITE + 'devenir-chauffeur/',
+             'entrée chauffeur : se connecter ou devenir chauffeur, liens vers l\'espace client et la présentation du métier')
     await page.screenshot(path=f'{CAPTURES}/connexion-chauffeur-1-email.png', full_page=True)
     await page.fill('#email', 'essai@exemple.test')
     await page.click('#bouton-email')
@@ -246,6 +248,55 @@ async def entrees(navigateur):
     await page.screenshot(path=f'{CAPTURES}/connexion-admin-email.png', full_page=True)
     await contexte.close()
 
+def session_test():
+    """Session déjà ouverte dans le navigateur pour le compte d'essai (profil_test)."""
+    session = {'access_token': jeton(), 'token_type': 'bearer', 'expires_in': 3600, 'expires_at': int(time.time()) + 3600,
+               'refresh_token': 'jeton-de-renouvellement',
+               'user': {'id': ID_TEST, 'aud': 'authenticated', 'role': 'authenticated', 'email': 'essai@exemple.test'}}
+    return f"localStorage.setItem('sb-rolfbdmrhwslwxluhfwr-auth-token', {json.dumps(json.dumps(session))});"
+
+async def devenir(navigateur):
+    """Page publique « Devenir chauffeur » : candidature, conditions, étapes, identité légale ;
+    personne connectée : son espace chauffeur directement."""
+    contexte, page = await nouvelle_page(navigateur, 390, 844, True)
+    await page.goto(SITE + 'devenir-chauffeur/')
+    await page.wait_for_function("document.getElementById('pied-identite').textContent.includes('RCS')")
+    verifier(await page.inner_text('h1') == 'Devenez chauffeur chez LOC RÉACTION'
+             and await page.evaluate("document.getElementById('candidater').href") == SITE + 'chauffeur/connexion/'
+             and await page.evaluate("document.getElementById('candidater-bas').href") == SITE + 'chauffeur/connexion/',
+             'devenir chauffeur : « Déposer ma candidature » mène à l\'entrée de l\'espace chauffeur')
+    texte = await page.inner_text('main')
+    verifier('Carte professionnelle VTC' in texte and 'Permis de conduire B' in texte and 'justificatif de domicile' in texte,
+             'devenir chauffeur : conditions et documents à fournir')
+    verifier(await page.locator('.dc-etapes li').count() == 4 and await page.locator('.dc-questions details').count() == 4,
+             'devenir chauffeur : quatre étapes et quatre questions')
+    verifier('RCS Pontoise' in await page.inner_text('#pied-identite'), 'devenir chauffeur : identité légale lue dans la base')
+    verifier(await page.evaluate('document.documentElement.scrollWidth') <= 390, 'devenir chauffeur : rien ne déborde sur un téléphone')
+    await page.click('.dc-questions summary >> text=Faut-il avoir son propre véhicule ?')
+    verifier('flotte' in await page.inner_text('.dc-questions details[open]'), 'devenir chauffeur : une question s\'ouvre au toucher')
+    await page.screenshot(path=f'{CAPTURES}/devenir-chauffeur-mobile.png', full_page=True)
+    await contexte.close()
+
+    contexte, page = await nouvelle_page(navigateur, 1280, 900, False)
+    await page.goto(SITE + 'devenir-chauffeur/')
+    await page.wait_for_function("document.getElementById('pied-identite').textContent.includes('RCS')")
+    await page.screenshot(path=f'{CAPTURES}/devenir-chauffeur-bureau.png', full_page=True)
+    await contexte.close()
+
+    # Personne déjà connectée (compte chauffeur) : son espace, directement
+    contexte, page = await nouvelle_page(navigateur, 390, 844, True)
+    await contexte.add_init_script(session_test())
+    role_avant = profil_test['role']
+    profil_test['role'] = 'chauffeur'
+    try:
+        await page.goto(SITE + 'devenir-chauffeur/')
+        await page.wait_for_function("document.getElementById('candidater').textContent === 'Ouvrir mon espace chauffeur'")
+        verifier(await page.evaluate("document.getElementById('candidater').href") == SITE + 'chauffeur/',
+                 'devenir chauffeur, compte chauffeur connecté : « Ouvrir mon espace chauffeur »')
+    finally:
+        profil_test['role'] = role_avant
+    await contexte.close()
+
 async def anglais(navigateur):
     contexte, page = await nouvelle_page(navigateur, 1280, 900, False)
     await page.goto(SITE + '?lang=en')
@@ -270,6 +321,8 @@ async def main():
             await connexion(navigateur)
             print('Entrées client, chauffeur, administration')
             await entrees(navigateur)
+            print('Devenir chauffeur')
+            await devenir(navigateur)
             print('Anglais')
             await anglais(navigateur)
             await navigateur.close()

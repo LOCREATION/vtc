@@ -629,9 +629,9 @@ async def notifications_chauffeur(page):
     await page.wait_for_selector('dialog#notifs[open] #notifs-liste li')
     await page.click('#notifs-tout-lu')
     await message_affiche(page, 'Toutes les notifications sont marquées comme lues.')
-    verifier(valeur(f"select count(*) from public.notifications where destinataire_id = '{CHAUFFEUSE}' and lu_le is null") == '0'
-             and await page.locator('#notifs-liste .notif[data-lue="non"]').count() == 0,
-             '« Tout marquer comme lu » : plus aucune non lue (base et panneau)')
+    await page.wait_for_function("document.querySelectorAll('#notifs-liste .notif[data-lue=\"non\"]').length === 0")
+    await attendre_valeur(f"select count(*) from public.notifications where destinataire_id = '{CHAUFFEUSE}' and lu_le is null", '0')
+    verifier(True, '« Tout marquer comme lu » : plus aucune non lue (base et panneau)')
     await page.wait_for_selector('#cloche-non-lues', state='hidden')
     verifier(await page.get_attribute('#cloche', 'aria-label') == 'Notifications', 'cloche : plus de nombre')
     await page.click('#notifs-effacer')
