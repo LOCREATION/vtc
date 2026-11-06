@@ -1,0 +1,104 @@
+<!doctype html>
+<!-- =============================================================================
+     LOC RÉACTION S.A.S — Version 2
+     Espace chauffeur : connexion, et création du compte d'un nouveau chauffeur
+     -----------------------------------------------------------------------------
+     Même parcours que l'espace client (code reçu par e-mail, sans mot de
+     passe : commun/connexion-code.js), aux couleurs de l'espace chauffeur.
+     Étapes : adresse e-mail → code reçu → identité (première fois : prénom,
+     nom, téléphone). Ensuite, l'espace chauffeur s'ouvre selon le compte :
+       - chauffeur validé : le service (passer en ligne, courses, revenus…) ;
+       - nouveau compte : la candidature « Devenir chauffeur », puis le dossier
+         (documents à déposer) jusqu'à la validation par LOC RÉACTION.
+     ============================================================================= -->
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Espace chauffeur, connexion, LOC RÉACTION</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0A1A38">
+  <link rel="manifest" href="../../manifest.webmanifest">
+  <link rel="icon" href="../../commun/img/icone.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../../commun/img/icone-192.png">
+  <link rel="stylesheet" href="../../commun/styles.css">
+  <link rel="stylesheet" href="../chauffeur.css">
+  <link rel="stylesheet" href="../../connexion/connexion.css">
+  <link rel="stylesheet" href="connexion.css">
+  <script type="module" src="connexion.js"></script>
+</head>
+<body class="theme-nuit">
+  <header class="barre">
+    <a class="marque" href="../../">
+      <img src="../../commun/img/logo.svg" alt="" width="56" height="28">
+      <span>LOC RÉACTION</span>
+    </a>
+    <p class="pastille-espace">Espace chauffeur</p>
+  </header>
+  <main class="contenu connexion">
+    <!-- Étape 1 : adresse e-mail -->
+    <form class="feuille etape" id="etape-email" novalidate>
+      <p class="etiquette-espace">Espace chauffeur</p>
+      <h1>Se connecter ou devenir chauffeur</h1>
+      <p class="intro">Pas de mot de passe : nous vous envoyons un code de connexion par e-mail.</p>
+      <div class="champ">
+        <label for="email">Adresse e-mail</label>
+        <input id="email" class="saisie" type="email" autocomplete="email" inputmode="email" required aria-describedby="erreur-email">
+        <p class="erreur-champ" id="erreur-email" hidden></p>
+      </div>
+      <button type="submit" class="bouton bouton-principal bouton-large" id="bouton-email">Recevoir mon code</button>
+      <section class="devenir" aria-labelledby="devenir-titre">
+        <h2 id="devenir-titre">Pas encore chauffeur chez LOC RÉACTION ?</h2>
+        <p>Saisissez votre e-mail ci-dessus. Après le code, vous remplissez votre candidature (carte professionnelle VTC, permis, expérience) et vous déposez vos documents depuis votre espace. LOC RÉACTION vérifie votre dossier et vous répond dans l'application.</p>
+      </section>
+      <nav class="autres-entrees" aria-labelledby="autres-entrees-titre">
+        <p id="autres-entrees-titre">Vous voulez commander une course, ou vous êtes de l'équipe ?</p>
+        <a class="lien-entree" id="vers-client" href="../../connexion/">Espace client</a>
+        <a class="lien-entree" id="vers-admin" href="../../admin/">Administration</a>
+      </nav>
+    </form>
+
+    <!-- Étape 2 : code reçu -->
+    <form class="feuille etape" id="etape-code" novalidate hidden>
+      <p class="etiquette-espace">Espace chauffeur</p>
+      <h1>Saisissez le code reçu</h1>
+      <p class="intro" id="code-envoye"></p>
+      <div class="champ">
+        <label for="code">Code reçu par e-mail</label>
+        <input id="code" class="saisie saisie-code" type="text" inputmode="numeric" autocomplete="one-time-code"
+               pattern="[0-9]{6,10}" maxlength="10" required aria-describedby="erreur-code">
+        <p class="erreur-champ" id="erreur-code" hidden></p>
+      </div>
+      <button type="submit" class="bouton bouton-principal bouton-large" id="bouton-code">Valider</button>
+      <div class="actions-secondaires">
+        <button type="button" class="bouton bouton-texte" id="renvoyer" disabled></button>
+        <button type="button" class="bouton bouton-texte" id="changer">Changer d'adresse</button>
+      </div>
+    </form>
+
+    <!-- Étape 3 : identité (première connexion) -->
+    <form class="feuille etape" id="etape-profil" novalidate hidden>
+      <p class="etiquette-espace">Espace chauffeur</p>
+      <h1>Votre identité</h1>
+      <p class="intro">Votre nom figure sur les feuilles de route. Votre prénom et votre téléphone sont transmis au client de chaque course que vous acceptez.</p>
+      <div class="champ">
+        <label for="prenom">Prénom</label>
+        <input id="prenom" class="saisie" type="text" autocomplete="given-name" maxlength="80" required aria-describedby="erreur-prenom">
+        <p class="erreur-champ" id="erreur-prenom" hidden></p>
+      </div>
+      <div class="champ">
+        <label for="nom">Nom</label>
+        <input id="nom" class="saisie" type="text" autocomplete="family-name" maxlength="80" required aria-describedby="erreur-nom">
+        <p class="erreur-champ" id="erreur-nom" hidden></p>
+      </div>
+      <div class="champ">
+        <label for="telephone">Téléphone mobile</label>
+        <input id="telephone" class="saisie" type="tel" autocomplete="tel" inputmode="tel" required aria-describedby="aide-telephone erreur-telephone">
+        <p class="aide" id="aide-telephone">Avec l'indicatif, par exemple +33 6 12 34 56 78</p>
+        <p class="erreur-champ" id="erreur-telephone" hidden></p>
+      </div>
+      <button type="submit" class="bouton bouton-principal bouton-large" id="bouton-profil">Enregistrer</button>
+    </form>
+  </main>
+</body>
+</html>

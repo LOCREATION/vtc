@@ -124,7 +124,7 @@ class Porte {
       bouton,
       el('div', { classe: 'porte-liens' },
         el('p', { classe: 'aide', texte: 'Pas encore de mot de passe, ou mot de passe oublié ?' }),
-        el('a', { href: `${RACINE}connexion/?suite=${suite}`, texte: 'Me connecter avec un code reçu par e-mail' })));
+        el('a', { href: `${RACINE}admin/connexion/?suite=${suite}`, texte: 'Me connecter avec un code reçu par e-mail' })));
     formulaire.addEventListener('submit', async (e) => {
       e.preventDefault();
       erreur.hidden = true;
@@ -159,6 +159,7 @@ class Porte {
     if (!profil || profil.role !== 'admin' || profil.statut !== 'actif') {
       this.afficher('Accès réservé',
         el('p', { texte: 'Cet espace est réservé aux administrateurs de LOC RÉACTION. Votre compte n\'en fait pas partie.' }),
+        el('p', { classe: 'aide', texte: 'Un administrateur peut vous nommer dans Paramètres, Administrateurs : revenez ensuite ici, vous choisirez votre mot de passe.' }),
         el('div', { classe: 'actions-ligne' },
           el('a', { classe: 'bouton bouton-principal', href: RACINE, texte: 'Retour au site' }),
           el('button', { type: 'button', classe: 'bouton bouton-secondaire', texte: 'Changer de compte', onclick: () => this.deconnecter() })));

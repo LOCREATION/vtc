@@ -10,9 +10,14 @@
 //   - Documents : pièces déposées à vérifier, validation avec le numéro et la
 //     date d'expiration lus sur la pièce (reportés sur la fiche) ;
 //   - Activité : courses, chiffre d'affaires, demandes et notes par période.
-// Lectures : admin_lister_chauffeurs, admin_activite_chauffeurs. Écritures :
-// fonctions serveur (validation, refus, statut, véhicule, documents) ou
-// modification directe de la fiche (règles d'accès : administration).
+// Un compte passé au rôle « chauffeur » sans fiche chauffeur (rôle changé
+// directement dans la base) n'entre pas dans l'espace chauffeur : il est
+// signalé en tête des onglets Chauffeurs et Candidatures, avec « Enregistrer
+// comme chauffeur » (la fiche est alors créée par la base).
+// Lectures : admin_lister_chauffeurs, admin_activite_chauffeurs, profils (rôle
+// chauffeur). Écritures : fonctions serveur (validation, refus, statut,
+// véhicule, documents) ou modification directe de la fiche (règles d'accès :
+// administration).
 // =============================================================================
 import { supabase } from '../../commun/supabase.js';
 import { el, euros, nombre, afficherMessage } from '../../commun/outils.js';
@@ -38,7 +43,7 @@ const STATUTS_CANDIDATURE = {
   nouvelle: { libelle: 'Nouvelle', ton: 'or' }, en_cours: { libelle: 'En cours d\'examen', ton: 'bleu' },
   acceptee: { libelle: 'Acceptée', ton: 'vert' }, refusee: { libelle: 'Refusée', ton: 'gris' }
 };
-const etat = { onglet: 'chauffeurs', chauffeurs: [], vehicules: [], periode: 'mois' };
+const etat = { onglet: 'chauffeurs', chauffeurs: [], vehicules: [], sansFiche: [], periode: 'mois' };
 
 ouvrirAdministration({ module: 'chauffeurs' }).then(async () => {
   const demande = new URLSearchParams(location.search).get('onglet');
@@ -48,14 +53,38 @@ ouvrirAdministration({ module: 'chauffeurs' }).then(async () => {
 });
 
 async function charger() {
-  const [chauffeurs, vehicules] = await Promise.all([
+  const [chauffeurs, vehicules, comptes] = await Promise.all([
     supabase.rpc('admin_lister_chauffeurs'),
-    supabase.from('vehicules').select('id, immatriculation, marque, modele, actif').order('immatriculation')
+    supabase.from('vehicules').select('id, immatriculation, marque, modele, actif').order('immatriculation'),
+    supabase.from('profils').select('id, prenom, nom, email, telephone, statut, cree_le').eq('role', 'chauffeur').order('cree_le')
   ]);
-  if (chauffeurs.error) { $('contenu').replaceChildren(el('p', { classe: 'alerte', texte: messageErreurAdmin(chauffeurs.error) })); return; }
+  const erreur = chauffeurs.error || comptes.error;
+  if (erreur) { $('contenu').replaceChildren(el('p', { classe: 'alerte', texte: messageErreurAdmin(erreur) })); return; }
   etat.chauffeurs = chauffeurs.data || [];
   etat.vehicules = vehicules.data || [];
+  // Comptes « chauffeur » sans fiche chauffeur
+  const avecFiche = new Set(etat.chauffeurs.map((c) => c.id));
+  etat.sansFiche = (comptes.data || []).filter((p) => !avecFiche.has(p.id));
   afficher();
+}
+
+// Comptes au rôle « chauffeur » sans fiche : à enregistrer (en tête des
+// onglets Chauffeurs et Candidatures)
+function carteSansFiche() {
+  const n = etat.sansFiche.length;
+  if (!n) return null;
+  return el('section', { classe: 'carte-admin sans-fiche', id: 'sans-fiche', 'aria-labelledby': 'sans-fiche-titre' },
+    el('h2', { id: 'sans-fiche-titre', texte: n > 1 ? `${n} comptes chauffeur à enregistrer` : '1 compte chauffeur à enregistrer' }),
+    el('p', { classe: 'sous-titre', texte: 'Ces comptes ont le rôle « chauffeur », mais pas de fiche chauffeur (rôle changé directement dans la base) : ils ne peuvent pas entrer dans l\'espace chauffeur. « Enregistrer comme chauffeur » crée la fiche, avec le véhicule et l\'option chauffeuse.' }),
+    el('ul', { classe: 'liste-choix' }, ...etat.sansFiche.map((p) => el('li', { classe: 'choix' },
+      el('div', { classe: 'choix-identite' },
+        el('strong', { texte: nomComplet(p.prenom, p.nom) || p.email }),
+        p.statut !== 'actif' ? badge('Compte bloqué', 'rouge') : null),
+      el('p', { classe: 'choix-details' },
+        ...[p.email, telephoneLisible(p.telephone), `inscrit le ${dateCourte(p.cree_le)}`].filter(Boolean)
+          .flatMap((texte, i) => [i ? ' · ' : null, el('span', { classe: 'insecable', texte })]).filter(Boolean)),
+      el('div', { classe: 'choix-action' },
+        p.statut === 'actif' ? bouton('Enregistrer comme chauffeur', () => validerCandidature({ ...p, documents: [] }), 'bouton-principal') : null)))));
 }
 
 function afficher() {
@@ -126,7 +155,7 @@ async function voirPiece(d) {
 // #############################################################################
 function afficherChauffeurs() {
   const liste = etat.chauffeurs.filter((c) => ['valide', 'suspendu'].includes(c.statut));
-  $('contenu').replaceChildren(liste.length
+  $('contenu').replaceChildren(...[carteSansFiche()].filter(Boolean), liste.length
     ? el('div', { classe: 'fiches' }, ...liste.map(ficheChauffeur))
     : el('section', { classe: 'carte-admin' }, el('p', { classe: 'vide-admin', texte: 'Aucun chauffeur validé pour le moment. Les candidatures arrivent dans l\'onglet « Candidatures » ; un salarié embauché directement s\'enregistre avec le bouton « Enregistrer un chauffeur ».' })));
 }
@@ -233,7 +262,7 @@ async function reactiver(c) {
 function afficherCandidatures() {
   const enCours = etat.chauffeurs.filter((c) => c.statut === 'candidat');
   const refusees = etat.chauffeurs.filter((c) => c.statut === 'refuse');
-  $('contenu').replaceChildren(
+  $('contenu').replaceChildren(...[carteSansFiche()].filter(Boolean),
     enCours.length ? el('div', { classe: 'fiches' }, ...enCours.map(ficheCandidature))
       : el('section', { classe: 'carte-admin' }, el('p', { classe: 'vide-admin', texte: 'Aucune candidature à examiner.' })),
     refusees.length ? el('details', { classe: 'carte-admin refusees' },

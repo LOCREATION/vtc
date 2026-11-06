@@ -52,7 +52,7 @@ async function demarrer() {
   const { data: { session } } = await supabase.auth.getSession();
   const profil = session ? await profilConnecte() : null;
   if (!profil) {
-    location.replace(`${RACINE}connexion/?suite=${encodeURIComponent(location.pathname.slice(RACINE.length) + location.search)}`);
+    location.replace(`${RACINE}chauffeur/connexion/?suite=${encodeURIComponent(location.pathname.slice(RACINE.length) + location.search)}`);
     return;
   }
   if (profil.role !== 'chauffeur' || profil.statut !== 'actif') throw new Error('Ces documents sont réservés aux chauffeurs de LOC RÉACTION.');

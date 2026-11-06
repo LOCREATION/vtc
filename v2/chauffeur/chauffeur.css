@@ -17,6 +17,9 @@
 .theme-nuit a.bouton-principal, .theme-nuit a.bouton-principal:hover { color: var(--nuit); }
 .theme-nuit .saisie { background: var(--surface-2); border-color: var(--ligne); color: var(--blanc); }
 .theme-nuit .saisie::placeholder { color: #8A9BBA; }
+/* Erreurs de saisie lisibles sur fond de nuit */
+.theme-nuit .erreur-champ { color: #FFB4AE; }
+.theme-nuit .saisie[aria-invalid='true'] { border-color: #FF8A80; }
 .theme-nuit .suggestions { background: var(--surface-2); border-color: var(--ligne); }
 .theme-nuit .suggestion[aria-selected='true'], .theme-nuit .suggestion:hover { background: var(--surface); }
 .theme-nuit .suggestion-detail, .theme-nuit .aide { color: var(--texte-2); }

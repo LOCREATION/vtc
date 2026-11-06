@@ -7,7 +7,11 @@
          filtre de destination, réservations à prendre ;
        - Revenus : jour, semaine, mois, relevé en PDF ;
        - Courses : historique, fiche d'une course, feuille de route en PDF ;
-       - Compte : profil, fiche chauffeur, contact, déconnexion.
+       - Compte : profil, fiche chauffeur, documents, paie, heures et
+         absences, contact, déconnexion.
+     Un compte qui n'est pas chauffeur en service voit son dossier à la place
+     (candidature d'un nouveau chauffeur, dossier en cours d'examen, refus,
+     suspension) : dossier/dossier.js. Connexion : chauffeur/connexion/.
      Changer d'onglet ne recharge pas la page : le service continue sur tous
      les onglets (position envoyée, demande entrante en plein écran avec son
      et vibration).
@@ -29,6 +33,7 @@
   <link rel="stylesheet" href="revenus/revenus.css">
   <link rel="stylesheet" href="courses/courses.css">
   <link rel="stylesheet" href="compte/compte.css">
+  <link rel="stylesheet" href="dossier/dossier.css">
   <script type="module" src="chauffeur.js"></script>
 </head>
 <body class="theme-nuit">
@@ -41,10 +46,10 @@
   </header>
 
   <main>
-    <p class="alerte contenu" id="acces-refuse" hidden>
-      Cet espace est réservé aux chauffeurs validés par LOC RÉACTION.
-      <a href="../">Retour à l'accueil</a>
-    </p>
+    <!-- Compte qui n'est pas (ou plus) chauffeur en service : candidature
+         « Devenir chauffeur », dossier en cours d'examen, refus, suspension,
+         compte à activer (dossier/dossier.js) -->
+    <div class="contenu-dossier" id="dossier" hidden></div>
 
     <div id="espace" hidden>
       <!-- Onglet Accueil : le service -->

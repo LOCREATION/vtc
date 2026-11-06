@@ -27,7 +27,9 @@ const TYPES_FICHIER = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'i
 // Accord du message d'envoi : « Carte professionnelle VTC envoyée »
 const FEMININS = ['carte_vtc', 'piece_identite', 'registre_vtc'];
 
-export function creerSectionDocuments(contexte) {
+// apresChargement (facultatif) : appelé avec la liste des pièces à chaque
+// lecture (dossier d'un nouveau chauffeur : pièces encore à fournir)
+export function creerSectionDocuments(contexte, { apresChargement = null } = {}) {
   const $ = (id) => document.getElementById(id);
   const champ = (id, libelle, saisie, aide = null) => el('div', { classe: 'champ' },
     el('label', { for: id, texte: libelle }), saisie,
@@ -183,6 +185,7 @@ export function creerSectionDocuments(contexte) {
     const pieces = data || [];
     $('docs-vide').hidden = pieces.length > 0;
     $('docs-liste').replaceChildren(...pieces.map(carte));
+    if (apresChargement) apresChargement(pieces);
   }
 
   return { section, charger, fermer };

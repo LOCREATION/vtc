@@ -22,6 +22,8 @@ const TEXTES = {
     'langue.autre': 'English',
     'langue.autre_aria': 'Read this page in English',
     'pied.contact': 'Écrire à LOC RÉACTION',
+    'pied.espace_chauffeur': 'Espace chauffeur et devenir chauffeur',
+    'pied.administration': 'Administration',
     'pied.capital': 'au capital de {capital}',
 
     // Page d'accueil
@@ -88,6 +90,10 @@ const TEXTES = {
     'connexion.email_invalide': 'Saisissez une adresse e-mail valide, par exemple nom@exemple.fr.',
     'connexion.trop': 'Trop de demandes : patientez une minute avant de redemander un code.',
     'connexion.compte_bloque': 'Ce compte est suspendu. Contactez LOC RÉACTION.',
+    'connexion.espace': 'Espace client',
+    'connexion.autres': 'Vous êtes chauffeur ou membre de l\'équipe ?',
+    'connexion.vers_chauffeur': 'Espace chauffeur',
+    'connexion.vers_admin': 'Administration',
     'profil.titre': 'Complétez votre profil',
     'profil.intro': 'Votre chauffeur a besoin de votre prénom et d\'un numéro pour vous joindre.',
     'profil.prenom': 'Prénom',
@@ -96,6 +102,7 @@ const TEXTES = {
     'profil.telephone_aide': 'Avec l\'indicatif, par exemple +33 6 12 34 56 78',
     'profil.telephone_invalide': 'Numéro invalide : indiquez l\'indicatif, par exemple +33 6 12 34 56 78.',
     'profil.prenom_requis': 'Indiquez votre prénom.',
+    'profil.nom_requis': 'Indiquez votre nom.',
     'profil.enregistrer': 'Enregistrer',
     'profil.enregistrement': 'Enregistrement…',
 
@@ -202,6 +209,8 @@ const TEXTES = {
     'langue.autre': 'Français',
     'langue.autre_aria': 'Lire cette page en français',
     'pied.contact': 'Email LOC RÉACTION',
+    'pied.espace_chauffeur': 'Driver area and becoming a driver',
+    'pied.administration': 'Administration',
     'pied.capital': 'share capital {capital}',
 
     'accueil.titre': 'Your ride, at a price set before you leave.',
@@ -266,6 +275,10 @@ const TEXTES = {
     'connexion.email_invalide': 'Enter a valid email address, for example name@example.com.',
     'connexion.trop': 'Too many requests: wait a minute before requesting a new code.',
     'connexion.compte_bloque': 'This account is suspended. Contact LOC RÉACTION.',
+    'connexion.espace': 'Customer area',
+    'connexion.autres': 'Are you a driver or a member of the team?',
+    'connexion.vers_chauffeur': 'Driver area',
+    'connexion.vers_admin': 'Administration',
     'profil.titre': 'Complete your profile',
     'profil.intro': 'Your driver needs your first name and a number to reach you.',
     'profil.prenom': 'First name',
@@ -274,6 +287,7 @@ const TEXTES = {
     'profil.telephone_aide': 'With the country code, for example +33 6 12 34 56 78',
     'profil.telephone_invalide': 'Invalid number: include the country code, for example +33 6 12 34 56 78.',
     'profil.prenom_requis': 'Enter your first name.',
+    'profil.nom_requis': 'Enter your last name.',
     'profil.enregistrer': 'Save',
     'profil.enregistrement': 'Saving…',
 
