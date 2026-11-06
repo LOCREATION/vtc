@@ -1,0 +1,27 @@
+<!doctype html>
+<!-- =============================================================================
+     LOC RÉACTION S.A.S — Version 2
+     Espace client : adresse « /client/activite/ »
+     Lien des notifications des courses (« Course terminée », « Réservation
+     confirmée »…) : renvoie à l'onglet Activité de l'espace client, la langue
+     (?lang=en) gardée.
+     ============================================================================= -->
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Activité, LOC RÉACTION</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0A1A38">
+  <link rel="icon" href="../../commun/img/icone.svg" type="image/svg+xml">
+  <script>
+    (function () {
+      var langue = new URLSearchParams(location.search).get('lang');
+      location.replace('../?' + (langue === 'en' || langue === 'fr' ? 'lang=' + langue + '&' : '') + 'onglet=activite');
+    })();
+  </script>
+</head>
+<body>
+  <p><a href="../?onglet=activite">Activité / Activity</a></p>
+</body>
+</html>

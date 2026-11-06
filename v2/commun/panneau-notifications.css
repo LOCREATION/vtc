@@ -1,38 +1,39 @@
 /* =============================================================================
    LOC RÉACTION S.A.S — Version 2
-   Espace chauffeur : la cloche et le panneau des notifications
-   (notifications.js), couleurs de nuit de l'espace chauffeur
+   La cloche et le panneau des notifications (commun/panneau-notifications.js)
+   Couleurs claires de l'espace client ; couleurs de nuit dans l'espace
+   chauffeur (.theme-nuit).
    ============================================================================= */
 
 /* Cloche de la barre du haut, avec le nombre de non lues */
 .cloche {
   position: relative; width: 48px; height: 48px; flex: 0 0 auto; display: inline-grid; place-items: center;
-  border: none; border-radius: 50%; background: var(--surface-2); color: var(--blanc); cursor: pointer;
+  border: 1px solid var(--trait); border-radius: 50%; background: var(--blanc); color: var(--nuit); cursor: pointer;
 }
 .cloche svg { width: 24px; height: 24px; }
 .cloche:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
 .cloche-pastille {
   position: absolute; top: -2px; right: -4px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px;
   display: inline-flex; align-items: center; justify-content: center;
-  background: #B3261E; color: #FFFFFF; font-size: 13px; font-weight: 700; line-height: 1; border: 2px solid var(--nuit);
+  background: #B3261E; color: #FFFFFF; font-size: 13px; font-weight: 700; line-height: 1; border: 2px solid var(--bitume);
 }
 .cloche-pastille[hidden] { display: none; }
 
 /* Panneau : monte du bas sur un téléphone, fenêtre centrée ailleurs */
 dialog.notifs {
   border: none; padding: 0; margin: auto auto 0; width: 100%; max-width: 560px; height: min(86dvh, 720px);
-  border-radius: 18px 18px 0 0; background: var(--surface); color: var(--blanc); overflow: hidden;
+  border-radius: 18px 18px 0 0; background: var(--blanc); color: var(--nuit); overflow: hidden;
 }
 dialog.notifs[open] { display: grid; grid-template-rows: auto auto minmax(0, 1fr); }
-dialog.notifs::backdrop { background: rgba(4, 10, 24, 0.75); }
+dialog.notifs::backdrop { background: rgba(10, 26, 56, 0.55); }
 @media (min-width: 700px) {
   dialog.notifs { margin: auto; border-radius: var(--rayon-feuille); }
 }
 .notifs-entete { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px 6px 18px; }
 .notifs-entete h2 { font-size: 22px; font-weight: 700; }
-.notifs-actions { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 0 10px 10px; border-bottom: 1px solid var(--ligne); }
+.notifs-actions { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 0 10px 10px; border-bottom: 1px solid var(--trait); }
 .notifs-corps { overflow-y: auto; overscroll-behavior: contain; padding: 8px 12px calc(16px + env(safe-area-inset-bottom)); }
-.notifs-vide { margin: 28px 0; text-align: center; color: var(--texte-2); }
+.notifs-vide { margin: 28px 0; text-align: center; color: var(--gris); }
 .notifs-liste { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 
 /* Une notification : point doré si non lue */
@@ -40,14 +41,24 @@ dialog.notifs::backdrop { background: rgba(4, 10, 24, 0.75); }
   width: 100%; display: grid; gap: 3px; text-align: left; padding: 12px 14px 12px 30px; position: relative;
   border: none; border-radius: 12px; background: transparent; color: inherit; font: inherit; cursor: pointer;
 }
-@media (hover: hover) { .notif:hover { background: rgba(255, 255, 255, 0.04); } }
+@media (hover: hover) { .notif:hover { background: rgba(10, 26, 56, 0.04); } }
 .notif:focus-visible { outline: 3px solid var(--or); outline-offset: -3px; }
-.notif[data-lue='non'] { background: var(--surface-2); }
+.notif[data-lue='non'] { background: #EEF1F6; }
 .notif[data-lue='non']::before {
   content: ''; position: absolute; left: 12px; top: 19px; width: 9px; height: 9px; border-radius: 50%; background: var(--or);
 }
-.notif-entete { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--texte-2); }
+.notif-entete { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--gris); }
 .notif-type { text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
 .notif-titre { font-weight: 600; font-size: 17px; overflow-wrap: anywhere; }
 .notif[data-lue='oui'] .notif-titre { font-weight: 500; }
-.notif-texte { color: var(--texte-2); overflow-wrap: anywhere; white-space: pre-line; }
+.notif-texte { color: var(--gris); overflow-wrap: anywhere; white-space: pre-line; }
+
+/* Espace chauffeur : couleurs de nuit */
+.theme-nuit .cloche { border: none; background: var(--surface-2); color: var(--blanc); }
+.theme-nuit .cloche-pastille { border-color: var(--nuit); }
+.theme-nuit dialog.notifs { background: var(--surface); color: var(--blanc); }
+.theme-nuit dialog.notifs::backdrop { background: rgba(4, 10, 24, 0.75); }
+.theme-nuit .notifs-actions { border-color: var(--ligne); }
+.theme-nuit .notifs-vide, .theme-nuit .notif-entete, .theme-nuit .notif-texte { color: var(--texte-2); }
+@media (hover: hover) { .theme-nuit .notif:hover { background: rgba(255, 255, 255, 0.04); } }
+.theme-nuit .notif[data-lue='non'] { background: var(--surface-2); }

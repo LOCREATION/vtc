@@ -1,0 +1,31 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Espace client, onglet Accueil : « Où allez-vous ? », raccourcis, course en
+   cours et prochaine réservation
+   ============================================================================= */
+
+/* « Où allez-vous ? » : grand champ qui ouvre la commande */
+.ou-allez-vous {
+  display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 0 18px;
+  border-radius: var(--rayon-feuille); background: var(--blanc); border: 2px solid var(--nuit);
+  color: var(--nuit); text-decoration: none; font-family: var(--police-titre); font-weight: 700; font-size: 24px;
+}
+.ou-allez-vous:hover { color: var(--nuit); background: #F7F9FC; }
+.ou-allez-vous-icone { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--or); color: var(--nuit); flex: none; }
+
+/* Raccourcis : domicile, travail, aéroports */
+.raccourcis-client { display: grid; gap: 10px; }
+.raccourcis-client-liste { display: flex; flex-wrap: wrap; gap: 8px; }
+.pastille-raccourci {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: var(--rayon-pastille);
+  background: var(--blanc); border: 1.5px solid var(--trait); color: var(--nuit); font: 600 16px var(--police);
+  text-decoration: none; cursor: pointer;
+}
+.pastille-raccourci:hover { border-color: var(--nuit); color: var(--nuit); }
+.pastille-ajouter { border-style: dashed; color: var(--gris); }
+
+/* Course en cours, prochaine réservation */
+.carte-course-client { border-left: 6px solid var(--or); }
+.etat-course-client { margin: 0; font-family: var(--police-titre); font-weight: 700; font-size: 22px; }
+.trajet-court { margin: 0; overflow-wrap: anywhere; }
+.carte-course-client .bouton { justify-self: start; }

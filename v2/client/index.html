@@ -1,0 +1,81 @@
+<!doctype html>
+<!-- =============================================================================
+     LOC RÉACTION S.A.S — Version 2
+     Espace client
+     Trois onglets dans une seule page, en bas de l'écran (comme Bolt et Gozem) :
+       - Accueil : « Où allez-vous ? », raccourcis domicile, travail et
+         aéroports, course en cours et prochaine réservation ;
+       - Activité : courses en cours, à venir, et l'historique par jour ;
+       - Compte : profil, langue, déconnexion.
+     Cloche de la barre du haut : les notifications, dans un panneau ouvert
+     par-dessus la page (commun/panneau-notifications.js).
+     La commande (client/commande/) et le suivi d'une course (client/course/)
+     restent des pages à part. Français et anglais (?lang=en).
+     ============================================================================= -->
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mon espace, LOC RÉACTION</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0A1A38">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="icon" href="../commun/img/icone.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../commun/img/icone-192.png">
+  <link rel="stylesheet" href="../commun/styles.css">
+  <link rel="stylesheet" href="../commun/panneau-notifications.css">
+  <link rel="stylesheet" href="client.css">
+  <link rel="stylesheet" href="accueil/accueil.css">
+  <link rel="stylesheet" href="activite/activite.css">
+  <link rel="stylesheet" href="compte/compte.css">
+  <script type="module" src="client.js"></script>
+</head>
+<body class="espace-client">
+  <header class="entete">
+    <div class="contenu">
+      <a class="marque" data-interne="../" data-i18n-aria="nav.accueil" href="../">
+        <img src="../commun/img/logo.svg" alt="" width="56" height="28">
+        <span>LOC RÉACTION</span>
+      </a>
+      <!-- Notifications : nombre de non lues -->
+      <button type="button" class="cloche" id="cloche" data-i18n-aria="notifs.titre" aria-label="Notifications" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+          <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+        </svg>
+        <span class="cloche-pastille" id="cloche-non-lues" hidden></span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Compte d'un autre espace (chauffeur, administration) : le lien vers le sien -->
+    <div class="contenu autre-espace" id="autre-espace" hidden>
+      <p class="alerte alerte-info" id="autre-espace-texte"></p>
+      <a class="bouton bouton-principal" id="autre-espace-lien" href="../"></a>
+    </div>
+
+    <div id="espace" hidden>
+      <section class="vue vue-client" id="vue-accueil" data-onglet="accueil" data-i18n-aria="client.onglet_accueil" aria-label="Accueil"></section>
+      <section class="vue vue-client" id="vue-activite" data-onglet="activite" data-i18n-aria="client.onglet_activite" aria-label="Activité" hidden></section>
+      <section class="vue vue-client" id="vue-compte" data-onglet="compte" data-i18n-aria="client.onglet_compte" aria-label="Compte" hidden></section>
+    </div>
+  </main>
+
+  <!-- Barre d'onglets, en bas de l'écran -->
+  <nav class="onglets-bas onglets-client" id="onglets" data-i18n-aria="client.onglets" aria-label="Espace client" hidden>
+    <a class="onglet-bas" href="./" data-onglet="accueil">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8M5 9.5V20h5v-6h4v6h5V9.5"/></svg>
+      <span data-i18n="client.onglet_accueil">Accueil</span>
+    </a>
+    <a class="onglet-bas" href="?onglet=activite" data-onglet="activite">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg>
+      <span data-i18n="client.onglet_activite">Activité</span>
+    </a>
+    <a class="onglet-bas" href="?onglet=compte" data-onglet="compte">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0"/></svg>
+      <span data-i18n="client.onglet_compte">Compte</span>
+    </a>
+  </nav>
+</body>
+</html>
