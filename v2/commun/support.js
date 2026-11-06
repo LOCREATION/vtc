@@ -130,11 +130,13 @@ export function installerSupport({ moi, role, apresLecture = null }) {
   // ---------------------------------------------------------------------------
   // Ouverture : liste, une demande (id), ou nouvelle demande (course facultative)
   // ---------------------------------------------------------------------------
-  async function ouvrir({ demande = null, nouvelle: creer = false, course: idCourse = null } = {}) {
+  // type, sujet : nouvelle demande déjà orientée (ex. « Demander un compte
+  // professionnel » : type « Mon compte », sujet écrit)
+  async function ouvrir({ demande = null, nouvelle: creer = false, course: idCourse = null, type: typeChoisi = null, sujet: sujetEcrit = null } = {}) {
     if (!panneau.open) panneau.showModal();
     montrerErreur(null);
     if (creer) {
-      await montrerNouvelle({ course: idCourse });
+      await montrerNouvelle({ course: idCourse, type: typeChoisi, sujet: sujetEcrit });
       return;
     }
     try {
@@ -375,17 +377,18 @@ export function installerSupport({ moi, role, apresLecture = null }) {
   // ---------------------------------------------------------------------------
   // Nouvelle demande
   // ---------------------------------------------------------------------------
-  async function montrerNouvelle({ course: idCourse = null } = {}) {
+  async function montrerNouvelle({ course: idCourse = null, type: typeChoisi = null, sujet: sujetEcrit = null } = {}) {
     montrerVue('nouvelle');
     titre.textContent = t('support.nouvelle');
     sousTitre.hidden = true;
     for (const id of ['support-type', 'support-course', 'support-sujet', 'support-message']) marquer(id, null);
-    sujet.value = '';
+    sujet.value = sujetEcrit ? String(sujetEcrit).slice(0, 200) : '';
     message.value = '';
-    type.value = 'course';
+    type.value = TYPES.includes(typeChoisi) ? typeChoisi : 'course';
     await chargerCourses(idCourse);
     course.value = idCourse || '';
-    (idCourse ? sujet : type).focus();
+    // Le premier champ encore vide reçoit le curseur
+    (sujetEcrit ? message : idCourse ? sujet : type).focus();
   }
 
   // Mes 20 dernières courses (et celle qui est demandée, si elle est plus ancienne)

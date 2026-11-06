@@ -1,7 +1,7 @@
 /* =============================================================================
    LOC RÉACTION S.A.S — Version 2
    Espace client, onglet Compte : profil, lieux, proches, solde, parrainage
-   et codes promo, aide et support, langue, déconnexion
+   et codes promo, compte professionnel, aide et support, langue, déconnexion
    ============================================================================= */
 .entete-bloc { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .entete-bloc h2 { margin: 0; }
@@ -61,6 +61,21 @@
 .code-parrain-client label { font-weight: 600; }
 .ligne-code { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
 .ligne-code .saisie { text-transform: uppercase; letter-spacing: 0.08em; }
+
+/* Compte professionnel : un encadré par compte */
+.comptes-pro-client { display: grid; gap: 10px; }
+.comptes-pro-client:empty { display: none; }
+.compte-pro-client { display: grid; gap: 8px; padding: 14px; border-radius: var(--rayon-champ); background: var(--bitume); }
+.compte-pro-nom { margin: 0; font-size: 19px; font-weight: 700; overflow-wrap: anywhere; }
+.pastille-statut-pro { flex: 0 0 auto; padding: 2px 10px; border-radius: 999px; font-weight: 600; font-size: 13px; background: #DDF3E5; color: var(--vert); }
+.pastille-statut-pro[data-statut='suspendu'] { background: #FBE3E1; color: var(--rouge); }
+.pro-utiliser { margin: 0; }
+.pro-courses { display: grid; gap: 6px; padding-top: 6px; border-top: 1px solid var(--trait); }
+.pro-courses-titre { margin: 4px 0 0; font-size: 16px; font-weight: 700; }
+.pro-courses .mouvement-course { padding: 0; min-height: 32px; justify-content: flex-start; }
+.mouvement-client[data-statut='annulee'] .mouvement-montant { color: var(--gris); }
+.pro-sans-compte { display: grid; gap: 12px; justify-items: start; }
+.pro-sans-compte[hidden] { display: none; }
 
 /* Langue */
 .choix-langue { border: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 20px; }

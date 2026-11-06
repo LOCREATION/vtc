@@ -10,15 +10,18 @@
 //   - Mon solde : montant et derniers mouvements (solde.js) ;
 //   - Parrainage et codes promo : mon code, mon lien, mes filleuls, code de
 //     mon parrain, codes promo utilisés (parrainage.js) ;
+//   - Compte professionnel : le ou les comptes de son entreprise (lecture
+//     seule), sinon « Demander un compte professionnel » (pro.js) ;
 //   - Aide et support : « Mes demandes » et « Nouvelle demande » (panneau
 //     commun/support.js, ouvert par client.js), réponses à lire ;
 //   - Langue : français ou anglais (enregistrée dans le profil, la page se
 //     recharge dans la langue choisie) ;
 //   - Se déconnecter.
 // Une adresse avec ancre (#compte-lieux, #compte-proches, #compte-solde,
-// #compte-parrainage, #compte-bloc-support) amène directement à la section.
+// #compte-parrainage, #compte-pro, #compte-bloc-support) amène directement à
+// la section.
 // Lectures : profils, lieux, proches, soldes et écritures, parrainages,
-// codes promo utilisés, mes_demandes (réponses à lire).
+// codes promo utilisés, comptes professionnels, mes_demandes (réponses à lire).
 // Écritures : profils (prénom, nom, téléphone, langue : droits de la base),
 // lieux et proches (les siens).
 // =============================================================================
@@ -29,10 +32,11 @@ import { ChampAdresse } from '../../commun/adresse.js';
 import { creerSectionProches } from './proches.js';
 import { creerSectionSolde } from './solde.js';
 import { creerSectionParrainage } from './parrainage.js';
+import { creerSectionPro } from './pro.js';
 
 const TYPES_LIEUX = ['domicile', 'travail'];
 const etat = { contexte: null, profil: null, lieux: [], zones: [], lieuEdite: null, choix: null, champAdresse: null,
-  proches: null, solde: null, parrainage: null };
+  proches: null, solde: null, parrainage: null, pro: null };
 const $ = (id) => document.getElementById(id);
 const erreurLisible = (e) => messageErreur(e, langueActive());
 let ecouteSupport = false;     // écoute de la fermeture du panneau du support, posée une fois
@@ -90,10 +94,12 @@ function construire(conteneur) {
       el('button', { type: 'submit', classe: 'bouton bouton-principal', id: 'lieu-enregistrer', texte: t('profil.enregistrer') })));
   formLieu.addEventListener('submit', (e) => { e.preventDefault(); enregistrerLieu(); });
 
-  // Proches, solde, parrainage : sections à part (proches.js, solde.js, parrainage.js)
+  // Proches, solde, parrainage, compte pro : sections à part (proches.js,
+  // solde.js, parrainage.js, pro.js)
   etat.proches = creerSectionProches({ contexte: etat.contexte });
   etat.solde = creerSectionSolde({ contexte: etat.contexte });
   etat.parrainage = creerSectionParrainage({ contexte: etat.contexte });
+  etat.pro = creerSectionPro({ contexte: etat.contexte });
 
   // Langue
   const langue = el('fieldset', { classe: 'choix-langue', id: 'compte-langue' },
@@ -129,6 +135,7 @@ function construire(conteneur) {
     etat.proches.section,
     etat.solde.section,
     etat.parrainage.section,
+    etat.pro.section,
     el('section', { classe: 'bloc-client', id: 'compte-bloc-support', 'aria-labelledby': 'compte-titre-support' },
       el('h2', { id: 'compte-titre-support', texte: t('compte.support') }),
       el('p', { classe: 'aide-client', texte: t('compte.support_aide') }),
@@ -163,7 +170,8 @@ async function charger() {
     // Ces sections se lisent et s'affichent elles-mêmes
     etat.proches.charger(),
     etat.solde.charger(),
-    etat.parrainage.charger()
+    etat.parrainage.charger(),
+    etat.pro.charger()
   ]);
   for (const r of [profil, lieux, demandes]) if (r.error) throw r.error;
   etat.profil = profil.data || {};
