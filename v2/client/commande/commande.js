@@ -5,6 +5,8 @@
 // - Réservé aux clients connectés ; sinon, connexion puis retour ici.
 // - Le trajet arrive de l'accueil par le lien (départ, arrivée, date, option) :
 //   tout reste modifiable, avec jusqu'à 5 arrêts.
+// - « Commander » depuis Compte > Mes proches : le lien porte ?proche=<id>, la
+//   commande s'ouvre « Pour un proche » avec ce proche déjà choisi.
 // - Le prix est recalculé par la base à chaque changement (arrêts, date, code
 //   promo). À la confirmation, la base le recalcule encore et refuse la
 //   commande s'il ne correspond plus au prix affiché.
@@ -12,7 +14,7 @@
 import { supabase, profilConnecte, messageErreur } from '../../commun/supabase.js';
 import { CATEGORIE_PAR_DEFAUT, RACINE } from '../../commun/config.js';
 import { t, appliquerTraductions, langueActive, adopterLangueProfil, lienAvecLangue } from '../../commun/i18n.js';
-import { euros, nombre, el, afficherMessage, valeurDateHeureLocale, telephoneInternational, zoneDuPoint } from '../../commun/outils.js';
+import { euros, nombre, el, afficherMessage, valeurDateHeureLocale, telephoneInternational, telephoneLisible, zoneDuPoint } from '../../commun/outils.js';
 import { ChampAdresse, adresseDepuisPosition } from '../../commun/adresse.js';
 import '../../commun/pwa.js';
 
@@ -168,6 +170,16 @@ function lireLien() {
   if (depart) champDepart.definir(depart);
   if (arrivee) champArrivee.definir(arrivee);
   if (lien.get('ch') === '1') $('chauffeuse').checked = true;
+  // Proche enregistré choisi dans Compte > Mes proches
+  const proche = etat.proches.find((p) => p.id === lien.get('proche'));
+  if (proche) {
+    document.querySelector('input[name="pour"][value="proche"]').checked = true;
+    $('bloc-proche').hidden = false;
+    $('proche-enregistre').value = proche.id;
+    $('proche-nom').value = proche.nom;
+    $('proche-telephone').value = proche.telephone;
+    $('case-enregistrer-proche').hidden = true;
+  }
   const quand = lien.get('q');
   if (quand && !Number.isNaN(Date.parse(quand))) {
     document.querySelector('input[name="quand"][value="plus_tard"]').checked = true;
@@ -229,7 +241,7 @@ function preparerProche() {
   const liste = $('proche-enregistre');
   if (etat.proches.length) {
     liste.append(el('option', { value: '', texte: t('commande.proche_nouveau') }));
-    etat.proches.forEach((p) => liste.append(el('option', { value: p.id, texte: `${p.nom} (${p.telephone})` })));
+    etat.proches.forEach((p) => liste.append(el('option', { value: p.id, texte: `${p.nom} (${telephoneLisible(p.telephone)})` })));
     $('bloc-proches-enregistres').hidden = false;
     liste.addEventListener('change', () => {
       const proche = etat.proches.find((p) => p.id === liste.value);

@@ -1,6 +1,7 @@
 /* =============================================================================
    LOC RÉACTION S.A.S — Version 2
-   Espace client, onglet Compte : profil, lieux, langue, déconnexion
+   Espace client, onglet Compte : profil, lieux, proches, aide et support,
+   langue, déconnexion
    ============================================================================= */
 .entete-bloc { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .entete-bloc h2 { margin: 0; }
@@ -14,6 +15,9 @@
 .formulaire-client .champ { display: grid; gap: 6px; }
 .actions-client { display: flex; flex-wrap: wrap; gap: 10px; }
 .actions-client .bouton { flex: 1 1 140px; }
+/* Boutons aux libellés longs (« Nouvelle demande ») : l'un sous l'autre sur un
+   téléphone, côte à côte quand la place le permet */
+.actions-client.actions-larges .bouton { flex-basis: 200px; }
 
 /* Lieux : domicile, travail */
 .lieux-client { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
@@ -27,6 +31,10 @@
 .formulaire-lieu { padding: 14px; border-radius: var(--rayon-champ); background: var(--bitume); }
 .formulaire-lieu h3 { margin: 0; font-size: 18px; font-weight: 700; }
 .bouton-retirer { color: var(--rouge); }
+
+/* Proches : nom, téléphone, lien ; actions dessous (Commander, Modifier, Retirer) */
+.proche-client { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+.proche-client .lieu-actions { justify-content: flex-start; gap: 4px 6px; margin-left: -8px; }
 
 /* Langue */
 .choix-langue { border: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 20px; }

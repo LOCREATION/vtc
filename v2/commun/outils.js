@@ -78,6 +78,24 @@ export function telephoneInternational(saisie) {
   return /^\+[1-9][0-9]{6,14}$/.test(numero) ? numero : null;
 }
 
+// Numéro lisible : « +33612345678 » → « +33 6 12 34 56 78 » ; autres pays :
+// indicatif (1, 2 ou 3 chiffres selon le plan de numérotation international)
+// puis groupes de 2 chiffres (« +229 97 00 00 00 », « +44 79 11 12 34 56 »).
+// Utilisé par les trois espaces (client, chauffeur, administration).
+const INDICATIFS_DEUX_CHIFFRES = new Set(['20', '27', '30', '31', '32', '33', '34', '36', '39', '40', '41', '43', '44', '45', '46',
+  '47', '48', '49', '51', '52', '53', '54', '55', '56', '57', '58', '60', '61', '62', '63', '64', '65', '66', '81', '82', '84',
+  '86', '90', '91', '92', '93', '94', '95', '98']);
+
+export function telephoneLisible(numero) {
+  const n = String(numero || '');
+  const francais = n.match(/^\+33([1-9])(\d{2})(\d{2})(\d{2})(\d{2})$/);
+  if (francais) return `+33 ${francais.slice(1).join(' ')}`;
+  if (!/^\+\d{7,15}$/.test(n)) return n;
+  const chiffres = n.slice(1);
+  const longueur = /^[17]/.test(chiffres) ? 1 : INDICATIFS_DEUX_CHIFFRES.has(chiffres.slice(0, 2)) ? 2 : 3;
+  return `+${chiffres.slice(0, longueur)} ${chiffres.slice(longueur).replace(/(\d{2})(?=\d)/g, '$1 ')}`;
+}
+
 // Adresse e-mail plausible (la vraie vérification est le code reçu)
 export function emailValide(saisie) {
   return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(saisie || '').trim());

@@ -6,24 +6,26 @@
 //     chaque course), e-mail de connexion (lecture seule) ;
 //   - Mes lieux : domicile et travail (adresse cherchée comme à la commande,
 //     précision pour le chauffeur) : raccourcis de l'onglet Accueil ;
+//   - Mes proches : les personnes pour qui commander (proches.js) ;
 //   - Aide et support : « Mes demandes » et « Nouvelle demande » (panneau
 //     commun/support.js, ouvert par client.js), réponses à lire ;
 //   - Langue : français ou anglais (enregistrée dans le profil, la page se
 //     recharge dans la langue choisie) ;
 //   - Se déconnecter.
-// Une adresse avec ancre (#compte-lieux, #compte-bloc-support) amène
-// directement à la section.
-// Lectures : profils, lieux, mes_demandes (réponses à lire).
+// Une adresse avec ancre (#compte-lieux, #compte-proches, #compte-bloc-support)
+// amène directement à la section.
+// Lectures : profils, lieux, proches, mes_demandes (réponses à lire).
 // Écritures : profils (prénom, nom, téléphone, langue : droits de la base),
-// lieux (les siens).
+// lieux et proches (les siens).
 // =============================================================================
 import { supabase, messageErreur } from '../../commun/supabase.js';
 import { t, langueActive } from '../../commun/i18n.js';
 import { el, afficherMessage, telephoneInternational } from '../../commun/outils.js';
 import { ChampAdresse } from '../../commun/adresse.js';
+import { creerSectionProches } from './proches.js';
 
 const TYPES_LIEUX = ['domicile', 'travail'];
-const etat = { contexte: null, profil: null, lieux: [], zones: [], lieuEdite: null, choix: null, champAdresse: null };
+const etat = { contexte: null, profil: null, lieux: [], zones: [], lieuEdite: null, choix: null, champAdresse: null, proches: null };
 const $ = (id) => document.getElementById(id);
 const erreurLisible = (e) => messageErreur(e, langueActive());
 let ecouteSupport = false;     // écoute de la fermeture du panneau du support, posée une fois
@@ -41,6 +43,7 @@ export async function afficher(conteneur, contexte) {
   }
   fermerProfil();
   fermerLieu();
+  etat.proches.fermer();
   await charger();
   const id = decodeURIComponent(location.hash.slice(1));
   const cible = id ? document.getElementById(id) : null;
@@ -80,6 +83,9 @@ function construire(conteneur) {
       el('button', { type: 'submit', classe: 'bouton bouton-principal', id: 'lieu-enregistrer', texte: t('profil.enregistrer') })));
   formLieu.addEventListener('submit', (e) => { e.preventDefault(); enregistrerLieu(); });
 
+  // Proches (section à part : proches.js)
+  etat.proches = creerSectionProches({ contexte: etat.contexte });
+
   // Langue
   const langue = el('fieldset', { classe: 'choix-langue', id: 'compte-langue' },
     el('legend', { classe: 'visuellement-cache', texte: t('compte.langue') }),
@@ -111,11 +117,12 @@ function construire(conteneur) {
       el('p', { classe: 'aide-client', texte: t('compte.lieux_aide') }),
       el('ul', { classe: 'lieux-client', id: 'compte-liste-lieux' }),
       formLieu),
+    etat.proches.section,
     el('section', { classe: 'bloc-client', id: 'compte-bloc-support', 'aria-labelledby': 'compte-titre-support' },
       el('h2', { id: 'compte-titre-support', texte: t('compte.support') }),
       el('p', { classe: 'aide-client', texte: t('compte.support_aide') }),
       el('p', { classe: 'alerte alerte-info', id: 'compte-support-non-lus', role: 'status', hidden: true }),
-      el('div', { classe: 'actions-client' },
+      el('div', { classe: 'actions-client actions-larges' },
         el('button', { type: 'button', classe: 'bouton bouton-secondaire', id: 'compte-mes-demandes', texte: t('compte.mes_demandes'),
           onclick: () => etat.contexte.ouvrirSupport() }),
         el('button', { type: 'button', classe: 'bouton bouton-principal', id: 'compte-nouvelle-demande', texte: t('compte.nouvelle_demande'),
@@ -141,7 +148,8 @@ async function charger() {
   const [profil, lieux, demandes] = await Promise.all([
     supabase.from('profils').select('prenom, nom, telephone, email, langue').eq('id', moi).maybeSingle(),
     supabase.from('lieux').select('id, type, libelle, adresse, latitude, longitude, precision').eq('client_id', moi),
-    supabase.rpc('mes_demandes')
+    supabase.rpc('mes_demandes'),
+    etat.proches.charger()          // la section des proches se lit et s'affiche elle-même
   ]);
   for (const r of [profil, lieux, demandes]) if (r.error) throw r.error;
   etat.profil = profil.data || {};
