@@ -1,0 +1,71 @@
+/* =============================================================================
+   LOC RÉACTION S.A.S — Version 2
+   Page publique « Devenir chauffeur » : accroche, apports, conditions,
+   étapes, questions, dernier appel (couleurs claires du site public)
+   ============================================================================= */
+
+/* ---------- Accroche ---------- */
+.dc-accroche { padding-top: 28px; padding-bottom: 8px; }
+.dc-surtitre { margin: 0 0 10px; font-weight: 600; font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; color: #6E5200; }
+.dc-accroche h1 { font-size: clamp(36px, 8.5vw, 60px); font-weight: 700; letter-spacing: -0.01em; max-width: 16ch; }
+.dc-sous-titre { margin-top: 16px; font-size: 18px; color: var(--gris); max-width: 46ch; }
+.dc-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.dc-actions .bouton { flex: 1 1 220px; max-width: 320px; }
+.dc-note { margin: 12px 0 0; font-size: 15px; color: var(--gris); }
+
+/* ---------- Sections ---------- */
+.dc-section { margin-top: 56px; }
+.dc-section h2, .dc-appel h2 { font-size: clamp(28px, 5vw, 40px); font-weight: 700; max-width: 24ch; }
+.dc-texte { margin-top: 14px; color: var(--gris); max-width: 62ch; }
+
+/* Ce que LOC RÉACTION apporte */
+.dc-apports { list-style: none; margin: 28px 0 0; padding: 0; display: grid; gap: 28px; }
+.dc-apports svg { color: var(--nuit-2); margin-bottom: 10px; }
+.dc-apports h3 { font-size: 22px; font-weight: 600; margin-bottom: 6px; }
+.dc-apports p { color: var(--gris); max-width: 40ch; }
+@media (min-width: 720px) { .dc-apports { grid-template-columns: 1fr 1fr; gap: 36px 48px; } }
+@media (min-width: 1040px) { .dc-apports { grid-template-columns: repeat(4, 1fr); } }
+.dc-encart { margin-top: 28px; padding: 16px 18px; border-left: 4px solid var(--or); background: var(--blanc); border-radius: 0 var(--rayon-champ) var(--rayon-champ) 0; max-width: 62ch; }
+
+/* Conditions : liste cochée */
+.dc-conditions { list-style: none; margin: 22px 0 0; padding: 0; display: grid; gap: 12px; max-width: 62ch; }
+.dc-conditions li { position: relative; padding-left: 34px; }
+.dc-conditions li::before {
+  content: ''; position: absolute; left: 0; top: 2px; width: 22px; height: 22px; border-radius: 50%; background: var(--nuit);
+}
+.dc-conditions li::after {
+  content: ''; position: absolute; left: 7px; top: 7px; width: 8px; height: 5px;
+  border-left: 2.5px solid var(--or); border-bottom: 2.5px solid var(--or); transform: rotate(-45deg);
+}
+
+/* Étapes numérotées */
+.dc-etapes { list-style: none; margin: 26px 0 0; padding: 0; display: grid; gap: 22px; counter-reset: etape; }
+.dc-etapes li { position: relative; padding-left: 56px; counter-increment: etape; min-height: 40px; }
+.dc-etapes li::before {
+  content: counter(etape); position: absolute; left: 0; top: 0; width: 40px; height: 40px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--or); color: var(--nuit);
+  font-family: var(--police-titre); font-weight: 700; font-size: 20px;
+}
+.dc-etapes h3 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+.dc-etapes p { color: var(--gris); max-width: 52ch; }
+@media (min-width: 900px) {
+  .dc-etapes { grid-template-columns: repeat(4, 1fr); gap: 28px; }
+  .dc-etapes li { padding-left: 0; padding-top: 56px; }
+}
+
+/* Questions */
+.dc-questions { margin-top: 20px; display: grid; gap: 10px; max-width: 72ch; }
+.dc-questions details { background: var(--blanc); border: 1px solid var(--trait); border-radius: var(--rayon-champ); padding: 0 18px; }
+.dc-questions summary {
+  cursor: pointer; min-height: 56px; display: flex; align-items: center; font-weight: 600; font-size: 18px; list-style: none;
+}
+.dc-questions summary::-webkit-details-marker { display: none; }
+.dc-questions summary::after { content: '+'; margin-left: auto; padding-left: 12px; font-size: 24px; color: var(--nuit-2); }
+.dc-questions details[open] summary::after { content: '–'; }
+.dc-questions details p { margin: 0 0 16px; color: var(--gris); }
+
+/* Dernier appel */
+.dc-appel { margin-top: 56px; }
+.dc-appel-carte { display: grid; gap: 14px; justify-items: start; padding: 28px 24px; border-radius: var(--rayon-feuille); background: var(--nuit); color: var(--blanc); }
+.dc-appel-carte p { color: #C9D2E3; max-width: 48ch; }
+.dc-appel h2 { color: var(--blanc); }

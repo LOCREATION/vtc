@@ -24,7 +24,7 @@ const TYPES = { course: 'Course', paiement: 'Paiement', document: 'Document', al
 // cloche : bouton de la barre du haut ; pastille : son nombre de non lues ;
 // moi : identifiant du chauffeur ; contexte : ouvrirOnglet(code) de chauffeur.js
 export function installerNotifications({ cloche, pastille, moi, contexte }) {
-  const etat = { notifications: [], chargement: false };
+  const etat = { notifications: [], chargement: false, chargerEncore: false };
 
   // ---------------------------------------------------------------------------
   // Panneau
@@ -65,8 +65,13 @@ export function installerNotifications({ cloche, pastille, moi, contexte }) {
     await charger();
   }
 
+  // Une seule lecture à la fois ; une demande pendant une lecture en relance
+  // une juste après (la liste montre toujours le dernier état de la base)
   async function charger() {
-    if (etat.chargement) return;
+    if (etat.chargement) {
+      etat.chargerEncore = true;
+      return;
+    }
     etat.chargement = true;
     try {
       etat.notifications = await lireNotifications(moi);
@@ -77,6 +82,10 @@ export function installerNotifications({ cloche, pastille, moi, contexte }) {
       erreur.hidden = false;
     } finally {
       etat.chargement = false;
+    }
+    if (etat.chargerEncore) {
+      etat.chargerEncore = false;
+      await charger();
     }
   }
 
@@ -151,9 +160,11 @@ export function installerNotifications({ cloche, pastille, moi, contexte }) {
     bouton.disabled = true;
     try {
       await action();
-      afficherMessage(confirmation, 'succes');
+      // La liste à jour d'abord, la confirmation ensuite
+      etat.notifications = await lireNotifications(moi);
+      afficher();
       surveillance.relire();
-      await charger();
+      afficherMessage(confirmation, 'succes');
     } catch (e) {
       afficherMessage(messageErreur(e), 'erreur');
       afficher();

@@ -1,0 +1,166 @@
+<!doctype html>
+<!-- =============================================================================
+     LOC RÉACTION S.A.S — Version 2
+     Page publique « Devenir chauffeur » : la porte d'entrée des candidatures
+     -----------------------------------------------------------------------------
+     Présente le poste (ce que LOC RÉACTION apporte), les conditions, les
+     documents à fournir et les étapes ; chaque bouton mène à l'espace
+     chauffeur : entrée chauffeur/connexion/ (code par e-mail), puis la
+     candidature et le dépôt des documents (chauffeur/dossier/).
+     Personne déjà connectée : le bouton mène directement à son espace
+     chauffeur (sa candidature, ou son service s'il est déjà chauffeur).
+     Page en français seulement, comme l'espace chauffeur.
+     ============================================================================= -->
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Devenir chauffeur VTC, LOC RÉACTION</title>
+  <meta name="description" content="Devenez chauffeur VTC chez LOC RÉACTION : berline hybride, courses à prix fixe en Île-de-France et vers les aéroports, application chauffeur complète. Candidature en ligne.">
+  <!-- Version en construction : pas encore référencée par les moteurs de recherche -->
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0A1A38">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="icon" href="../commun/img/icone.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../commun/img/icone-192.png">
+  <link rel="preload" href="../commun/polices/barlow-semi-condensed-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="../commun/styles.css">
+  <link rel="stylesheet" href="devenir-chauffeur.css">
+  <script type="module" src="devenir-chauffeur.js"></script>
+</head>
+<body>
+  <header class="entete">
+    <div class="contenu">
+      <a class="marque" href="../" aria-label="Accueil LOC RÉACTION">
+        <img src="../commun/img/logo.svg" alt="" width="56" height="28">
+        <span>LOC RÉACTION</span>
+      </a>
+      <nav class="entete-liens" aria-label="Espace chauffeur">
+        <a class="lien-discret" id="lien-espace-chauffeur" href="../chauffeur/connexion/">Espace chauffeur</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- Accroche et candidature -->
+    <section class="dc-accroche contenu" aria-labelledby="dc-titre">
+      <p class="dc-surtitre">Recrutement de chauffeurs VTC</p>
+      <h1 id="dc-titre">Devenez chauffeur chez LOC RÉACTION</h1>
+      <p class="dc-sous-titre">Conduisez une berline hybride en Île-de-France et vers les aéroports, avec une application qui vous donne vos courses, vos revenus et votre paie.</p>
+      <div class="dc-actions">
+        <a class="bouton bouton-principal" id="candidater" href="../chauffeur/connexion/">Déposer ma candidature</a>
+        <a class="bouton bouton-secondaire" href="#conditions">Voir les conditions</a>
+      </div>
+      <p class="dc-note" id="candidater-note">Candidature en ligne : un code de connexion par e-mail, sans mot de passe.</p>
+    </section>
+
+    <!-- Ce que LOC RÉACTION apporte -->
+    <section class="dc-section contenu" aria-labelledby="dc-apports-titre">
+      <h2 id="dc-apports-titre">Ce que LOC RÉACTION vous apporte</h2>
+      <ul class="dc-apports">
+        <li>
+          <svg viewBox="0 0 32 32" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20l2.5-6.5A3 3 0 0 1 10.3 11.5h11.4a3 3 0 0 1 2.8 2L27 20v4H5z"/><circle cx="10" cy="24" r="2.5"/><circle cx="22" cy="24" r="2.5"/><path d="M15 4c3 1 4.5 3.5 3 6-2.5-.5-4-2.5-3-6z"/></svg>
+          <h3>Une berline hybride</h3>
+          <p>Un véhicule de la flotte LOC RÉACTION vous est confié : une berline hybride, silencieuse, pour quatre passagers et leurs bagages.</p>
+        </li>
+        <li>
+          <svg viewBox="0 0 32 32" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h24v14H4z"/><path d="M20 13.5a4.5 4.5 0 1 0 0 5M13 15h6M13 17.5h6"/></svg>
+          <h3>Des courses à prix fixe</h3>
+          <p>Le client connaît le prix avant de commander : pas de discussion à bord. Espèces ou carte au terminal, enregistrées dans l'application.</p>
+        </li>
+        <li>
+          <svg viewBox="0 0 32 32" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="14" height="26" rx="2.5"/><path d="M14 25h4M13 9h6M13 13h6M13 17h3"/></svg>
+          <h3>Une application complète</h3>
+          <p>Demandes en plein écran avec son, navigation Waze ou Google Maps, messages avec le client, feuille de route électronique, revenus du jour, de la semaine et du mois.</p>
+        </li>
+        <li>
+          <svg viewBox="0 0 32 32" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h12l6 6v18H8z"/><path d="M20 4v6h6M12 16h10M12 20h10M12 24h6"/></svg>
+          <h3>Paie et documents au même endroit</h3>
+          <p>Bulletins de paie, contrat, heures, congés et documents dans votre espace, avec une alerte avant chaque échéance.</p>
+        </li>
+      </ul>
+      <p class="dc-encart"><strong>Chauffeuses :</strong> des clientes demandent à être conduites par une femme. Votre candidature est la bienvenue.</p>
+    </section>
+
+    <!-- Conditions et documents -->
+    <section class="dc-section contenu" id="conditions" aria-labelledby="dc-conditions-titre">
+      <h2 id="dc-conditions-titre">Les conditions</h2>
+      <ul class="dc-conditions">
+        <li><strong>Carte professionnelle VTC</strong> en cours de validité, délivrée par la préfecture après l'examen VTC.</li>
+        <li><strong>Permis de conduire B</strong> en cours de validité.</li>
+        <li><strong>Pièce d'identité</strong> et <strong>justificatif de domicile</strong>.</li>
+      </ul>
+      <p class="dc-texte">Vous n'avez pas encore la carte professionnelle VTC ? Vous pouvez déjà déposer votre candidature : répondez « Non » à la question de la carte, LOC RÉACTION reprend contact avec vous.</p>
+      <p class="dc-texte">Les documents se déposent depuis votre espace chauffeur, en photo ou en PDF : permis de conduire, carte professionnelle VTC, pièce d'identité, justificatif de domicile.</p>
+    </section>
+
+    <!-- Étapes -->
+    <section class="dc-section contenu" aria-labelledby="dc-etapes-titre">
+      <h2 id="dc-etapes-titre">Comment ça se passe</h2>
+      <ol class="dc-etapes">
+        <li>
+          <h3>Créez votre compte</h3>
+          <p>Avec votre adresse e-mail : vous recevez un code de connexion, sans mot de passe.</p>
+        </li>
+        <li>
+          <h3>Remplissez votre candidature</h3>
+          <p>Votre ville, votre expérience, votre carte professionnelle VTC et votre permis.</p>
+        </li>
+        <li>
+          <h3>Déposez vos documents</h3>
+          <p>Une photo de chaque document suffit. Vous voyez ce qui manque et ce qui est déjà vérifié.</p>
+        </li>
+        <li>
+          <h3>LOC RÉACTION vérifie votre dossier</h3>
+          <p>Vous suivez l'avancement dans votre espace. Dossier validé : votre compte chauffeur s'active, et vous pouvez passer en ligne.</p>
+        </li>
+      </ol>
+    </section>
+
+    <!-- Questions -->
+    <section class="dc-section contenu" aria-labelledby="dc-questions-titre">
+      <h2 id="dc-questions-titre">Vos questions</h2>
+      <div class="dc-questions">
+        <details>
+          <summary>Faut-il avoir son propre véhicule ?</summary>
+          <p>Non : LOC RÉACTION vous confie un véhicule de sa flotte, que vous retrouvez dans votre espace (assurance, contrôle technique et vignette VTC suivis).</p>
+        </details>
+        <details>
+          <summary>Où se font les courses ?</summary>
+          <p>En Île-de-France et dans le sud de l'Oise, avec des trajets vers les aéroports de Roissy, Orly et Beauvais et vers les gares.</p>
+        </details>
+        <details>
+          <summary>Comment suis-je payé ?</summary>
+          <p>Vous êtes salarié de LOC RÉACTION : votre bulletin de paie et votre contrat sont dans votre espace chauffeur, avec vos heures et vos congés.</p>
+        </details>
+        <details>
+          <summary>Je suis déjà chauffeur chez LOC RÉACTION</summary>
+          <p>Connectez-vous à votre <a href="../chauffeur/connexion/">espace chauffeur</a> avec votre adresse e-mail.</p>
+        </details>
+      </div>
+    </section>
+
+    <!-- Dernier appel -->
+    <section class="dc-appel contenu" aria-labelledby="dc-appel-titre">
+      <div class="dc-appel-carte">
+        <h2 id="dc-appel-titre">Prêt à prendre la route avec nous ?</h2>
+        <p>La candidature prend quelques minutes. Gardez vos documents à portée de main.</p>
+        <a class="bouton bouton-principal" id="candidater-bas" href="../chauffeur/connexion/">Déposer ma candidature</a>
+      </div>
+    </section>
+  </main>
+
+  <!-- Identité légale : lue dans la base (table « societe »), jamais recopiée à la main -->
+  <footer class="pied">
+    <div class="contenu">
+      <p class="pied-nom" id="pied-nom">LOC RÉACTION S.A.S</p>
+      <p id="pied-identite"></p>
+      <p class="pied-liens">
+        <a href="../">Commander une course</a>
+        <a id="pied-contact" href="#" hidden>Écrire à LOC RÉACTION</a>
+        <a id="pied-chauffeur" href="../chauffeur/connexion/">Espace chauffeur</a>
+      </p>
+    </div>
+  </footer>
+</body>
+</html>
