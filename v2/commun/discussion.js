@@ -12,7 +12,8 @@
 //     libre (2 000 caractères au plus) ;
 //   - un message reçu pendant que la fenêtre est fermée : nombre de non lus,
 //     vibration du téléphone et message bref ; fenêtre ouverte : les messages
-//     reçus sont marqués « lus ».
+//     reçus sont marqués « lus », et la notification « Message de … » de la
+//     conversation aussi (cloche, migration 22).
 // La base n'accepte un message que pendant la course (acceptée, chauffeur
 // arrivé, client à bord) et 24 heures après sa fin (migration 21) : ensuite
 // la conversation se lit, et la page invite à passer par le support.
@@ -24,6 +25,7 @@
 import { supabase, messageErreur } from './supabase.js';
 import { el, afficherMessage, dateHeure } from './outils.js';
 import { t, langueActive } from './i18n.js';
+import { marquerConversationLue } from './notifications.js';
 
 const STATUTS_OUVERTS = ['acceptee', 'arrivee', 'en_cours'];
 const DUREE_APRES_FIN_MS = 24 * 3600 * 1000;
@@ -96,6 +98,12 @@ export function creerDiscussion({ role, moi, place, avant = null, interlocuteur 
     afficher();
     descendre();
     marquerLus();
+    notificationLue();
+  }
+
+  // Notification « Message de … » de cette conversation : lue avec elle
+  function notificationLue() {
+    if (etat.course) marquerConversationLue(moi, role, etat.course.id).catch(() => {});
   }
 
   function descendre() {
@@ -148,6 +156,7 @@ export function creerDiscussion({ role, moi, place, avant = null, interlocuteur 
     if (fenetre.open) {
       if (etat.messages.length > avant) descendre();
       marquerLus();
+      if (nouveaux.length) notificationLue();
     }
   }
 

@@ -14,6 +14,9 @@
 // (?onglet=revenus) : un rechargement rouvre le même, et le bouton Retour du
 // téléphone revient à l'onglet précédent. Chaque onglet a son dossier
 // (revenus/, courses/, compte/) et n'est chargé qu'à sa première ouverture.
+//
+// Cloche de la barre du haut : les notifications (notifications/), dans un
+// panneau ouvert par-dessus la page ; une demande qui arrive le ferme.
 // =============================================================================
 import { supabase, profilConnecte, messageErreur } from '../commun/supabase.js';
 import { RACINE } from '../commun/config.js';
@@ -21,6 +24,7 @@ import { imposerLangue, appliquerTraductions } from '../commun/i18n.js';
 import { euros, nombre, el, afficherMessage, dateHeure } from '../commun/outils.js';
 import { ChampAdresse, adresseDepuisPosition } from '../commun/adresse.js';
 import { SuiviGps } from '../commun/gps-chauffeur.js';
+import { installerNotifications } from './notifications/notifications.js';
 import '../commun/pwa.js';
 
 imposerLangue('fr');                 // espace chauffeur en français
@@ -36,7 +40,8 @@ const etat = {
   delaiReponseMs: 30000,
   filtre: null,                // destination du filtre { adresse, lat, lng }
   attributionsVues: new Set(),
-  onglet: 'accueil'
+  onglet: 'accueil',
+  notifications: null          // cloche et panneau des notifications
 };
 
 // Ce que reçoivent les onglets Revenus, Courses et Compte
@@ -83,6 +88,8 @@ async function demarrer() {
   $('espace').hidden = false;
   $('onglets').hidden = false;
   document.body.classList.add('avec-onglets');
+  $('cloche').hidden = false;
+  etat.notifications = installerNotifications({ cloche: $('cloche'), pastille: $('cloche-non-lues'), moi: etat.profil.id, contexte });
   initialiserCarte(position.data);
   afficherFiche();
   await preparerFiltre();
@@ -347,6 +354,9 @@ async function afficherDemande(proposition) {
   if (data.numero_vol) infos.push(`Vol ${data.numero_vol}`);
   $('demande-infos').replaceChildren(...infos.map((texte) => el('span', { texte })));
 
+  // Panneau ouvert par-dessus la page (notifications) : fermé, la demande
+  // passe devant tout
+  document.querySelectorAll('dialog[open]').forEach((fenetre) => fenetre.close());
   $('demande').hidden = false;
   $('accepter').disabled = false;
   $('refuser').disabled = false;

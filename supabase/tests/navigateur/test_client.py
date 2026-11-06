@@ -150,6 +150,13 @@ def sql_admin(requete):
     assert ok, sortie
     return sortie
 
+def sql_systeme(requete):
+    # Lecture par la base elle-même (les notifications d'un compte ne sont
+    # lisibles que par lui, administration comprise)
+    code, sortie, erreur = psql(requete)
+    assert code == 0, erreur
+    return sortie
+
 def sql_chauffeuse(requete):
     ok, sortie = en_tant_que(CHAUFFEUSE, requete)
     assert ok, sortie
@@ -234,6 +241,10 @@ async def main():
             verifier(await page.is_visible('#ouvrir-discussion'), 'suivi : bouton « Messages » une fois la chauffeuse attribuée')
             sql_chauffeuse(f"insert into public.messages (course_id, auteur_id, contenu) "
                            f"values ('{id_course}', auth.uid(), 'Bonjour Claire, j''arrive dans 5 minutes.')")
+            lien = f'/client/course/?id={id_course}'
+            verifier(sql_systeme(f"select count(*) from public.notifications where destinataire_id = '{CLIENT}' and lien = '{lien}' "
+                               f"and titre = 'Message de Nadia' and lu_le is null") == '1',
+                     'message de la chauffeuse : notification « Message de Nadia » pour la cloche (base)')
             # Relecture de secours toutes les 10 secondes (temps réel injoignable ici)
             await page.wait_for_selector('#discussion-non-lus:not([hidden])', timeout=15000)
             verifier(await page.inner_text('#discussion-non-lus') == '1', 'message de la chauffeuse : « 1 » non lu sur le bouton « Messages »')
@@ -245,6 +256,14 @@ async def main():
             await page.wait_for_selector('#discussion-non-lus[hidden]', state='attached')
             verifier(sql_admin(f"select count(*) from public.messages where course_id = '{id_course}' and auteur_id = '{CHAUFFEUSE}' "
                                f"and lu_le is not null") == '1', 'fenêtre ouverte : message de la chauffeuse marqué « lu » dans la base')
+            for _ in range(20):
+                if sql_systeme(f"select count(*) from public.notifications where destinataire_id = '{CLIENT}' and lien = '{lien}' "
+                             f"and lu_le is null and titre like 'Message de %'") == '0':
+                    break
+                await page.wait_for_timeout(300)
+            verifier(sql_systeme(f"select count(*) from public.notifications where destinataire_id = '{CLIENT}' and lien = '{lien}' "
+                               f"and lu_le is null and titre like 'Message de %'") == '0',
+                     'fenêtre ouverte : notification « Message de Nadia » marquée « lue » aussi')
             await page.locator('#discussion-raccourcis button', has_text="Je suis devant l'entrée.").click()
             await page.wait_for_selector('#discussion-fil li[data-auteur="moi"]')
             verifier(sql_admin(f"select count(*) from public.messages where course_id = '{id_course}' and auteur_id = '{CLIENT}' "

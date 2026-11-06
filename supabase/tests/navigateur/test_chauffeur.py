@@ -4,7 +4,8 @@
 # un autre onglet, feuille de route et relevé en PDF ; onglet Compte de la
 # salariée : documents (dépôt, vérification, retrait), bulletins et contrat
 # imprimables, heures, demande et retrait d'absence ; liens des
-# notifications ; messages avec le client pendant la course ; déconnexion.
+# notifications ; messages avec le client pendant la course ; cloche et
+# panneau des notifications ; déconnexion.
 # Joué avec la chauffeuse des scénarios de test (Nadia, salariée).
 # Tout ce qui est créé ici est retiré : le parcours de l'administration
 # part ensuite du même état.
@@ -517,6 +518,11 @@ async def discussion_chauffeur(page, course):
     ok, sortie = en_tant_que(CLIENT, f"insert into public.messages (course_id, auteur_id, contenu) "
                                      f"values ('{id_course}', auth.uid(), 'Je suis devant la pharmacie, manteau rouge.')")
     assert ok, sortie
+    lien = f'/chauffeur/course/?id={id_course}'
+    verifier(valeur(f"select titre || ' · ' || message from public.notifications where destinataire_id = '{CHAUFFEUSE}' "
+                    f"and lien = '{lien}' and lu_le is null and titre like 'Message de %'")
+             == 'Message de Claire · Je suis devant la pharmacie, manteau rouge.',
+             'message du client : notification « Message de Claire » pour la cloche (base)')
     # Relecture de secours toutes les 10 secondes (temps réel injoignable ici)
     await page.wait_for_selector('#discussion-non-lus:not([hidden])', timeout=15000)
     verifier(await page.inner_text('#discussion-non-lus') == '1', 'message du client : « 1 » non lu sur le bouton « Messages »')
@@ -528,6 +534,9 @@ async def discussion_chauffeur(page, course):
     await page.wait_for_selector('#discussion-non-lus[hidden]', state='attached')
     verifier(valeur(f"select count(*) from public.messages where course_id = '{id_course}' and auteur_id = '{CLIENT}' and lu_le is not null") == '1',
              'fenêtre ouverte : message du client marqué « lu » dans la base')
+    await attendre_valeur(f"select count(*) from public.notifications where destinataire_id = '{CHAUFFEUSE}' and lien = '{lien}' "
+                          f"and lu_le is null and titre like 'Message de %'", '0')
+    verifier(True, 'fenêtre ouverte : notification « Message de Claire » marquée « lue » aussi')
     await page.locator('#discussion-raccourcis button', has_text='Je suis sur place.').click()
     await page.wait_for_selector('#discussion-fil li[data-auteur="moi"]')
     verifier(valeur(f"select count(*) from public.messages where course_id = '{id_course}' and auteur_id = '{CHAUFFEUSE}' "
@@ -548,6 +557,90 @@ async def discussion_chauffeur(page, course):
     await page.screenshot(path=f'{CAPTURES}/chauffeur-messages.png')
     await page.click('#fermer-discussion')
     await page.wait_for_selector('dialog#discussion:not([open])', state='attached')
+
+
+async def attendre_valeur(requete, attendu, delai=6):
+    """Attend (quelques secondes au plus) que la base renvoie « attendu »."""
+    fin = time.time() + delai
+    while True:
+        obtenu = valeur(requete)
+        if obtenu == attendu or time.time() > fin:
+            break
+        await asyncio.sleep(0.3)
+    verifier(obtenu == attendu, f'base : {attendu} attendu (obtenu : {obtenu})')
+
+
+async def notifications_chauffeur(page):
+    """Cloche et panneau des notifications (chauffeur/notifications/) : nombre
+    de non lues, liste, notification sans lien et avec lien (onglet Compte),
+    tout marquer comme lu, effacer les lues ; une demande ferme le panneau."""
+    print('Notifications')
+    systeme(f"""insert into public.notifications (destinataire_id, type, titre, message, lien, cree_le) values
+      ('{CHAUFFEUSE}', 'document', 'Document validé', 'Votre permis de conduire est validé.', '/chauffeur/documents/', now() - interval '1 second'),
+      ('{CHAUFFEUSE}', 'info', 'Réunion des chauffeurs', 'Lundi à 10 h, à l''agence de Chaumontel.', null, now());""")
+    non_lues = int(valeur(f"select count(*) from public.notifications where destinataire_id = '{CHAUFFEUSE}' and lu_le is null"))
+    await page.reload()
+    await page.wait_for_selector('#espace:not([hidden])')
+    await page.wait_for_selector('#cloche-non-lues:not([hidden])')
+    verifier(await page.inner_text('#cloche-non-lues') == str(non_lues),
+             f'cloche : {non_lues} notifications non lues, comme dans la base')
+    verifier(await page.get_attribute('#cloche', 'aria-label') == f'Notifications, {non_lues} non lues', 'cloche : nombre annoncé aux lecteurs d\'écran')
+    await page.click('#cloche')
+    await page.wait_for_selector('dialog#notifs[open] #notifs-liste li')
+    premiere = page.locator('#notifs-liste li').first
+    verifier(await premiere.locator('.notif-titre').inner_text() == 'Réunion des chauffeurs'
+             and await premiere.locator('.notif').get_attribute('data-lue') == 'non',
+             'panneau : la plus récente en premier, marquée non lue')
+    verifier('Aujourd\'hui' in await premiere.locator('.notif-date').inner_text(), 'panneau : date « Aujourd\'hui, hh:mm »')
+    await sans_messages(page)
+    await page.screenshot(path=f'{CAPTURES}/chauffeur-notifications.png')
+
+    # Notification sans lien : lue, le panneau reste ouvert
+    await premiere.locator('.notif').click()
+    await page.wait_for_selector('#notifs-liste li:first-child .notif[data-lue="oui"]')
+    verifier(valeur(f"select lu_le is not null from public.notifications where destinataire_id = '{CHAUFFEUSE}' "
+                    f"and titre = 'Réunion des chauffeurs'") == 't' and await page.is_visible('dialog#notifs'),
+             'notification sans lien : marquée « lue » dans la base, le panneau reste ouvert')
+    await page.wait_for_function(f"document.getElementById('cloche-non-lues').textContent === '{non_lues - 1}'")
+    verifier(True, 'cloche : une non lue de moins')
+
+    # Notification avec lien : onglet Compte, « Mes documents », sans quitter la page
+    await page.locator('#notifs-liste .notif', has_text='Votre permis de conduire est validé.').click()
+    await page.wait_for_selector('#vue-compte:not([hidden]) #compte-documents')
+    verifier(await page.is_hidden('dialog#notifs') and page.url.endswith('chauffeur/?onglet=compte')
+             and await page.inner_text('#pastille-etat') == 'En ligne',
+             'notification « Document validé » : onglet Compte, sans rechargement, toujours en ligne')
+    verifier(valeur(f"select lu_le is not null from public.notifications where destinataire_id = '{CHAUFFEUSE}' "
+                    f"and titre = 'Document validé' and message = 'Votre permis de conduire est validé.'") == 't',
+             'notification « Document validé » : marquée « lue »')
+
+    # Une demande qui arrive ferme le panneau
+    await page.click('#cloche')
+    await page.wait_for_selector('dialog#notifs[open]')
+    autre = commander()
+    await page.wait_for_selector('#demande:not([hidden])', timeout=15000)
+    verifier(await page.is_hidden('dialog#notifs'), 'demande entrante : le panneau des notifications se ferme, la demande passe devant')
+    await page.click('#refuser')
+    await page.wait_for_selector('#demande[hidden]', state='attached')
+    annuler_par_admin(autre['id'])
+
+    # Tout marquer comme lu, puis effacer les lues
+    await page.click('#cloche')
+    await page.wait_for_selector('dialog#notifs[open] #notifs-liste li')
+    await page.click('#notifs-tout-lu')
+    await message_affiche(page, 'Toutes les notifications sont marquées comme lues.')
+    verifier(valeur(f"select count(*) from public.notifications where destinataire_id = '{CHAUFFEUSE}' and lu_le is null") == '0'
+             and await page.locator('#notifs-liste .notif[data-lue="non"]').count() == 0,
+             '« Tout marquer comme lu » : plus aucune non lue (base et panneau)')
+    await page.wait_for_selector('#cloche-non-lues', state='hidden')
+    verifier(await page.get_attribute('#cloche', 'aria-label') == 'Notifications', 'cloche : plus de nombre')
+    await page.click('#notifs-effacer')
+    await page.wait_for_selector('#notifs-vide:not([hidden])')
+    verifier(valeur(f"select count(*) from public.notifications where destinataire_id = '{CHAUFFEUSE}'") == '0',
+             '« Effacer les lues » : notifications retirées de la base, « Aucune notification pour le moment. »')
+    await page.click('#notifs-fermer')
+    await page.click('#onglets [data-onglet="accueil"]')
+    await page.wait_for_selector('#vue-accueil:not([hidden])')
 
 
 def preparer():
@@ -689,6 +782,7 @@ async def main():
             annuler_par_admin(course4['id'])
 
             await onglets_chauffeur(ctx, page, course, course4)
+            await notifications_chauffeur(page)
 
             await page.click('#bascule-en-ligne')
             await page.wait_for_function("document.getElementById('pastille-etat').textContent === 'Hors ligne'")

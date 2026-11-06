@@ -23,6 +23,10 @@ select id as course1, terminee_le as fin1 from public.courses
  where client_id = :'client1' and chauffeur_id = :'chauffeur1' and statut = 'terminee' order by cree_le limit 1 \gset
 select id as annulee from public.courses where client_id = :'client1' and statut = 'annulee' order by cree_le limit 1 \gset
 select count(*) as messages_avant from public.messages \gset
+-- Depuis la migration 22, chaque message notifie l'autre personne (et
+-- reprend une notification « Message de … » non lue des scénarios) : l'état
+-- des notifications est photographié ici et rétabli à l'identique à la fin
+create temp table instantane_notifications as select * from public.notifications;
 
 
 -- #############################################################################
@@ -82,8 +86,14 @@ select test.verifier((select count(*) from public.messages where course_id = :'c
 delete from public.messages where course_id = :'course1' and cree_le > now() - interval '1 hour'
   and contenu in ('J''ai oublié mon écharpe sur la banquette.', 'Je l''ai trouvée, je vous la rapporte.',
                   'LOC RÉACTION : l''écharpe est à l''agence.');
+delete from public.notifications n where not exists (select 1 from instantane_notifications i where i.id = n.id);
+update public.notifications n set titre = i.titre, message = i.message, lien = i.lien, lu_le = i.lu_le, cree_le = i.cree_le
+  from instantane_notifications i where i.id = n.id;
 update public.courses set terminee_le = :'fin1' where id = :'course1';
-select test.verifier((select count(*) from public.messages) = :messages_avant, 'messagerie : retour à l''état de départ');
+select test.verifier((select count(*) from public.messages) = :messages_avant
+                     and not exists (select * from public.notifications except select * from instantane_notifications)
+                     and not exists (select * from instantane_notifications except select * from public.notifications),
+                     'messagerie : retour à l''état de départ (messages et notifications)');
 
 \o
 \echo '✔ Messagerie de la course : tout est conforme.'
