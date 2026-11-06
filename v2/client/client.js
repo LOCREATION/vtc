@@ -11,6 +11,7 @@
 // Compte chauffeur ou d'administration : un lien vers son propre espace.
 // Notifications : la cloche ouvre le panneau commun ; un lien vers une course
 // ouvre son suivi (client/course/), « /client/activite/ » l'onglet Activité,
+// « /client/compte/#compte-solde » l'onglet Compte à cette section,
 // « /client/demandes/?id=… » la demande dans « Mes demandes au support ».
 // « Mes demandes au support » (commun/support.js) : panneau ouvert par-dessus
 // la page, depuis Compte, la page d'une course (« Signaler un problème »), une
@@ -165,6 +166,14 @@ async function suivreLien(lien) {
   }
   if (chemin === '/client/activite/') {
     await ouvrirOnglet('activite');
+    return;
+  }
+  // Onglet Compte, à la section de l'ancre (« /client/compte/#compte-solde »)
+  if (chemin === '/client/compte/') {
+    await ouvrirOnglet('compte');
+    const ancre = (lien.split('#')[1] || '').trim();
+    const section = /^compte-[a-z-]{2,40}$/.test(ancre) ? document.getElementById(ancre) : null;
+    if (section) section.scrollIntoView({ block: 'start' });
     return;
   }
   if (chemin === '/client/demandes/') {

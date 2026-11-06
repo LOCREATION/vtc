@@ -1,7 +1,7 @@
 /* =============================================================================
    LOC RÉACTION S.A.S — Version 2
-   Espace client, onglet Compte : profil, lieux, proches, aide et support,
-   langue, déconnexion
+   Espace client, onglet Compte : profil, lieux, proches, solde, parrainage
+   et codes promo, aide et support, langue, déconnexion
    ============================================================================= */
 .entete-bloc { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .entete-bloc h2 { margin: 0; }
@@ -35,6 +35,32 @@
 /* Proches : nom, téléphone, lien ; actions dessous (Commander, Modifier, Retirer) */
 .proche-client { grid-template-columns: minmax(0, 1fr); gap: 4px; }
 .proche-client .lieu-actions { justify-content: flex-start; gap: 4px 6px; margin-left: -8px; }
+
+/* Sous-titre dans un bloc (« Derniers mouvements », « Codes promo ») */
+.sous-titre-compte { margin: 6px 0 0; font-size: 18px; font-weight: 700; }
+
+/* Mon solde */
+.solde-montant { margin: 0; font: 700 34px/1.1 var(--police-titre); letter-spacing: 0.01em; }
+
+/* Mouvements du solde, remises des codes promo */
+.mouvements-client { list-style: none; margin: 0; padding: 0; display: grid; }
+.mouvement-client { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 10px 0; border-top: 1px solid var(--trait); }
+.mouvement-client:first-child { border-top: none; padding-top: 2px; }
+.mouvement-texte { display: grid; gap: 2px; min-width: 0; }
+.mouvement-motif { font-weight: 600; overflow-wrap: anywhere; }
+.mouvement-date { color: var(--gris); font-size: 14px; }
+.mouvement-course { justify-self: start; font-size: 14px; color: var(--nuit-2); }
+.mouvement-montant { font-weight: 700; white-space: nowrap; }
+.mouvement-client[data-sens='credit'] .mouvement-montant { color: var(--vert); }
+
+/* Code de parrainage : grand, espacé, facile à dicter */
+.code-parrainage { display: grid; gap: 2px; justify-items: start; padding: 12px 14px; border-radius: var(--rayon-champ); background: var(--bitume); }
+.code-parrainage-libelle { color: var(--gris); font-size: 14px; }
+.code-parrainage-valeur { font: 700 28px/1.2 var(--police-titre); letter-spacing: 0.12em; }
+.code-parrain-client { display: grid; gap: 6px; }
+.code-parrain-client label { font-weight: 600; }
+.ligne-code { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.ligne-code .saisie { text-transform: uppercase; letter-spacing: 0.08em; }
 
 /* Langue */
 .choix-langue { border: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 20px; }

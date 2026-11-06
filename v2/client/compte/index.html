@@ -1,0 +1,29 @@
+<!doctype html>
+<!-- =============================================================================
+     LOC RÉACTION S.A.S — Version 2
+     Espace client : adresse « /client/compte/ » (avec une ancre : #compte-solde,
+     #compte-parrainage…)
+     Lien des notifications du parrainage (« Parrainage validé », « Bienvenue
+     chez LOC RÉACTION ») : renvoie à l'onglet Compte de l'espace client, à la
+     section indiquée, la langue (?lang=en) gardée.
+     ============================================================================= -->
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Compte, LOC RÉACTION</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0A1A38">
+  <link rel="icon" href="../../commun/img/icone.svg" type="image/svg+xml">
+  <script>
+    (function () {
+      var langue = new URLSearchParams(location.search).get('lang');
+      var ancre = /^#compte-[a-z-]{2,40}$/.test(location.hash) ? location.hash : '';
+      location.replace('../?' + (langue === 'en' || langue === 'fr' ? 'lang=' + langue + '&' : '') + 'onglet=compte' + ancre);
+    })();
+  </script>
+</head>
+<body>
+  <p><a href="../?onglet=compte">Compte / Account</a></p>
+</body>
+</html>

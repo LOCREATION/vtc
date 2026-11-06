@@ -177,7 +177,7 @@ function lireLien() {
     $('bloc-proche').hidden = false;
     $('proche-enregistre').value = proche.id;
     $('proche-nom').value = proche.nom;
-    $('proche-telephone').value = proche.telephone;
+    $('proche-telephone').value = telephoneLisible(proche.telephone);
     $('case-enregistrer-proche').hidden = true;
   }
   const quand = lien.get('q');
@@ -246,7 +246,7 @@ function preparerProche() {
     liste.addEventListener('change', () => {
       const proche = etat.proches.find((p) => p.id === liste.value);
       $('proche-nom').value = proche ? proche.nom : '';
-      $('proche-telephone').value = proche ? proche.telephone : '';
+      $('proche-telephone').value = proche ? telephoneLisible(proche.telephone) : '';
       $('case-enregistrer-proche').hidden = !!proche;
     });
   }
