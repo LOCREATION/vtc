@@ -126,6 +126,9 @@ async def accueil(navigateur, largeur, hauteur, mobile, suffixe):
     await page.screenshot(path=f'{CAPTURES}/accueil-{suffixe}-1-vide.png', full_page=True)
     verifier(await page.locator('#raccourcis .pastille').count() == 4, f'accueil {suffixe} : 4 raccourcis aéroports lus dans la base')
     verifier('RCS Pontoise' in await page.inner_text('#pied-identite'), f'accueil {suffixe} : identité légale lue dans la base')
+    verifier(await page.evaluate("document.getElementById('pied-chauffeur').href") == SITE + 'chauffeur/connexion/'
+             and await page.evaluate("document.getElementById('pied-admin').href") == SITE + 'admin/',
+             f'accueil {suffixe} : entrées de l\'espace chauffeur et de l\'administration en bas de page')
     # Départ par saisie et suggestion, arrivée par raccourci Roissy
     await page.fill('#depart', '10 rue de riv')
     await page.wait_for_selector('.suggestion >> text=10 Rue de Rivoli')
@@ -193,6 +196,56 @@ async def connexion(navigateur):
     verifier(page.url.startswith('http://localhost:8765/v2/'), 'connexion : redirection vers un site extérieur refusée')
     await contexte.close()
 
+async def entrees(navigateur):
+    """Trois entrées séparées : client, chauffeur (création de compte comprise), administration."""
+    # Espace client : étiquette et liens vers les deux autres entrées
+    contexte, page = await nouvelle_page(navigateur, 390, 844, True)
+    await page.goto(SITE + 'connexion/')
+    verifier((await page.text_content('#etape-email .etiquette-espace')).strip() == 'Espace client'
+             and await page.evaluate("document.getElementById('vers-chauffeur').href") == SITE + 'chauffeur/connexion/'
+             and await page.evaluate("document.getElementById('vers-admin').href") == SITE + 'admin/',
+             'entrée client : « Espace client », liens vers l\'espace chauffeur et l\'administration')
+    await contexte.close()
+
+    # Espace chauffeur : connexion ou création de compte, nom obligatoire, puis l'espace chauffeur
+    contexte, page = await nouvelle_page(navigateur, 390, 844, True)
+    await contexte.route('http://localhost:8765/v2/chauffeur/', lambda route: route.fulfill(
+        status=200, content_type='text/html', body='<!doctype html><title>Espace chauffeur</title><h1>Espace chauffeur</h1>'))
+    await page.goto(SITE + 'chauffeur/connexion/')
+    verifier(await page.inner_text('#etape-email h1') == 'Se connecter ou devenir chauffeur'
+             and 'Pas encore chauffeur' in await page.inner_text('#etape-email')
+             and await page.evaluate("document.getElementById('vers-client').href") == SITE + 'connexion/',
+             'entrée chauffeur : se connecter ou devenir chauffeur, lien vers l\'espace client')
+    await page.screenshot(path=f'{CAPTURES}/connexion-chauffeur-1-email.png', full_page=True)
+    await page.fill('#email', 'essai@exemple.test')
+    await page.click('#bouton-email')
+    await page.wait_for_selector('#etape-code:not([hidden])')
+    await page.fill('#code', '12345678')
+    await page.wait_for_selector('#etape-profil:not([hidden])')
+    await page.fill('#nom', '')
+    await page.click('#bouton-profil')
+    verifier(await page.is_visible('#erreur-nom') and 'nom' in await page.inner_text('#erreur-nom'),
+             'entrée chauffeur : le nom est demandé (feuilles de route)')
+    await page.screenshot(path=f'{CAPTURES}/connexion-chauffeur-2-identite.png', full_page=True)
+    await page.fill('#nom', 'Durand')
+    await page.click('#bouton-profil')
+    await page.wait_for_url(SITE + 'chauffeur/')
+    verifier(modifications_profil[-1].get('nom') == 'Durand', 'entrée chauffeur : identité enregistrée, puis l\'espace chauffeur')
+    # Lien de l'e-mail : il revient par la page du client, qui renvoie aussitôt vers l'entrée chauffeur
+    await page.goto(SITE + 'connexion/?suite=chauffeur%2Fconnexion%2F')
+    await page.wait_for_url(SITE + 'chauffeur/')
+    verifier(True, 'lien de l\'e-mail d\'un chauffeur : retour dans l\'espace chauffeur, pas côté client')
+    await contexte.close()
+
+    # Administration : connexion par code propre, lien vers la connexion par mot de passe
+    contexte, page = await nouvelle_page(navigateur, 390, 844, True)
+    await page.goto(SITE + 'admin/connexion/')
+    verifier((await page.text_content('#etape-email .etiquette-espace')).strip() == 'Administration'
+             and await page.evaluate("document.getElementById('vers-porte').href") == SITE + 'admin/',
+             'entrée administration : connexion par code propre, lien vers le mot de passe')
+    await page.screenshot(path=f'{CAPTURES}/connexion-admin-email.png', full_page=True)
+    await contexte.close()
+
 async def anglais(navigateur):
     contexte, page = await nouvelle_page(navigateur, 1280, 900, False)
     await page.goto(SITE + '?lang=en')
@@ -215,6 +268,8 @@ async def main():
             await accueil(navigateur, 1280, 900, False, 'bureau')
             print('Connexion')
             await connexion(navigateur)
+            print('Entrées client, chauffeur, administration')
+            await entrees(navigateur)
             print('Anglais')
             await anglais(navigateur)
             await navigateur.close()

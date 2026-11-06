@@ -80,7 +80,9 @@ function carteSansFiche() {
       el('div', { classe: 'choix-identite' },
         el('strong', { texte: nomComplet(p.prenom, p.nom) || p.email }),
         p.statut !== 'actif' ? badge('Compte bloqué', 'rouge') : null),
-      el('p', { classe: 'choix-details', texte: [p.email, telephoneLisible(p.telephone), `inscrit le ${dateCourte(p.cree_le)}`].filter(Boolean).join(' · ') }),
+      el('p', { classe: 'choix-details' },
+        ...[p.email, telephoneLisible(p.telephone), `inscrit le ${dateCourte(p.cree_le)}`].filter(Boolean)
+          .flatMap((texte, i) => [i ? ' · ' : null, el('span', { classe: 'insecable', texte })]).filter(Boolean)),
       el('div', { classe: 'choix-action' },
         p.statut === 'actif' ? bouton('Enregistrer comme chauffeur', () => validerCandidature({ ...p, documents: [] }), 'bouton-principal') : null)))));
 }

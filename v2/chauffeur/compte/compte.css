@@ -56,3 +56,5 @@
 .champs-cote .saisie { min-width: 0; }
 /* Sélecteurs de date et listes du téléphone aux couleurs de nuit */
 .theme-nuit .saisie { color-scheme: dark; }
+/* Boutons d'une pièce (Voir, Retirer…) : à leur taille, côte à côte */
+.piece .actions-compte .bouton { flex: 0 1 auto; }

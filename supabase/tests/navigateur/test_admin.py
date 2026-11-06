@@ -48,8 +48,8 @@ async def porte(nav):
     await page.click('text=Se connecter')
     await page.wait_for_selector('.porte .alerte:not([hidden])')
     verifier('incorrect' in await page.inner_text('.porte .alerte'), 'mauvais mot de passe : message exact, lien vers le code e-mail')
-    verifier(await page.get_attribute('a[href*="connexion/?suite="]', 'href') == '/v2/connexion/?suite=admin%2F',
-             'lien de connexion par code e-mail, retour à l\'administration')
+    verifier(await page.get_attribute('a[href*="connexion/?suite="]', 'href') == '/v2/admin/connexion/?suite=admin%2F',
+             'lien de connexion par code e-mail : page de connexion propre à l\'administration, puis retour')
     await page.fill('#porte-mdp', 'Chaumontel2026')
     await page.click('text=Se connecter')
     await page.wait_for_selector('#porte-code')
@@ -468,8 +468,28 @@ async def chauffeurs(nav):
     await page.locator('dialog.fenetre').get_by_role('button', name='Chercher').click()
     await page.wait_for_selector('dialog.fenetre .choix')
     verifier('Hugo Petit' in await page.inner_text('dialog.fenetre .liste-choix'), 'enregistrer un chauffeur : recherche du compte')
+
+    # Compte passé « chauffeur » directement dans la base, sans fiche : signalé en tête, puis enregistré
+    uid2, _ = nouveau_compte('Malik', 'Benali', '+33677001122')
+    systeme(f"update public.profils set role = 'chauffeur' where id = '{uid2}';")
+    await page.goto(SITE + 'admin/chauffeurs/')
+    carte = page.locator('#sans-fiche')
+    await carte.wait_for()
+    verifier('Malik Benali' in await carte.inner_text() and 'à enregistrer' in await carte.inner_text(),
+             'compte « chauffeur » sans fiche : signalé en tête des chauffeurs')
+    await page.get_by_role('tab', name='Candidatures').click()
+    await page.wait_for_selector('#sans-fiche')
+    verifier(True, 'signalement aussi en tête des candidatures')
+    await page.locator('#sans-fiche .choix', has_text='Malik Benali').get_by_role('button', name='Enregistrer comme chauffeur').click()
+    await page.wait_for_selector('dialog.fenetre[open]')
+    await page.locator('dialog.fenetre').get_by_role('button', name='Valider').click()
+    await page.wait_for_selector('dialog.fenetre', state='detached')
+    await page.wait_for_selector('#sans-fiche', state='detached')
+    verifier(valeur(f"select c.statut || ' ' || p.role from public.chauffeurs c join public.profils p on p.id = c.id where c.id = '{uid2}'")
+             == 'valide chauffeur', 'compte enregistré comme chauffeur : fiche validée, le signalement disparaît')
     await ctx.close()
-    systeme(f"update public.chauffeurs set statut = 'refuse' where id = '{uid}'; update public.profils set role = 'client' where id = '{uid}';")
+    systeme(f"""update public.chauffeurs set statut = 'refuse' where id in ('{uid}', '{uid2}');
+               update public.profils set role = 'client' where id in ('{uid}', '{uid2}');""")
 
 
 async def flotte(nav):

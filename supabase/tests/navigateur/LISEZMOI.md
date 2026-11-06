@@ -17,10 +17,10 @@ de l'état laissé par le précédent) :
 ```
 npm install && npm run preparer
 bash ../lancer_tests_locaux.sh     # base locale neuve + 834 vérifications
-python3 test_pages.py              # accueil et connexion (25 vérifications)
+python3 test_pages.py              # accueil, connexion et les trois entrées (33 vérifications)
 python3 test_client.py             # commande et suivi (18 vérifications)
-python3 test_chauffeur.py          # espace chauffeur (80 vérifications)
-python3 test_admin.py              # administration (306 vérifications)
+python3 test_chauffeur.py          # espace chauffeur, nouveau chauffeur (93 vérifications)
+python3 test_admin.py              # administration (309 vérifications)
 ```
 
 `test_admin.py` accepte le nom d'une étape pour n'en jouer qu'une partie :

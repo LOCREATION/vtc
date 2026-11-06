@@ -405,6 +405,108 @@ async def compte_salariee(ctx, page):
     await page.wait_for_selector('#vue-compte:not([hidden]) #compte-profil dd')
 
 
+async def nouveau_chauffeur(nav):
+    """Entrée chauffeur d'un nouveau compte : identité, candidature, dossier et documents,
+    validation par LOC RÉACTION (le service s'ouvre) ; compte « chauffeur » sans fiche."""
+    marque = str(int(time.time() * 1000))[-9:]
+    uid = systeme(f"""set role supabase_auth_admin;
+insert into auth.users (email, raw_user_meta_data) values ('nouveau{marque}@exemple.test', '{{}}') returning id;""").splitlines()[-1]
+    sans_fiche = systeme(f"""set role supabase_auth_admin;
+insert into auth.users (email, raw_user_meta_data)
+values ('sansfiche{marque}@exemple.test', '{{"prenom":"Malik","nom":"Benali","telephone":"+33677001122"}}') returning id;""").splitlines()[-1]
+    systeme(f"update public.profils set role = 'chauffeur' where id = '{sans_fiche}';")
+    try:
+        ctx = await nav.new_context(viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True,
+                                    locale='fr-FR', timezone_id='Europe/Paris', service_workers='block',
+                                    geolocation={'latitude': 48.8530, 'longitude': 2.3500}, permissions=['geolocation'])
+        await ctx.add_init_script(session_injectee(uid, f'nouveau{marque}@exemple.test'))
+        await ctx.route('**/*', routeur(uid))
+        page = await ctx.new_page()
+        page.on('console', lambda m: console.append(f'{m.type}: {m.text}') if m.type == 'error' else None)
+        page.on('pageerror', lambda e: console.append(f'pageerror: {e}'))
+
+        # Identité incomplète : la page de connexion de l'espace chauffeur la fait compléter
+        await page.goto(SITE + 'chauffeur/')
+        await page.wait_for_url(re.compile(r'/chauffeur/connexion/$'))
+        await page.wait_for_selector('#etape-profil:not([hidden])')
+        verifier((await page.text_content('#etape-profil .etiquette-espace')).strip() == 'Espace chauffeur',
+                 'nouveau compte : entrée de l\'espace chauffeur, identité demandée')
+        await page.fill('#prenom', 'Sami')
+        await page.fill('#telephone', '06 77 88 99 00')
+        await page.click('#bouton-profil')
+        verifier(await page.is_visible('#erreur-nom'), 'identité d\'un chauffeur : le nom est obligatoire')
+        await page.fill('#nom', 'Haddad')
+        await page.click('#bouton-profil')
+        await page.wait_for_url(re.compile(r'/chauffeur/$'))
+        await page.wait_for_selector('#dossier #candidature')
+        verifier(valeur(f"select prenom || ' ' || nom || ' ' || telephone || ' ' || role from public.profils where id = '{uid}'")
+                 == 'Sami Haddad +33677889900 client', 'identité enregistrée ; le compte n\'est pas encore chauffeur')
+        verifier(await page.is_hidden('#pastille-etat') and await page.is_hidden('#espace'),
+                 'avant validation : ni « en ligne », ni onglets du service')
+        verifier('Devenir chauffeur LOC RÉACTION' in await page.inner_text('#dossier-titre'), 'espace chauffeur : candidature « Devenir chauffeur »')
+
+        # Candidature : contrôles, puis envoi
+        await page.click('#cand-envoyer')
+        verifier(await page.is_visible('#cand-ville-erreur') and await page.is_visible('#cand-experience-erreur')
+                 and await page.is_visible('#cand-carte-erreur'), 'candidature : ville, expérience et carte VTC demandées')
+        await page.fill('#cand-ville', 'Chaumontel')
+        await page.fill('#cand-experience', 'Cinq ans de VTC : transferts aéroports et mises à disposition.')
+        await page.check('#cand-carte-oui')
+        verifier(await page.is_visible('#cand-carte-numero'), 'carte VTC : numéro et date demandés')
+        carte_fin = valeur("select ((now() at time zone 'Europe/Paris')::date + 500)::text")
+        await page.fill('#cand-carte-numero', 'VTC-777')
+        await page.fill('#cand-carte-date', carte_fin)
+        await page.fill('#cand-permis-numero', 'P-123456')
+        await sans_messages(page)
+        await capture_complete(page, f'{CAPTURES}/chauffeur-candidature-telephone.png')
+        await page.click('#cand-envoyer')
+        await page.wait_for_selector('#pieces-demandees li')
+        verifier(valeur(f"""select k.statut || ' ' || k.ville || ' ' || c.statut || ' ' || c.carte_vtc_numero || ' ' || c.carte_vtc_expiration || ' ' || c.permis_numero
+                             from public.candidatures k join public.chauffeurs c on c.id = k.profil_id where k.profil_id = '{uid}'""")
+                 == f'nouvelle Chaumontel candidat VTC-777 {carte_fin} P-123456', 'candidature enregistrée : fiche « candidat » avec carte VTC et permis')
+        verifier(await page.locator('#pieces-demandees li', has_text='À déposer').count() == 4, 'dossier : 4 documents à fournir')
+
+        # Dépôt du permis depuis le dossier
+        await page.click('#docs-ajouter')
+        await page.select_option('#docs-type', 'permis')
+        await page.fill('#docs-echeance', valeur("select ((now() at time zone 'Europe/Paris')::date + 3000)::text"))
+        await page.set_input_files('#docs-fichier', files=[{'name': 'permis.pdf', 'mimeType': 'application/pdf', 'buffer': b'%PDF-1.4 essai'}])
+        await page.click('#docs-envoyer')
+        await page.wait_for_function("document.querySelector('#pieces-demandees li[data-statut=\"en_attente\"]')?.textContent.includes('Permis')")
+        verifier(valeur(f"select statut from public.documents where chauffeur_id = '{uid}' and type = 'permis'") == 'en_attente',
+                 'dossier : permis déposé, en vérification')
+        await sans_messages(page)
+        await capture_complete(page, f'{CAPTURES}/chauffeur-dossier-telephone.png')
+
+        # Validation par LOC RÉACTION : le service s'ouvre
+        ok, sortie = appel_rpc('valider_candidature', {'p_profil': uid}, ADMIN)
+        assert ok, sortie
+        await page.reload()
+        await page.wait_for_selector('#espace:not([hidden])')
+        verifier(await page.inner_text('#pastille-etat') == 'Hors ligne' and await page.is_hidden('#dossier'),
+                 'candidature validée : le service de l\'espace chauffeur s\'ouvre')
+        await ctx.close()
+
+        # Compte passé « chauffeur » directement dans la base, sans fiche
+        ctx = await nav.new_context(viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True,
+                                    locale='fr-FR', timezone_id='Europe/Paris', service_workers='block')
+        await ctx.add_init_script(session_injectee(sans_fiche, f'sansfiche{marque}@exemple.test'))
+        await ctx.route('**/*', routeur(sans_fiche))
+        page = await ctx.new_page()
+        await page.goto(SITE + 'chauffeur/')
+        await page.wait_for_selector('#dossier:not([hidden]) #dossier-titre')
+        verifier(await page.inner_text('#dossier-titre') == 'Compte chauffeur à activer'
+                 and 'Enregistrer un chauffeur' in await page.inner_text('#dossier'),
+                 'rôle « chauffeur » sans fiche : compte à activer, et comment LOC RÉACTION l\'active')
+        await page.click('#dossier-deconnexion')
+        await page.wait_for_url(re.compile(r'/chauffeur/connexion/$'))
+        verifier(True, 'déconnexion depuis le dossier : retour à l\'entrée de l\'espace chauffeur')
+        await ctx.close()
+    finally:
+        # Comptes d'essai retirés (fiche, candidature, documents, notifications suivent)
+        systeme(f"delete from auth.users where id in ('{uid}', '{sans_fiche}');")
+
+
 def preparer():
     # État connu : aucune course en cours, personne en ligne, délai de réponse de 30 s
     systeme("""update public.courses set statut = 'annulee', annulee_par = 'admin', annulee_le = now()
@@ -553,9 +655,13 @@ async def main():
             await page.click('#onglets [data-onglet="compte"]')
             await page.wait_for_selector('#vue-compte:not([hidden]) #compte-deconnexion')
             await page.click('#compte-deconnexion')
-            await page.wait_for_url('**/connexion/**')
+            await page.wait_for_url(re.compile(r'/chauffeur/connexion/$'))
+            # (le banc réinjecte la session à chaque page : on s'arrête à l'adresse)
             verifier(valeur(f"select en_ligne from public.positions where chauffeur_id = '{CHAUFFEUSE}'") == 'f',
-                     'déconnexion : hors ligne d\'abord, puis page de connexion')
+                     'déconnexion : hors ligne d\'abord, puis entrée de l\'espace chauffeur')
+
+            print('Nouveau chauffeur')
+            await nouveau_chauffeur(nav)
             await nav.close()
     finally:
         serveur.terminate()
