@@ -223,7 +223,11 @@ async function ouvrirFiche(id) {
       ])),
     el('a', { classe: 'bouton bouton-principal bouton-large', id: 'fiche-feuille', target: '_blank', rel: 'noopener',
       href: `document/?type=feuille&course=${c.id}`, texte: 'Feuille de route (PDF)' }),
-    el('p', { classe: 'aide', texte: 'La feuille de route s\'ouvre dans un nouvel onglet : imprimez-la ou enregistrez-la en PDF.' }));
+    el('p', { classe: 'aide', texte: 'La feuille de route s\'ouvre dans un nouvel onglet : imprimez-la ou enregistrez-la en PDF.' }),
+    // Problème sur cette course (client absent, paiement, objet oublié…) :
+    // nouvelle demande au support, la course déjà choisie
+    el('button', { type: 'button', classe: 'bouton bouton-secondaire bouton-large', id: 'fiche-signaler',
+      texte: 'Signaler un problème sur cette course', onclick: () => etat.contexte.ouvrirSupport({ nouvelle: true, course: c.id }) }));
 
   $('courses-zone-liste').hidden = true;
   $('courses-zone-fiche').hidden = false;

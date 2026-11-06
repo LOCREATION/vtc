@@ -12,6 +12,8 @@
 //   - Ma paie : bulletins et contrat de travail (paie.js), et Heures et
 //     absences : heures du mois, congés demandés (planning.js), pour un
 //     chauffeur salarié de LOC RÉACTION seulement ;
+//   - Aide et support : « Mes demandes » et « Nouvelle demande » (panneau
+//     support/support.js, ouvert par chauffeur.js), réponses à lire ;
 //   - Contacter LOC RÉACTION : téléphone et e-mail de l'entreprise ;
 //   - Se déconnecter : hors ligne d'abord (chauffeur.js).
 // Une adresse avec ancre (?onglet=compte#compte-documents, lien des
@@ -107,6 +109,16 @@ function construire(conteneur) {
     etat.sections.documents.section,
     etat.sections.paie.section,
     etat.sections.planning.section,
+    el('section', { classe: 'panneau', id: 'compte-bloc-support', 'aria-labelledby': 'compte-titre-support' },
+      el('h2', { id: 'compte-titre-support', texte: 'Aide et support' }),
+      el('p', { classe: 'aide', texte: 'Une question sur une course, un paiement, un objet oublié ou votre compte ? '
+        + 'Écrivez à LOC RÉACTION et suivez la réponse ici.' }),
+      el('p', { classe: 'alerte alerte-info', id: 'compte-support-non-lus', role: 'status', hidden: true }),
+      el('div', { classe: 'actions-compte' },
+        el('button', { type: 'button', classe: 'bouton bouton-secondaire', id: 'compte-mes-demandes', texte: 'Mes demandes',
+          onclick: () => etat.contexte.ouvrirSupport() }),
+        el('button', { type: 'button', classe: 'bouton bouton-principal', id: 'compte-nouvelle-demande', texte: 'Nouvelle demande',
+          onclick: () => etat.contexte.ouvrirSupport({ nouvelle: true }) }))),
     el('section', { classe: 'panneau', id: 'compte-bloc-contact', 'aria-labelledby': 'compte-titre-contact', hidden: true },
       el('h2', { id: 'compte-titre-contact', texte: 'Contacter LOC RÉACTION' }),
       el('div', { classe: 'actions-compte', id: 'compte-contact' })),
@@ -142,10 +154,10 @@ async function charger() {
     ? 'Vous êtes en ligne : la déconnexion vous passe d\'abord hors ligne.'
     : 'Sur ce téléphone, vous devrez ensuite vous reconnecter avec le code reçu par e-mail.';
 
-  // Documents, paie, heures et absences : une section qui ne se lit pas
-  // n'empêche pas le reste de l'onglet de s'afficher
+  // Documents, paie, heures et absences, réponses du support à lire : une
+  // section qui ne se lit pas n'empêche pas le reste de l'onglet de s'afficher
   const { documents, paie, planning } = etat.sections;
-  await Promise.all([documents.charger(), paie.charger(salarie.data), planning.charger(salarie.data)]
+  await Promise.all([documents.charger(), paie.charger(salarie.data), planning.charger(salarie.data), chargerSupport()]
     .map((lecture) => lecture.catch((erreur) => afficherMessage(messageErreur(erreur), 'erreur'))));
 }
 
@@ -223,6 +235,15 @@ function afficherFiche(f, v) {
     signaler('Vignette VTC du véhicule', vehicule.vignette, true);
   }
   $('compte-alertes').replaceChildren(...alertes.map((a) => el('p', { classe: a.niveau === 'expiree' ? 'alerte' : 'alerte alerte-attention', role: 'status', texte: a.texte })));
+}
+
+// Réponses de LOC RÉACTION pas encore lues, toutes demandes confondues
+async function chargerSupport() {
+  const { data, error } = await supabase.rpc('mes_demandes');
+  if (error) throw error;
+  const n = (Array.isArray(data) ? data : []).reduce((total, d) => total + (Number(d.non_lus) || 0), 0);
+  $('compte-support-non-lus').hidden = n === 0;
+  $('compte-support-non-lus').textContent = n > 1 ? `${n} réponses de LOC RÉACTION à lire.` : '1 réponse de LOC RÉACTION à lire.';
 }
 
 function afficherContact(s) {

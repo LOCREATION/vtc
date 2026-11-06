@@ -16,7 +16,10 @@
 // (revenus/, courses/, compte/) et n'est chargé qu'à sa première ouverture.
 //
 // Cloche de la barre du haut : les notifications (notifications/), dans un
-// panneau ouvert par-dessus la page ; une demande qui arrive le ferme.
+// panneau ouvert par-dessus la page ; une demande qui arrive le ferme. De même
+// pour « Mes demandes au support » (support/), ouvert aussi par l'adresse :
+// ?demande=<id> (lien d'une notification du support), ?signaler=<id de la
+// course> (nouvelle demande sur une course, depuis la page de la course).
 // =============================================================================
 import { supabase, profilConnecte, messageErreur } from '../commun/supabase.js';
 import { RACINE } from '../commun/config.js';
@@ -25,6 +28,7 @@ import { euros, nombre, el, afficherMessage, dateHeure } from '../commun/outils.
 import { ChampAdresse, adresseDepuisPosition } from '../commun/adresse.js';
 import { SuiviGps } from '../commun/gps-chauffeur.js';
 import { installerNotifications } from './notifications/notifications.js';
+import { installerSupport } from './support/support.js';
 import '../commun/pwa.js';
 
 imposerLangue('fr');                 // espace chauffeur en français
@@ -41,7 +45,8 @@ const etat = {
   filtre: null,                // destination du filtre { adresse, lat, lng }
   attributionsVues: new Set(),
   onglet: 'accueil',
-  notifications: null          // cloche et panneau des notifications
+  notifications: null,         // cloche et panneau des notifications
+  support: null                // panneau « Mes demandes au support »
 };
 
 // Ce que reçoivent les onglets Revenus, Courses et Compte
@@ -50,8 +55,13 @@ const contexte = {
   get enLigne() { return etat.enLigne; },
   majProfil(champs) { etat.profil = { ...etat.profil, ...champs }; },
   ouvrirOnglet: (code) => ouvrirOnglet(code),
+  // options : { demande } (une demande), { nouvelle: true, course } (nouvelle
+  // demande, course facultative), rien (la liste)
+  ouvrirSupport: (options) => (etat.support ? etat.support.ouvrir(options) : null),
   deconnecter
 };
+
+const IDENTIFIANT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 demarrer().catch((erreur) => afficherMessage(messageErreur(erreur), 'erreur'));
 
@@ -90,6 +100,7 @@ async function demarrer() {
   document.body.classList.add('avec-onglets');
   $('cloche').hidden = false;
   etat.notifications = installerNotifications({ cloche: $('cloche'), pastille: $('cloche-non-lues'), moi: etat.profil.id, contexte });
+  etat.support = installerSupport({ moi: etat.profil.id });
   initialiserCarte(position.data);
   afficherFiche();
   await preparerFiltre();
@@ -108,7 +119,13 @@ async function demarrer() {
   verifierDemandes();
   setInterval(verifierDemandes, 8000);
   setInterval(() => { chargerReservations(); chargerJour(); }, 30000);
+  // Demande au support dans l'adresse (lue avant que l'onglet ne la réécrive)
+  const adresse = new URLSearchParams(location.search);
+  const demande = adresse.get('demande');
+  const signaler = adresse.get('signaler');
   await ouvrirOnglet(ongletDeLAdresse(), { historique: 'remplacer' });
+  if (demande && IDENTIFIANT.test(demande)) etat.support.ouvrir({ demande });
+  else if (signaler && IDENTIFIANT.test(signaler)) etat.support.ouvrir({ nouvelle: true, course: signaler });
 }
 
 // ---------------------------------------------------------------------------
