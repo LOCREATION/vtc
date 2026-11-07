@@ -12,6 +12,11 @@
 // après (commun/discussion.js), réponses rapides comprises.
 // Course terminée ou annulée : « Signaler un problème sur cette course »
 // ouvre une nouvelle demande au support dans l'espace chauffeur (?signaler=).
+// Pourboire laissé par le client dans l'application (dans les 30 minutes en
+// espèces ou par carte) : il apparaît sous le paiement de la course, sans
+// recharger la page (relecture toutes les 15 s), avec son propre bouton
+// « Pourboire reçu » (espèces) ou « Pourboire encaissé » (carte) ; sur
+// facture mensuelle, l'administration l'encaisse avec le relevé.
 // =============================================================================
 import { supabase, profilConnecte, messageErreur } from '../../commun/supabase.js';
 import { RACINE } from '../../commun/config.js';
@@ -28,6 +33,15 @@ appliquerTraductions();
 const $ = (id) => document.getElementById(id);
 const idCourse = new URLSearchParams(location.search).get('id');
 const MODES = { especes: 'Espèces', carte: 'Carte bancaire, au terminal', facture_mensuelle: 'Facture mensuelle du compte professionnel', solde: 'Solde' };
+// Pourboire : comment il se règle, puis ce qu'il est devenu s'il n'est ni à
+// encaisser ni encaissé
+const POURBOIRE_MODES = {
+  especes: 'En espèces : le client vous le remet.',
+  carte: 'Par carte : à encaisser sur votre terminal.',
+  facture_mensuelle: 'Sur la facture mensuelle du compte professionnel : encaissé par l\'administration.',
+  solde: 'Par le solde du client.'
+};
+const POURBOIRE_SUITES = { echoue: 'Déclaré non réglé.', rembourse: 'Remboursé au client.', annule: 'Annulé.' };
 // Étape suivante selon le statut : [titre, texte, bouton, étape envoyée à la base]
 const ETAPES = {
   planifiee: ['Réservation à venir', 'Prise en charge le {date}.', 'Partir maintenant', 'en_route'],
@@ -172,14 +186,31 @@ function afficherAttente() {
 function afficherPaiement() {
   const c = etat.course;
   const paiement = etat.paiements.find((p) => p.nature === 'course');
-  $('bloc-paiement').hidden = !(c.statut === 'terminee' && paiement);
-  if (!paiement) return;
-  $('montant-encaisser').textContent = euros(paiement.montant);
-  $('mode-encaisser').textContent = MODES[paiement.mode] || paiement.mode;
-  const aEncaisser = paiement.statut === 'a_encaisser' && paiement.mode !== 'facture_mensuelle';
-  $('confirmer-encaissement').hidden = !aEncaisser;
-  $('confirmer-encaissement').dataset.paiement = paiement.id;
-  $('encaisse').hidden = paiement.statut !== 'encaisse';
+  const pourboire = etat.paiements.find((p) => p.nature === 'pourboire');
+  $('bloc-paiement').hidden = !(c.statut === 'terminee' && (paiement || pourboire));
+
+  // Paiement de la course (absent si la course ne coûte rien, code promo)
+  $('montant-encaisser').hidden = !paiement;
+  $('mode-encaisser').hidden = !paiement;
+  $('confirmer-encaissement').hidden = !(paiement && paiement.statut === 'a_encaisser' && paiement.mode !== 'facture_mensuelle');
+  $('encaisse').hidden = !(paiement && paiement.statut === 'encaisse');
+  if (paiement) {
+    $('montant-encaisser').textContent = euros(paiement.montant);
+    $('mode-encaisser').textContent = MODES[paiement.mode] || paiement.mode;
+    $('confirmer-encaissement').dataset.paiement = paiement.id;
+  }
+
+  // Pourboire laissé par le client : son propre encaissement
+  $('bloc-pourboire').hidden = !pourboire;
+  if (!pourboire) return;
+  const especes = pourboire.mode === 'especes';
+  $('montant-pourboire').textContent = `Pourboire : ${euros(pourboire.montant)}`;
+  $('mode-pourboire').textContent = POURBOIRE_SUITES[pourboire.statut] || POURBOIRE_MODES[pourboire.mode] || pourboire.mode;
+  $('confirmer-pourboire').hidden = !(pourboire.statut === 'a_encaisser' && pourboire.mode !== 'facture_mensuelle');
+  $('confirmer-pourboire').dataset.paiement = pourboire.id;
+  $('confirmer-pourboire').textContent = especes ? 'Pourboire reçu' : 'Pourboire encaissé';
+  $('pourboire-encaisse').hidden = pourboire.statut !== 'encaisse';
+  $('pourboire-encaisse').textContent = especes ? 'Pourboire reçu.' : 'Pourboire encaissé.';
 }
 
 function afficherTrajet() {
@@ -250,6 +281,19 @@ $('confirmer-encaissement').addEventListener('click', async () => {
   await chargerFin();
   afficher();
   afficherMessage('Paiement encaissé.', 'succes');
+});
+
+// Pourboire : encaissement confirmé à part (espèces reçues, carte passée au terminal)
+$('confirmer-pourboire').addEventListener('click', async () => {
+  const bouton = $('confirmer-pourboire');
+  const texte = bouton.textContent;
+  bouton.disabled = true;
+  const { error } = await supabase.rpc('confirmer_encaissement', { p_paiement: bouton.dataset.paiement });
+  bouton.disabled = false;
+  if (error) { afficherMessage(messageErreur(error), 'erreur'); await chargerFin(); afficher(); return; }
+  await chargerFin();
+  afficher();
+  afficherMessage(`${texte}.`, 'succes');
 });
 
 $('desister').addEventListener('click', () => {
@@ -370,6 +414,7 @@ function abonner() {
 
 async function majDepuisBase(course) {
   const avant = etat.course.statut;
+  const pourboireAvant = Number(etat.course.pourboire) || 0;
   // Plus attribuée à ce chauffeur (désistement, réattribution) : retour à l'accueil
   if (course.chauffeur_id !== etat.profil.id) {
     etat.gps.arreter();
@@ -384,5 +429,10 @@ async function majDepuisBase(course) {
     }
     await chargerFin();
     afficher();
+  } else if (course.statut === 'terminee' && (Number(course.pourboire) || 0) !== pourboireAvant) {
+    // Le client vient de laisser un pourboire : il s'affiche sous le paiement
+    await chargerFin();
+    afficher();
+    if (Number(course.pourboire) > 0) afficherMessage(`Le client vous laisse un pourboire de ${euros(course.pourboire)}.`, 'succes');
   }
 }

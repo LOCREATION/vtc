@@ -17,6 +17,9 @@
 .attente[data-payante='true'] { color: var(--or); }
 .montant-encaisser { font-family: var(--police-titre); font-weight: 700; font-size: 44px; line-height: 1; }
 .etat-ok { color: #4ADE80; font-weight: 600; }
+/* Pourboire laissé par le client : sous le paiement de la course, séparé par un filet */
+.pourboire-chauffeur { display: grid; gap: 10px; padding-top: 12px; border-top: 1px solid var(--ligne); }
+.montant-pourboire { font-family: var(--police-titre); font-weight: 700; font-size: 28px; line-height: 1.1; color: var(--or); }
 .etoiles { display: flex; gap: 4px; }
 .etoile { width: 48px; height: 48px; display: inline-grid; place-items: center; background: none; border: none; cursor: pointer; color: var(--ligne); border-radius: 8px; }
 .etoile svg { width: 34px; height: 34px; }

@@ -1,6 +1,7 @@
 # Banc d'essai de l'espace client v2 (client/) : onglets Accueil, Activité,
-# Compte (lieux, proches), cloche des notifications, « Mes demandes au
-# support », lien « Mon compte » de l'accueil public.
+# Compte (lieux, proches, solde, parrainage, compte professionnel), cloche des
+# notifications, « Mes demandes au support », pourboire en fin de course,
+# lien « Mon compte » de l'accueil public.
 # Joué avec la cliente des scénarios de test (Claire) ; ce qui est créé ici
 # (courses, lieux, proches, demandes, notifications) est retiré, le profil
 # remis comme avant.
@@ -377,6 +378,170 @@ async def compte_pro_client(page):
     await page.screenshot(path=f'{CAPTURES}/client-compte-pro.png')
 
 
+def course_terminee(**autres):
+    """Réservation de Claire (dans 3 heures), assurée par Nadia et terminée à
+    l'instant (étapes passées par la chauffeuse) : renvoie la course."""
+    course = commander(p_type='planifiee', p_quand=valeur("select (now() + interval '3 hours')::text"), **autres)
+    ok, sortie = appel_rpc('attribuer_course', {'p_course': course['id'], 'p_chauffeur': CHAUFFEUSE}, ADMIN)
+    assert ok, sortie
+    for etape in ('en_route', 'arrivee', 'a_bord', 'terminee'):
+        ok, sortie = appel_rpc('avancer_course', {'p_course': course['id'], 'p_etape': etape}, CHAUFFEUSE)
+        assert ok, sortie
+    return course
+
+
+async def pourboire_client(nav):
+    """Pourboire en fin de course (client/course/) : montants proposés, autre
+    montant contrôlé avant l'envoi, consigne et reçu, encaissement par la
+    chauffeuse, pourboire laissé entre-temps sur un autre appareil (réponse de
+    la base traduite, écran remis à jour), délais (30 minutes en espèces ou
+    par carte, le formulaire se retire de lui-même ; 24 heures sur facture
+    mensuelle), en anglais."""
+    print('Pourboire en fin de course')
+    debut = valeur("select now()")
+    prenom = valeur(f"select prenom from public.profils where id = '{CHAUFFEUSE}'")
+    ctx, page = await nouveau_contexte(nav)
+
+    # 1. En espèces : choix du montant, contrôles, envoi
+    especes = course_terminee()
+    await page.goto(SITE + f'client/course/?id={especes["id"]}')
+    await page.wait_for_selector('#bloc-pourboire:not([hidden])')
+    boutons = [espaces(b) for b in await page.locator('#montants-pourboire button').all_inner_texts()]
+    verifier(espaces(await page.inner_text('#pourboire-titre')) == f'Un pourboire pour {prenom} ?'
+             and espaces(await page.inner_text('#pourboire-aide')).startswith(f'En espèces : remettez-le à {prenom} avant de vous quitter, dans les 30 minutes')
+             and boutons == ['2 €', '5 €', '10 €', 'Autre montant'],
+             f'course terminée en espèces : « Un pourboire pour {prenom} ? », consigne (30 minutes), 2 €, 5 €, 10 €, « Autre montant »')
+    verifier(await page.is_visible('#bloc-note') and await page.inner_text('#envoyer-pourboire') == 'Laisser un pourboire',
+             'pourboire proposé après la note, bouton « Laisser un pourboire »')
+    await page.click('#envoyer-pourboire')
+    verifier(await page.inner_text('#erreur-pourboire') == 'Choisissez un montant.', 'aucun montant choisi : « Choisissez un montant. »')
+    await page.click('#pourboire-choix-autre')
+    verifier(await page.is_visible('#pourboire-autre') and await page.evaluate("document.activeElement.id") == 'pourboire-autre'
+             and await page.is_hidden('#erreur-pourboire'), '« Autre montant » : champ affiché, le curseur y est')
+    await page.fill('#pourboire-autre', '0,2')
+    await page.click('#envoyer-pourboire')
+    verifier(espaces(await page.inner_text('#erreur-pourboire')) == 'Indiquez un montant de 0,50 € à 100 €, par exemple 3 ou 7,50.'
+             and await page.get_attribute('#pourboire-autre', 'aria-invalid') == 'true'
+             and valeur(f"select pourboire from public.courses where id = '{especes['id']}'") == '0.00',
+             'autre montant de 0,20 € : refusé avant l\'envoi, message clair, rien dans la base')
+    await page.fill('#pourboire-autre', '7,50')
+    verifier(espaces(await page.inner_text('#envoyer-pourboire')) == 'Laisser 7,50 € de pourboire' and await page.is_hidden('#erreur-pourboire'),
+             'autre montant saisi (7,50) : le bouton annonce « Laisser 7,50 € de pourboire »')
+    await page.click('#montants-pourboire button[data-montant="5"]')
+    verifier(await page.get_attribute('#montants-pourboire button[data-montant="5"]', 'aria-pressed') == 'true'
+             and await page.get_attribute('#pourboire-choix-autre', 'aria-pressed') == 'false' and await page.is_hidden('#pourboire-autre')
+             and espaces(await page.inner_text('#envoyer-pourboire')) == 'Laisser 5,00 € de pourboire',
+             '5 € choisi : bouton marqué, champ « Autre montant » refermé, « Laisser 5,00 € de pourboire »')
+    await page.evaluate("document.getElementById('bloc-pourboire').scrollIntoView({ block: 'center' })")
+    await page.screenshot(path=f'{CAPTURES}/client-pourboire.png')
+    await page.click('#envoyer-pourboire')
+    await message_affiche(page, 'Votre pourboire de 5,00')
+    await page.wait_for_selector('#pourboire-donne:not([hidden])')
+    verifier(await page.is_hidden('#bloc-pourboire')
+             and espaces(await page.inner_text('#pourboire-donne')) == f'Votre pourboire : 5,00 €, à remettre en espèces à {prenom}.',
+             f'pourboire envoyé : « Merci ! », consigne « à remettre en espèces à {prenom} », plus de formulaire')
+    recu = espaces(await page.inner_text('#recu-pourboire'))
+    verifier('Pourboire 5,00 €' in recu and 'Hors TVA, en plus de la facture' in recu and 'Espèces · à régler' in recu,
+             'reçu du pourboire sous la facture : 5,00 €, hors TVA, en plus de la facture, « Espèces · à régler »')
+    verifier(valeur(f"""select c.pourboire || '|' || p.mode || '|' || p.montant || '|' || p.statut
+                         from public.courses c join public.paiements p on p.course_id = c.id and p.nature = 'pourboire'
+                         where c.id = '{especes['id']}'""") == '5.00|especes|5.00|a_encaisser'
+             and valeur(f"""select count(*) from public.notifications where destinataire_id = '{CHAUFFEUSE}'
+                             and titre = 'Pourboire en espèces' and lien = '/chauffeur/course/?id={especes['id']}'""") == '1',
+             f'base : pourboire de 5,00 € sur la course, paiement en espèces à encaisser, {prenom} prévenue (lien vers la course)')
+    await page.evaluate("document.getElementById('zone-messages')?.replaceChildren()")
+    await page.evaluate("document.getElementById('pourboire-donne').scrollIntoView({ block: 'center' })")
+    await page.screenshot(path=f'{CAPTURES}/client-pourboire-laisse.png')
+    paiement = valeur(f"select id from public.paiements where course_id = '{especes['id']}' and nature = 'pourboire'")
+    ok, sortie = appel_rpc('confirmer_encaissement', {'p_paiement': paiement}, CHAUFFEUSE)
+    assert ok, sortie
+    await page.reload()
+    await page.wait_for_selector('#recu-pourboire:not([hidden])')
+    verifier(espaces(await page.inner_text('#pourboire-donne')) == 'Votre pourboire : 5,00 €. Merci !'
+             and re.search(r'Espèces · réglé le \d', espaces(await page.inner_text('#recu-pourboire'))) is not None,
+             'pourboire reçu par la chauffeuse : « Merci ! », reçu « Espèces · réglé le … »')
+
+    # 2. Par carte : pourboire laissé entre-temps sur un autre appareil
+    carte = course_terminee(p_mode_paiement='carte')
+    await page.goto(SITE + f'client/course/?id={carte["id"]}')
+    await page.wait_for_selector('#bloc-pourboire:not([hidden])')
+    verifier(espaces(await page.inner_text('#pourboire-aide')).startswith(f'Par carte : {prenom} l\'encaisse sur son terminal avant de vous quitter'),
+             'course payée par carte : consigne « l\'encaisse sur son terminal »')
+    ok, sortie = appel_rpc('ajouter_pourboire', {'p_course': carte['id'], 'p_montant': 3}, CLIENT)
+    assert ok, sortie
+    await page.click('#montants-pourboire button[data-montant="2"]')
+    await page.click('#envoyer-pourboire')
+    await message_affiche(page, 'Un pourboire a déjà été laissé pour cette course.')
+    # Ce refus de la base (réponse 400) est voulu : il ne compte pas parmi les erreurs de la console
+    for i in range(len(console) - 1, -1, -1):
+        if 'status of 400' in console[i]:
+            del console[i]
+            break
+    await page.wait_for_selector('#pourboire-donne:not([hidden])')
+    verifier(await page.is_hidden('#bloc-pourboire')
+             and espaces(await page.inner_text('#pourboire-donne')) == f'Votre pourboire : 3,00 €, à régler par carte sur le terminal de {prenom}.'
+             and valeur(f"select pourboire from public.courses where id = '{carte['id']}'") == '3.00',
+             'pourboire déjà laissé sur un autre appareil : refus traduit, l\'écran montre le pourboire de 3,00 € (un seul dans la base)')
+
+    # 3. Délai de 30 minutes en espèces : dépassé, puis atteint page ouverte
+    tard = course_terminee()
+    systeme(f"update public.courses set terminee_le = now() - interval '31 minutes' where id = '{tard['id']}'")
+    await page.goto(SITE + f'client/course/?id={tard["id"]}')
+    await page.wait_for_selector('#bloc-note:not([hidden])')
+    verifier(await page.is_hidden('#bloc-pourboire') and await page.is_hidden('#pourboire-donne') and await page.is_hidden('#recu-pourboire'),
+             'espèces, course finie depuis 31 minutes : plus de pourboire proposé')
+    # 10 secondes avant la fin du délai : le formulaire s'affiche, puis se retire
+    systeme(f"update public.courses set terminee_le = now() - interval '29 minutes 50 seconds' where id = '{tard['id']}'")
+    await page.reload()
+    await page.wait_for_selector('#bloc-pourboire:not([hidden])')
+    await page.wait_for_selector('#bloc-pourboire', state='hidden', timeout=15000)
+    verifier(True, 'délai atteint page ouverte : le formulaire du pourboire se retire de lui-même')
+
+    # 4. Sur facture mensuelle : 24 heures
+    compte = valeur(f"""select m.compte_pro_id from public.comptes_pro_membres m join public.comptes_pro cp on cp.id = m.compte_pro_id
+                         where m.profil_id = '{CLIENT}' and cp.statut = 'actif' limit 1""")
+    if compte:
+        pro = course_terminee(p_mode_paiement='facture_mensuelle', p_compte_pro=compte)
+        systeme(f"update public.courses set terminee_le = now() - interval '23 hours' where id = '{pro['id']}'")
+        await page.goto(SITE + f'client/course/?id={pro["id"]}')
+        await page.wait_for_selector('#bloc-pourboire:not([hidden])')
+        verifier(espaces(await page.inner_text('#pourboire-aide')) == 'Sur la facture mensuelle de votre entreprise, dans les 24 heures qui suivent '
+                 f'la course. Il revient en entier à {prenom}.',
+                 'facture mensuelle, course finie depuis 23 heures : pourboire encore proposé (24 heures)')
+        await page.click('#pourboire-choix-autre')
+        await page.fill('#pourboire-autre', '3')
+        await page.click('#envoyer-pourboire')
+        await page.wait_for_selector('#pourboire-donne:not([hidden])')
+        verifier(espaces(await page.inner_text('#pourboire-donne')) == 'Votre pourboire : 3,00 €, sur la facture mensuelle de votre entreprise. Merci !'
+                 and 'Facture mensuelle · à régler' in espaces(await page.inner_text('#recu-pourboire'))
+                 and valeur(f"""select count(*) from public.notifications where destinataire_id = '{CHAUFFEUSE}' and titre = 'Pourboire reçu'
+                                 and lien = '/chauffeur/revenus/' and message like '3,00 € pour la course {pro['numero']}, sur la facture mensuelle%'""") == '1',
+                 'facture mensuelle : pourboire de 3,00 € (autre montant) sur le relevé de l\'entreprise, chauffeuse prévenue')
+    else:
+        print('  (Claire n\'est membre d\'aucun compte professionnel actif : facture mensuelle sautée)')
+    await ctx.close()
+
+    # 5. En anglais
+    ctx, page = await nouveau_contexte(nav)
+    anglais = course_terminee()
+    await page.goto(SITE + f'client/course/?id={anglais["id"]}&lang=en')
+    await page.wait_for_selector('#bloc-pourboire:not([hidden])')
+    verifier(await page.inner_text('#pourboire-titre') == f'A tip for {prenom}?'
+             and (await page.inner_text('#pourboire-aide')).startswith(f'In cash: hand it to {prenom} before you part, within 30 minutes')
+             and await page.locator('#montants-pourboire button').all_inner_texts() == ['€2', '€5', '€10', 'Other amount'],
+             f'en anglais : « A tip for {prenom}? », consigne, €2, €5, €10, « Other amount »')
+    await page.click('#montants-pourboire button[data-montant="10"]')
+    verifier(await page.inner_text('#envoyer-pourboire') == 'Leave a €10.00 tip', 'en anglais : « Leave a €10.00 tip »')
+    await page.click('#envoyer-pourboire')
+    await page.wait_for_selector('#pourboire-donne:not([hidden])')
+    verifier(await page.inner_text('#pourboire-donne') == f'Your tip: €10.00, to hand to {prenom} in cash.'
+             and 'Cash · to be paid' in await page.inner_text('#recu-pourboire'),
+             f'en anglais : « Your tip: €10.00, to hand to {prenom} in cash. », reçu « Cash · to be paid »')
+    await ctx.close()
+    # Les notifications de ces essais sont retirées (celles de Claire le sont à la fin)
+    systeme(f"delete from public.notifications where destinataire_id = '{CHAUFFEUSE}' and cree_le >= '{debut}';")
+
+
 def commander(**autres):
     corps = {'p_categorie': 'berline_hybride', 'p_depart_adresse': '10 Rue de Rivoli 75004 Paris',
              'p_depart_lat': 48.8556, 'p_depart_lng': 2.36, 'p_arrivee_adresse': 'Gare de Lyon',
@@ -530,6 +695,7 @@ async def main():
             await proches_client(page)
             await solde_parrainage_client(ctx, page)
             await compte_pro_client(page)
+            await pourboire_client(nav)
 
             print('Langue')
             await page.click('#onglets [data-onglet="compte"]')

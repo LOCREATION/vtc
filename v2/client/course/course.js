@@ -13,6 +13,13 @@
 //   après (commun/discussion.js), réponses rapides comprises.
 // - Course terminée ou annulée : « Signaler un problème sur cette course »
 //   ouvre une nouvelle demande au support dans l'espace client (?signaler=…).
+// - Course terminée : note du chauffeur, puis pourboire (une fois : 2, 5 ou
+//   10 €, ou un autre montant de 0,50 € à 100 €). Il se règle comme la
+//   course : espèces remises au chauffeur ou carte sur son terminal dans les
+//   30 minutes qui suivent la fin, facture mensuelle dans les 24 heures (même
+//   règle que la base, seule juge : ajouter_pourboire). Une fois laissé : la
+//   consigne (« à remettre en espèces à Nadia »), et son reçu sous la facture
+//   (hors TVA, en plus de la facture, réglé ou non : paiement « pourboire »).
 // =============================================================================
 import { supabase, profilConnecte, messageErreur } from '../../commun/supabase.js';
 import { RACINE } from '../../commun/config.js';
@@ -24,11 +31,20 @@ import '../../commun/pwa.js';
 const $ = (id) => document.getElementById(id);
 const idCourse = new URLSearchParams(location.search).get('id');
 const STATUTS_ACTIFS = ['acceptee', 'arrivee', 'en_cours'];
+// Pourboire : montants proposés, bornes et délais (mêmes règles que la base)
+const MONTANTS_POURBOIRE = [2, 5, 10];
+const POURBOIRE_MIN = 0.5;
+const POURBOIRE_MAX = 100;
+const DELAI_SUR_PLACE_MS = 30 * 60000;          // espèces, carte au terminal
+const DELAI_FACTURE_MS = 24 * 3600000;          // facture mensuelle
 const etat = {
   course: null, arrets: [], position: null, tarif: null, factures: [], noteDonnee: null,
   parametres: { coefficient_detour: 1.3, vitesse_moyenne_kmh: 27.3, annulation_gratuite_planifiee_min: 120 },
   carte: null, reperes: {}, canalCourse: null, canalPosition: null, minuteur: null, noteChoisie: 0,
-  discussion: null
+  discussion: null,
+  // Paiement « pourboire » de la course (null : aucun), montant choisi
+  // (nombre, « autre » ou null), minuteur de fin du délai
+  pourboire: null, choixPourboire: null, minuteurPourboire: null
 };
 
 appliquerTraductions();
@@ -64,6 +80,7 @@ async function demarrer() {
                                       interlocuteur: (c) => c.chauffeur_prenom || '' });
   initialiserCarte();
   preparerNote();
+  preparerPourboire();
   preparerAnnulation();
   afficher();
   await suivrePosition();
@@ -77,15 +94,23 @@ async function chargerCourse() {
   etat.course = data;
 }
 
-// Factures et note déjà donnée (fin de course ou frais d'annulation)
+// Factures, note déjà donnée et pourboire (fin de course ou frais d'annulation)
 async function chargerAnnexes() {
   if (!['terminee', 'annulee'].includes(etat.course.statut)) return;
   const [factures, note] = await Promise.all([
     supabase.from('factures').select('numero, nature, montant_ht, taux_tva, montant_tva, montant_ttc').eq('course_id', idCourse).order('numero'),
-    supabase.from('evaluations').select('note').eq('course_id', idCourse).eq('sens', 'client_vers_chauffeur').maybeSingle()
+    supabase.from('evaluations').select('note').eq('course_id', idCourse).eq('sens', 'client_vers_chauffeur').maybeSingle(),
+    chargerPourboire()
   ]);
   etat.factures = factures.data || [];
   etat.noteDonnee = note.data ? note.data.note : null;
+}
+
+// Paiement « pourboire » de la course : mode, montant, réglé ou non
+async function chargerPourboire() {
+  const { data } = await supabase.from('paiements').select('mode, montant, statut, encaisse_le')
+    .eq('course_id', idCourse).eq('nature', 'pourboire').order('cree_le').limit(1);
+  etat.pourboire = (data || [])[0] || null;
 }
 
 // ---------------------------------------------------------------------------
@@ -161,6 +186,7 @@ function afficher() {
   afficherChauffeur();
   afficherRecapitulatif();
   afficherNote();
+  afficherPourboire();
   majCarte();
 }
 
@@ -380,4 +406,152 @@ function afficherNote() {
   $('bloc-note').hidden = !(terminee && etat.noteDonnee === null);
   $('note-donnee').hidden = !(terminee && etat.noteDonnee !== null);
   if (etat.noteDonnee !== null) $('note-donnee').textContent = t('suivi.note_donnee', { n: etat.noteDonnee });
+}
+
+// ---------------------------------------------------------------------------
+// Pourboire (fin de course)
+// ---------------------------------------------------------------------------
+// Montant court pour les boutons : « 2 € », « €2 » ; « 7,50 € » si décimales
+function eurosCourt(montant) {
+  const locale = langueActive() === 'en' ? 'en-GB' : 'fr-FR';
+  return new Intl.NumberFormat(locale, { style: 'currency', currency: 'EUR', minimumFractionDigits: Number.isInteger(montant) ? 0 : 2 })
+    .format(montant);
+}
+
+// « 7,50 », « 7.5 », « 7,50 € », « 10 » → montant ; null hors de 0,50 € à 100 €
+function lireMontant(saisie) {
+  const texte = String(saisie || '').replace(/[\s  €]/g, '').replace(',', '.');
+  if (!/^\d{1,3}(\.\d{1,2})?$/.test(texte)) return null;
+  const montant = Number(texte);
+  return montant >= POURBOIRE_MIN && montant <= POURBOIRE_MAX ? montant : null;
+}
+
+// Montant retenu : bouton choisi, ou saisie de « Autre montant » (null : aucun)
+function montantChoisi() {
+  if (etat.choixPourboire === 'autre') return lireMontant($('pourboire-autre').value);
+  return typeof etat.choixPourboire === 'number' ? etat.choixPourboire : null;
+}
+
+// Fin du délai pour laisser un pourboire (0 : course sans heure de fin)
+function finDuPourboire(c) {
+  if (!c.terminee_le) return 0;
+  const surPlace = ['especes', 'carte'].includes(c.mode_paiement);
+  return new Date(c.terminee_le).getTime() + (surPlace ? DELAI_SUR_PLACE_MS : DELAI_FACTURE_MS);
+}
+
+// Prénom du chauffeur dans les phrases, ou « votre chauffeur »
+function quiPourboire() {
+  return etat.course.chauffeur_prenom || t('pourboire.votre_chauffeur');
+}
+
+function majBoutonPourboire() {
+  const montant = montantChoisi();
+  $('envoyer-pourboire').textContent = montant === null
+    ? t('pourboire.envoyer') : t('pourboire.envoyer_montant', { montant: euros(montant) });
+}
+
+function erreurPourboire(texte) {
+  $('erreur-pourboire').textContent = texte || '';
+  $('erreur-pourboire').hidden = !texte;
+  $('pourboire-autre').setAttribute('aria-invalid', texte && etat.choixPourboire === 'autre' ? 'true' : 'false');
+}
+
+function choisirPourboire(choix) {
+  etat.choixPourboire = choix;
+  [...$('montants-pourboire').children].forEach((b) =>
+    b.setAttribute('aria-pressed', String(b.dataset.montant === String(choix))));
+  $('bloc-pourboire-autre').hidden = choix !== 'autre';
+  erreurPourboire(null);
+  majBoutonPourboire();
+  if (choix === 'autre') $('pourboire-autre').focus();
+}
+
+// Réponse de la base → texte dans la langue de la page
+const ERREURS_POURBOIRE = [
+  ['déjà laissé un pourboire', 'pourboire.erreur_deja'],
+  ['dans les 30 minutes', 'pourboire.erreur_sur_place'],
+  ['dans les 24 heures', 'pourboire.erreur_24h'],
+  ['de 0,50 € à 100 €', 'pourboire.invalide'],
+  ['une fois la course terminée', 'pourboire.erreur_statut'],
+  ['par le solde', 'pourboire.erreur_solde'],
+  ['Course introuvable', 'suivi.introuvable']
+];
+function texteErreurPourboire(erreur) {
+  const message = (erreur && erreur.message) || '';
+  const connue = ERREURS_POURBOIRE.find(([extrait]) => message.includes(extrait));
+  return connue ? t(connue[1]) : messageErreur(erreur, langueActive());
+}
+
+function preparerPourboire() {
+  const montants = $('montants-pourboire');
+  MONTANTS_POURBOIRE.forEach((n) => montants.append(el('button', {
+    type: 'button', classe: 'montant-pourboire', 'aria-pressed': 'false', dataset: { montant: String(n) },
+    texte: eurosCourt(n), onclick: () => choisirPourboire(n) })));
+  montants.append(el('button', {
+    type: 'button', classe: 'montant-pourboire', 'aria-pressed': 'false', dataset: { montant: 'autre' },
+    id: 'pourboire-choix-autre', texte: t('pourboire.autre'), onclick: () => choisirPourboire('autre') }));
+  $('pourboire-autre').addEventListener('input', () => { erreurPourboire(null); majBoutonPourboire(); });
+
+  $('bloc-pourboire').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const montant = montantChoisi();
+    if (montant === null) {
+      erreurPourboire(t(etat.choixPourboire === 'autre' ? 'pourboire.invalide' : 'pourboire.choisir'));
+      if (etat.choixPourboire === 'autre') $('pourboire-autre').focus();
+      return;
+    }
+    $('envoyer-pourboire').disabled = true;
+    const { data, error } = await supabase.rpc('ajouter_pourboire', { p_course: idCourse, p_montant: montant });
+    $('envoyer-pourboire').disabled = false;
+    if (error) {
+      afficherMessage(texteErreurPourboire(error), 'erreur');
+      // Pourboire déjà laissé (autre appareil), délai passé : l'écran se remet à jour
+      if (/déjà laissé|dans les 30 minutes|dans les 24 heures|une fois la course terminée/.test(error.message || '')) {
+        try { await chargerCourse(); } catch { return; }
+        if (!etat.course) return;
+        await chargerAnnexes();
+        afficher();
+      }
+      return;
+    }
+    etat.course = { ...etat.course, ...data };
+    await chargerPourboire();
+    afficherPourboire();
+    afficherMessage(t('pourboire.merci', { montant: euros(montant) }), 'succes');
+  });
+}
+
+function afficherPourboire() {
+  const c = etat.course;
+  const terminee = c.statut === 'terminee' && !!c.chauffeur_id;
+  const montant = Number(c.pourboire) || 0;
+  const fin = finDuPourboire(c);
+  const possible = terminee && montant === 0 && c.mode_paiement !== 'solde' && Date.now() < fin;
+  clearTimeout(etat.minuteurPourboire);
+
+  // Formulaire, tant que le délai court ; il se retire de lui-même à la fin
+  $('bloc-pourboire').hidden = !possible;
+  if (possible) {
+    $('pourboire-titre').textContent = t('pourboire.titre', { qui: quiPourboire() });
+    $('pourboire-aide').textContent = t(`pourboire.aide.${c.mode_paiement}`, { qui: quiPourboire() });
+    majBoutonPourboire();
+    etat.minuteurPourboire = setTimeout(afficherPourboire, fin - Date.now() + 1000);
+  }
+
+  // Pourboire laissé : la consigne en haut, le reçu sous la facture
+  const p = etat.pourboire;
+  $('pourboire-donne').hidden = !(terminee && montant > 0);
+  $('recu-pourboire').hidden = !(montant > 0 && p);
+  if (montant > 0) {
+    // À régler : où et comment ; réglé (ou autre suite) : un simple merci
+    const consigne = p && p.statut === 'a_encaisser' && ['especes', 'carte', 'facture_mensuelle'].includes(p.mode)
+      ? `pourboire.donne_${p.mode}` : 'pourboire.donne';
+    $('pourboire-donne').textContent = t(consigne, { montant: euros(montant), qui: quiPourboire() });
+  }
+  if (montant > 0 && p) {
+    $('recu-pourboire-montant').textContent = t('pourboire.recu', { montant: euros(p.montant) });
+    const statut = t(`pourboire.statut.${p.statut}`, {
+      date: p.encaisse_le ? dateHeure(p.encaisse_le, { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '' });
+    $('recu-pourboire-statut').textContent = `${t(`suivi.mode.${p.mode}`)} · ${statut}`;
+  }
 }

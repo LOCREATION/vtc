@@ -840,6 +840,26 @@ async def main():
             await page.wait_for_selector('#encaisse:not([hidden])')
             verifier(valeur(f"select statut from public.paiements where course_id = '{course['id']}' and nature = 'course'") == 'encaisse',
                      'encaissement enregistré dans la base')
+            # Pourboire laissé par le client dans l'application, en espèces : il
+            # apparaît sans recharger (relecture toutes les 15 s) et s'encaisse à part
+            ok, sortie = appel_rpc('ajouter_pourboire', {'p_course': course['id'], 'p_montant': 4}, CLIENT)
+            assert ok, sortie
+            await page.wait_for_selector('#bloc-pourboire:not([hidden])', timeout=20000)
+            await message_affiche(page, 'Le client vous laisse un pourboire de 4,00')
+            verifier(normaliser(await page.inner_text('#montant-pourboire')) == 'Pourboire:4,00€'
+                     and await page.inner_text('#mode-pourboire') == 'En espèces : le client vous le remet.'
+                     and await page.inner_text('#confirmer-pourboire') == 'Pourboire reçu' and await page.is_visible('#encaisse'),
+                     'pourboire du client : affiché sous le paiement sans recharger la page, bouton « Pourboire reçu »')
+            verifier(valeur(f"""select count(*) from public.notifications where destinataire_id = '{CHAUFFEUSE}' and titre = 'Pourboire en espèces'
+                                 and lien = '/chauffeur/course/?id={course['id']}'""") == '1',
+                     'notification « Pourboire en espèces », avec le lien de la course')
+            await page.screenshot(path=f'{CAPTURES}/chauffeur-course-pourboire.png', full_page=True)
+            await page.click('#confirmer-pourboire')
+            await page.wait_for_selector('#pourboire-encaisse:not([hidden])')
+            verifier(valeur(f"select statut || '|' || especes_chauffeur_id from public.paiements where course_id = '{course['id']}' "
+                            f"and nature = 'pourboire'") == f'encaisse|{CHAUFFEUSE}'
+                     and await page.is_hidden('#confirmer-pourboire') and await page.inner_text('#pourboire-encaisse') == 'Pourboire reçu.',
+                     'pourboire reçu : encaissé dans la base, gardé par la chauffeuse (espèces)')
             await page.click('#etoiles .etoile:nth-child(5)')
             await page.click('#envoyer-note')
             await page.wait_for_selector('#bloc-note[hidden]', state='attached')

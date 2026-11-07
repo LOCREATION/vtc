@@ -2,8 +2,9 @@
 <!-- =============================================================================
      LOC RÉACTION S.A.S — Version 2
      Espace chauffeur : course en cours
-     Étapes, navigation, appel, attente, encaissement, note du client, feuille
-     de route électronique (à présenter en cas de contrôle), désistement.
+     Étapes, navigation, appel, attente, encaissement (et pourboire laissé par
+     le client), note du client, feuille de route électronique (à présenter
+     en cas de contrôle), désistement.
      ============================================================================= -->
 <html lang="fr">
 <head>
@@ -60,6 +61,15 @@
         <p class="etape-texte" id="mode-encaisser"></p>
         <button type="button" class="bouton bouton-principal bouton-large" id="confirmer-encaissement" hidden>Paiement encaissé</button>
         <p class="etat-ok" id="encaisse" hidden>Paiement encaissé.</p>
+        <!-- Pourboire laissé par le client dans l'application : réglé comme la
+             course (espèces remises, carte sur le terminal, facture mensuelle
+             encaissée par l'administration) -->
+        <div class="pourboire-chauffeur" id="bloc-pourboire" hidden>
+          <p class="montant-pourboire" id="montant-pourboire"></p>
+          <p class="etape-texte" id="mode-pourboire"></p>
+          <button type="button" class="bouton bouton-secondaire bouton-large" id="confirmer-pourboire" hidden></button>
+          <p class="etat-ok" id="pourboire-encaisse" hidden></p>
+        </div>
       </section>
 
       <form class="panneau" id="bloc-note" hidden novalidate aria-labelledby="titre-note">
