@@ -1,7 +1,8 @@
 # Banc d'essai de l'espace client v2 (client/) : onglets Accueil, Activité,
 # Compte (lieux, proches, solde, parrainage, compte professionnel, sécurité,
-# notifications), cloche des notifications, « Mes demandes au support »,
-# pourboire en fin de course, lien « Mon compte » de l'accueil public.
+# notifications, données personnelles), cloche des notifications, « Mes
+# demandes au support », pourboire en fin de course, lien « Mon compte » de
+# l'accueil public.
 # Joué avec la cliente des scénarios de test (Claire) ; ce qui est créé ici
 # (courses, lieux, proches, demandes, notifications) est retiré, le profil
 # remis comme avant.
@@ -700,6 +701,99 @@ async def securite_client(nav):
         await ctx.close()
 
 
+async def donnees_client(nav):
+    """Compte > Données personnelles (client/compte/donnees.js), avec un client
+    d'essai (Mathis) : « Télécharger mes données » (fichier JSON daté, tout y
+    est), « Supprimer mon compte » (solde annoncé perdu, mot de confirmation,
+    refus de la base tant qu'une course est à venir, puis suppression : la
+    page oublie la session, ne propose plus que l'accueil), en anglais."""
+    print('Compte : données personnelles')
+    mathis = systeme(f"""set role supabase_auth_admin;
+insert into auth.users (email, raw_user_meta_data) values ('mathis{int(time.time())}@exemple.test', '{{"prenom":"Mathis","nom":"Lambert"}}') returning id;""").splitlines()[-1]
+    systeme(f"""update public.profils set telephone = '+33644556677' where id = '{mathis}';
+               insert into public.lieux (client_id, type, adresse, latitude, longitude)
+               values ('{mathis}', 'domicile', '3 rue du Château, 95270 Chaumontel', 49.1260, 2.4310);
+               select prive.ecrire_solde('{mathis}', 4, 'Geste commercial', null);""")
+    quand = valeur("select (now() + interval '2 days')::text")
+    ok, sortie = appel_rpc('commander_course', {'p_categorie': 'berline_hybride', 'p_depart_adresse': '3 rue du Château, 95270 Chaumontel',
+                                                'p_depart_lat': 49.1260, 'p_depart_lng': 2.4310, 'p_arrivee_adresse': 'Gare de Lyon',
+                                                'p_arrivee_lat': 48.8443, 'p_arrivee_lng': 2.3743, 'p_type': 'planifiee', 'p_quand': quand}, mathis)
+    assert ok, sortie
+    reservation = json.loads(sortie)['id']
+
+    ctx = await nav.new_context(viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True,
+                                locale='fr-FR', timezone_id='Europe/Paris', service_workers='block', accept_downloads=True)
+    await ctx.add_init_script(session_injectee(mathis, 'mathis@exemple.test'))
+    await ctx.route('**/*', routeur(mathis))
+    page = await ctx.new_page()
+    page.on('console', lambda m: console.append(f'{m.type}: {m.text}') if m.type == 'error' else None)
+    page.on('pageerror', lambda e: console.append(f'pageerror: {e}'))
+
+    # En anglais d'abord : libellés et mot de confirmation
+    await page.goto(SITE + 'client/compte/?lang=en#compte-donnees')
+    await page.wait_for_selector('#compte-supprimer')
+    await page.click('#compte-supprimer')
+    await page.wait_for_selector('dialog#compte-suppression[open]')
+    verifier(await page.inner_text('#compte-titre-donnees') == 'Personal data' and await page.inner_text('#compte-telecharger') == 'Download my data'
+             and await page.inner_text('label[for="compte-suppression-mot"]') == 'To confirm, type DELETE',
+             'en anglais : « Personal data », « Download my data », mot de confirmation « DELETE »')
+    await page.click('#compte-suppression-garder')
+    await page.wait_for_selector('dialog#compte-suppression:not([open])', state='attached')
+
+    # Télécharger mes données
+    await page.goto(SITE + 'client/compte/#compte-donnees')
+    await page.wait_for_selector('#compte-telecharger')
+    async with page.expect_download() as telechargement:
+        await page.click('#compte-telecharger')
+    fichier = await telechargement.value
+    donnees = json.load(open(await fichier.path(), encoding='utf-8'))
+    jour = valeur("select to_char(now() at time zone 'Europe/Paris', 'YYYY-MM-DD')")
+    await message_affiche(page, 'Vos données sont téléchargées')
+    verifier(fichier.suggested_filename == f'loc-reaction-mes-donnees-{jour}.json'
+             and donnees['profil']['prenom'] == 'Mathis' and donnees['profil']['telephone'] == '+33644556677'
+             and len(donnees['lieux']) == 1 and len(donnees['courses']) == 1 and float(donnees['solde']['montant']) == 4
+             and donnees['a_propos']['responsable_du_traitement']['raison_sociale'] == 'LOC RÉACTION S.A.S',
+             f'« Télécharger mes données » : fichier loc-reaction-mes-donnees-{jour}.json (profil, lieu, course, solde, responsable)')
+
+    # Supprimer mon compte : solde annoncé, mot de confirmation, refus de la base
+    await page.click('#compte-supprimer')
+    await page.wait_for_selector('dialog#compte-suppression[open]')
+    verifier(espaces(await page.inner_text('#compte-suppression-solde')) == 'Votre solde de 4,00 € sera perdu.'
+             and await page.evaluate("document.activeElement.id") == 'compte-suppression-mot'
+             and 'comptabilité' in await page.inner_text('#compte-suppression'),
+             'boîte de suppression : ce qui est effacé, ce qui est gardé (comptabilité), solde de 4,00 € perdu ; le curseur dans le champ')
+    await page.fill('#compte-suppression-mot', 'oui')
+    await page.click('#compte-suppression-confirmer')
+    verifier(await page.inner_text('#compte-suppression-erreur') == 'Écrivez SUPPRIMER pour confirmer la suppression.',
+             'mot de confirmation erroné : refusé avant l\'envoi')
+    await page.fill('#compte-suppression-mot', 'supprimer')
+    await page.click('#compte-suppression-confirmer')
+    await page.wait_for_function("document.getElementById('compte-suppression-erreur').textContent.startsWith('Une course est en cours ou à venir')")
+    retirer_refus_console(400)
+    verifier(valeur(f"select statut from public.profils where id = '{mathis}'") == 'actif',
+             'réservation à venir : suppression refusée par la base, message clair, compte intact')
+    await page.evaluate("document.getElementById('compte-suppression').scrollTop = 0")
+    await page.screenshot(path=f'{CAPTURES}/client-suppression.png')
+
+    # La réservation annulée, la suppression passe
+    ok, sortie = appel_rpc('annuler_course', {'p_course': reservation, 'p_motif': 'Plus besoin'}, mathis)
+    assert ok, sortie
+    await page.click('#compte-suppression-confirmer')
+    await page.wait_for_selector('#compte-suppression-fait:not([hidden])')
+    await page.keyboard.press('Escape')
+    await page.wait_for_timeout(300)
+    jeton = await page.evaluate("localStorage.getItem('sb-rolfbdmrhwslwxluhfwr-auth-token')")
+    verifier(await page.is_visible('dialog#compte-suppression[open] #compte-suppression-fait') and jeton is None
+             and valeur(f"select statut || '|' || coalesce(email, 'aucun') from public.profils where id = '{mathis}'") == 'supprime|aucun'
+             and valeur(f"select (banned_until > now()) || '|' || coalesce(email, 'aucun') from auth.users where id = '{mathis}'") == 'true|aucun',
+             'compte supprimé : effacé dans la base, connexion fermée, la page oublie sa session ; Échap ne referme pas la boîte')
+    await page.screenshot(path=f'{CAPTURES}/client-compte-supprime.png')
+    await page.click('#compte-suppression-accueil')
+    await page.wait_for_url(re.compile(r'/v2/(\?lang=fr)?$'))
+    verifier(True, '« Retour à l\'accueil » : page d\'accueil')
+    await ctx.close()
+
+
 def commander(**autres):
     corps = {'p_categorie': 'berline_hybride', 'p_depart_adresse': '10 Rue de Rivoli 75004 Paris',
              'p_depart_lat': 48.8556, 'p_depart_lng': 2.36, 'p_arrivee_adresse': 'Gare de Lyon',
@@ -856,6 +950,7 @@ async def main():
             await pourboire_client(nav)
             await securite_client(nav)
             await preferences_client(page)
+            await donnees_client(nav)
 
             print('Langue')
             await page.click('#onglets [data-onglet="compte"]')

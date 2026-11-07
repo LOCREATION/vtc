@@ -190,12 +190,17 @@ export function installerSupport({ moi, role, apresLecture = null }) {
   async function montrerListe() {
     montrerVue('liste');
     montrerErreur(null);
+    // Pendant la relecture, les anciennes lignes ne s'ouvrent pas : une
+    // demande résolue entre-temps s'ouvrirait avec son ancien statut (et sa
+    // zone de réponse)
+    liste.inert = true;
     try {
       await chargerDemandes();
     } catch (e) {
       montrerErreur(e);
     }
     afficherListe();
+    liste.inert = false;
   }
 
   function afficherListe() {

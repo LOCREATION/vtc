@@ -2,7 +2,7 @@
    LOC RÉACTION S.A.S — Version 2
    Espace client, onglet Compte : profil, lieux, proches, solde, parrainage
    et codes promo, compte professionnel, aide et support, sécurité,
-   notifications, langue, déconnexion
+   notifications, langue, données personnelles, déconnexion
    ============================================================================= */
 .entete-bloc { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .entete-bloc h2 { margin: 0; }
@@ -101,6 +101,16 @@
 .interrupteur-case:checked + .interrupteur-glissiere::after { transform: translateX(20px); }
 .interrupteur-case:focus-visible + .interrupteur-glissiere { outline: 3px solid var(--or); outline-offset: 2px; }
 .interrupteur-case:disabled + .interrupteur-glissiere { opacity: 0.6; }
+
+/* Données personnelles : boîte de suppression du compte */
+.dialogue-client { border: none; border-radius: var(--rayon-feuille); padding: 0; width: min(92vw, 480px); color: var(--nuit); background: var(--blanc); }
+.dialogue-client::backdrop { background: rgba(10, 26, 56, 0.55); }
+.dialogue-client-contenu { display: grid; gap: 14px; padding: 22px; }
+.dialogue-client-contenu h2 { margin: 0; font-size: 26px; font-weight: 700; }
+.dialogue-client-contenu p { margin: 0; }
+.consequences-suppression { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+.bouton-danger-plein { background: var(--rouge); color: var(--blanc); }
+.bouton-danger-plein:hover { background: #8E1E18; color: var(--blanc); }
 
 /* Langue */
 .choix-langue { border: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 20px; }

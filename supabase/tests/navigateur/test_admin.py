@@ -744,8 +744,9 @@ async def clients(nav):
     ctx, page, _ = await entrer(nav, mobile=False)
     await page.goto(SITE + 'admin/clients/')
     await page.wait_for_selector('#resultats tbody tr')
-    total = int(valeur("select count(*) from public.profils where role = 'client'"))
-    verifier(await page.inner_text('#nb-resultats') == f'{total} clients', f'liste : tous les clients ({total}), sans chauffeurs ni administrateurs')
+    total = int(valeur("select count(*) from public.profils where role = 'client' and statut <> 'supprime'"))
+    verifier(await page.inner_text('#nb-resultats') == f'{total} clients',
+             f'liste : tous les clients ({total}), sans chauffeurs ni administrateurs ni comptes supprimés')
     tuiles = await page.locator('#resume-clients .chiffre-cle').all_inner_texts()
     verifier(len(tuiles) == 4 and tuiles[0].startswith('Clients') and tuiles[0].split('\n')[1] == str(total), 'quatre chiffres clés, dont le nombre de clients')
     verifier(await page.get_attribute('.admin-lien[data-module="clients"]', 'aria-current') == 'page', 'menu : module « Clients et entreprises » actif')
@@ -766,6 +767,33 @@ async def clients(nav):
     contenu = open(fichier, encoding='utf-8-sig').read()
     verifier(contenu.startswith('Prénom;Nom;E-mail;') and contenu.count('\n') == total, 'export CSV : en-têtes, une ligne par client')
     await page.screenshot(path=f'{CAPTURES}/admin-clients-liste.png', full_page=True)
+
+    # Compte supprimé par le client lui-même : à part, fiche en lecture seule
+    supprime = valeur(f"""set role supabase_auth_admin;
+insert into auth.users (email, raw_user_meta_data) values ('efface{int(time.time())}@exemple.test', '{{"prenom":"Zélie","nom":"Garnier"}}') returning id;""").splitlines()[-1]
+    try:
+        ok, sortie = appel_rpc('supprimer_mon_compte', {'p_confirmation': 'SUPPRIMER'}, supprime)
+        assert ok, sortie
+        await page.select_option('#filtre-statut', 'supprime')
+        await page.wait_for_function("location.search.includes('statut=supprime')")
+        await page.wait_for_selector(f'#resultats a[href*="{supprime}"]')
+        ligne_supprime = await page.locator('#resultats tbody tr', has=page.locator(f'a[href*="{supprime}"]')).inner_text()
+        verifier('Compte supprimé' in ligne_supprime and 'Supprimé le' in ligne_supprime and 'Zélie' not in ligne_supprime
+                 and 'Effacé' in ligne_supprime, 'filtre « Supprimés » : « Compte supprimé », date de suppression, coordonnées effacées')
+        supprimes = valeur("select count(*) from public.profils where role = 'client' and statut = 'supprime'")
+        verifier(re.search(rf'\b{supprimes} comptes? supprimés?\b', await page.locator('#resume-clients .chiffre-cle').first.inner_text()) is not None,
+                 f'chiffre « Clients » : les comptes supprimés comptés à part ({supprimes})')
+        await page.locator(f'#resultats a[href*="{supprime}"]').click()
+        await page.wait_for_selector('#alerte-compte-supprime')
+        verifier(await page.inner_text('.admin-titre') == 'Compte supprimé'
+                 and await page.get_by_role('button', name='Modifier').count() == 0
+                 and await page.get_by_role('button', name='Bloquer le compte').count() == 0
+                 and 'ne se modifie ni ne se réactive' in await page.inner_text('#alerte-compte-supprime'),
+                 'fiche d\'un compte supprimé : lecture seule (ni modification, ni blocage), raison affichée')
+        await page.goto(SITE + 'admin/clients/')
+        await page.wait_for_selector('#resultats tbody tr')
+    finally:
+        systeme(f"delete from auth.users where id = '{supprime}';")
 
     # Fiche de Claire : lecture
     await page.locator('#resultats a', has_text='Claire Durand').click()
