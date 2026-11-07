@@ -3,7 +3,8 @@
      LOC RÉACTION S.A.S — Version 2
      Espace client : suivi d'une course en temps réel
      Étape en cours, chauffeur et véhicule, carte, appel, partage, annulation,
-     puis note et facture une fois la course terminée.
+     puis note, pourboire et facture (avec le reçu du pourboire) une fois la
+     course terminée.
      ============================================================================= -->
 <html lang="fr">
 <head>
@@ -75,6 +76,26 @@
           <button type="submit" class="bouton bouton-principal" id="envoyer-note" data-i18n="suivi.envoyer_note">Envoyer ma note</button>
         </form>
         <p class="note-donnee" id="note-donnee" hidden></p>
+
+        <!-- Fin de course : pourboire, une fois (2, 5 ou 10 €, ou un autre
+             montant de 0,50 € à 100 €). Il se règle comme la course : espèces
+             ou carte au terminal dans les 30 minutes qui suivent la fin,
+             facture mensuelle dans les 24 heures (la base reste seule juge).
+             Montants et textes posés par course.js (langue, prénom). -->
+        <form class="pourboire" id="bloc-pourboire" hidden novalidate>
+          <fieldset>
+            <legend class="etiquette" id="pourboire-titre"></legend>
+            <p class="pourboire-aide" id="pourboire-aide"></p>
+            <div class="montants-pourboire" id="montants-pourboire"></div>
+          </fieldset>
+          <div class="champ" id="bloc-pourboire-autre" hidden>
+            <label for="pourboire-autre" data-i18n="pourboire.autre_libelle">Montant, de 0,50 € à 100 €</label>
+            <input id="pourboire-autre" class="saisie" type="text" inputmode="decimal" autocomplete="off" maxlength="8" aria-describedby="erreur-pourboire">
+          </div>
+          <p class="erreur-champ" id="erreur-pourboire" hidden></p>
+          <button type="submit" class="bouton bouton-principal" id="envoyer-pourboire" data-i18n="pourboire.envoyer">Laisser un pourboire</button>
+        </form>
+        <p class="pourboire-donne" id="pourboire-donne" hidden></p>
       </section>
 
       <section class="feuille recapitulatif">
@@ -87,6 +108,12 @@
         <p id="recap-attente" hidden></p>
         <p id="recap-frais" hidden></p>
         <div id="recap-factures"></div>
+        <!-- Reçu du pourboire : hors TVA, en plus de la facture (qui ne change pas) -->
+        <p class="facture recu-pourboire" id="recu-pourboire" hidden>
+          <strong id="recu-pourboire-montant"></strong>
+          <span data-i18n="pourboire.recu_detail">Hors TVA, en plus de la facture, reversé en entier à votre chauffeur</span>
+          <span id="recu-pourboire-statut"></span>
+        </p>
         <div class="actions">
           <button type="button" class="bouton bouton-texte bouton-danger" id="annuler" hidden data-i18n="suivi.annuler">Annuler la course</button>
           <a class="bouton bouton-secondaire" id="recommander" hidden href="#" data-i18n="suivi.recommander">Commander à nouveau ce trajet</a>

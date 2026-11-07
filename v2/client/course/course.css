@@ -1,6 +1,6 @@
 /* =============================================================================
    LOC RÉACTION S.A.S — Version 2
-   Espace client : suivi d'une course
+   Espace client : suivi d'une course (note, pourboire et reçus à la fin)
    Téléphone : la carte en haut, l'état de la course dessous.
    Ordinateur : la carte à gauche, l'état et le récapitulatif à droite.
    ============================================================================= */
@@ -50,6 +50,22 @@
 .etoile:hover { background: var(--bitume); }
 .noter textarea { resize: vertical; min-height: 64px; }
 .note-donnee { font-weight: 600; }
+
+/* Pourboire : trois montants sur une ligne, « Autre montant » sur toute la
+   largeur dessous ; le montant choisi passe en bleu nuit */
+.pourboire { display: grid; gap: 12px; padding-top: 12px; border-top: 1px solid var(--trait); }
+.pourboire fieldset { border: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.pourboire-aide { color: var(--gris); }
+.montants-pourboire { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.montant-pourboire {
+  min-height: var(--hauteur-tactile); padding: 0 10px; border: 1.5px solid var(--trait); border-radius: var(--rayon-champ);
+  background: var(--blanc); color: var(--nuit); font: inherit; font-weight: 600; font-size: 18px; cursor: pointer;
+}
+.montant-pourboire:hover { border-color: var(--nuit-2); }
+.montant-pourboire[aria-pressed='true'] { background: var(--nuit); border-color: var(--nuit); color: var(--blanc); }
+.montant-pourboire[data-montant='autre'] { grid-column: 1 / -1; font-size: 16px; }
+.pourboire-donne { font-weight: 600; }
+.recu-pourboire span { color: var(--gris); }
 
 /* Récapitulatif */
 .recapitulatif { display: grid; gap: 14px; }
