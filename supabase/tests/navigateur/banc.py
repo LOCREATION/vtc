@@ -4,7 +4,7 @@
 # d'accès de la base s'appliquent comme en ligne.
 # L'identité vient du jeton de connexion envoyé par la page (comme pour la
 # vraie API) : utilisateur (« sub ») et niveau d'authentification (« aal »).
-import base64, json, os, subprocess, sys, tempfile, time
+import base64, json, os, re, subprocess, sys, tempfile, time
 from urllib.parse import urlparse, parse_qsl
 
 BANC = os.path.dirname(os.path.abspath(__file__))
@@ -182,11 +182,17 @@ def identite(rq, uid_defaut):
 class AuthSimulee:
     """Imitation du service de connexion de Supabase (GoTrue) pour un compte :
     connexion par mot de passe, changement de mot de passe, double
-    authentification par application (TOTP), niveaux aal1 / aal2."""
+    authentification par application (TOTP), niveaux aal1 / aal2 ;
+    changement d'adresse e-mail par code (avec ou sans double confirmation,
+    réglage « Secure email change »), renvoi du code, déconnexion des autres
+    appareils (portée « others »)."""
     CODE_VALIDE = '123456'
     CLE = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP'
+    CODE_NOUVELLE = '111111'                  # code envoyé à la nouvelle adresse
+    CODE_ACTUELLE = '222222'                  # code envoyé à l'adresse actuelle (double confirmation)
+    ADRESSE_PRISE = 'deja.pris@exemple.test'  # adresse d'un autre compte
 
-    def __init__(self, uid, email, mot_de_passe=None, facteur_verifie=False, reauthentification=False):
+    def __init__(self, uid, email, mot_de_passe=None, facteur_verifie=False, reauthentification=False, double_confirmation=True):
         self.uid, self.email, self.mot_de_passe = uid, email, mot_de_passe
         self.facteurs = []
         self.aal, self.methodes = 'aal1', ['otp']
@@ -194,6 +200,12 @@ class AuthSimulee:
         self.nonce_envoye = False
         self.requetes = []
         self._n = 0
+        self.double_confirmation = double_confirmation   # réglage « Secure email change » (actif par défaut)
+        self.nouvel_email = None                         # changement d'adresse en attente
+        self.confirmations = set()
+        self.derniere_connexion = '2026-11-06T08:15:00Z'
+        self.deconnexions = []                           # portée de chaque déconnexion (global, local, others)
+        self.renvois = []                                # renvois de code demandés
         if facteur_verifie:
             self.facteurs.append(self._facteur('Administration LOC RÉACTION', 'verified'))
 
@@ -204,8 +216,12 @@ class AuthSimulee:
                 'status': statut, 'created_at': maintenant, 'updated_at': maintenant}
 
     def utilisateur(self):
-        return {'id': self.uid, 'aud': 'authenticated', 'role': 'authenticated', 'email': self.email,
-                'email_confirmed_at': '2026-10-30T10:00:00Z', 'factors': self.facteurs, 'app_metadata': {}, 'user_metadata': {}}
+        u = {'id': self.uid, 'aud': 'authenticated', 'role': 'authenticated', 'email': self.email,
+             'email_confirmed_at': '2026-10-30T10:00:00Z', 'last_sign_in_at': self.derniere_connexion,
+             'factors': self.facteurs, 'app_metadata': {}, 'user_metadata': {}}
+        if self.nouvel_email:
+            u['new_email'] = self.nouvel_email
+        return u
 
     def session(self):
         return {'access_token': jeton(self.uid, self.aal, self.methodes), 'token_type': 'bearer', 'expires_in': 3600,
@@ -235,6 +251,15 @@ class AuthSimulee:
         if chemin == '/user' and methode == 'GET':
             return 200, self.utilisateur()
         if chemin == '/user' and methode == 'PUT':
+            if 'email' in corps:
+                # Changement d'adresse : le service garde l'actuelle et note la nouvelle
+                nouvelle = (corps.get('email') or '').strip().lower()
+                if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', nouvelle):
+                    return self._erreur(400, 'validation_failed', 'Unable to validate email address: invalid format')
+                if nouvelle == self.ADRESSE_PRISE:
+                    return self._erreur(422, 'email_exists', 'A user with this email address has already been registered')
+                self.nouvel_email, self.confirmations = nouvelle, set()
+                return 200, self.utilisateur()
             if 'password' in corps:
                 if self.reauthentification and not corps.get('nonce'):
                     return self._erreur(400, 'reauthentication_needed', 'Password update requires reauthentication')
@@ -244,6 +269,25 @@ class AuthSimulee:
                     return self._erreur(422, 'same_password', 'New password should be different from the old password.')
                 self.mot_de_passe = corps['password']
             return 200, self.utilisateur()
+        if chemin == '/verify' and corps.get('type') == 'email_change':
+            email, code = (corps.get('email') or '').lower(), corps.get('token')
+            if self.nouvel_email and email == self.nouvel_email and code == self.CODE_NOUVELLE:
+                self.confirmations.add('nouvelle')
+            elif self.nouvel_email and self.double_confirmation and email == self.email.lower() and code == self.CODE_ACTUELLE:
+                self.confirmations.add('actuelle')
+            else:
+                return self._erreur(403, 'otp_expired', 'Token has expired or is invalid')
+            attendues = {'nouvelle', 'actuelle'} if self.double_confirmation else {'nouvelle'}
+            if not attendues <= self.confirmations:
+                # Réponse de GoTrue à la première des deux confirmations : pas de session
+                return 200, {'msg': 'Confirmation link accepted. Please proceed to confirm link sent to the other email', 'code': 200}
+            self.email, self.nouvel_email, self.confirmations = self.nouvel_email, None, set()
+            # Comme en ligne : l'adresse change dans auth.users, le profil suit (déclencheur de la base)
+            systeme(f"update auth.users set email = '{self.email}' where id = '{self.uid}';")
+            return 200, self.session()
+        if chemin == '/resend':
+            self.renvois.append(corps)
+            return 200, {}
         if chemin == '/reauthenticate':
             self.nonce_envoye = True
             return 200, {}
@@ -277,7 +321,10 @@ class AuthSimulee:
                 self.methodes.append('totp')
             return 200, self.session()
         if chemin.startswith('/logout'):
-            self.aal, self.methodes = 'aal1', ['otp']
+            portee = requete.get('scope', 'global')
+            self.deconnexions.append(portee)
+            if portee != 'others':                     # « others » : cette session reste ouverte
+                self.aal, self.methodes = 'aal1', ['otp']
             return 204, None
         return self._erreur(404, 'not_found', f'Non simulé : {methode} {chemin}')
 

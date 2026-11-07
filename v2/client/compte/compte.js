@@ -14,16 +14,21 @@
 //     seule), sinon « Demander un compte professionnel » (pro.js) ;
 //   - Aide et support : « Mes demandes » et « Nouvelle demande » (panneau
 //     commun/support.js, ouvert par client.js), réponses à lire ;
+//   - Sécurité : e-mail de connexion (changement par code), dernière
+//     connexion, « Se déconnecter des autres appareils » (securite.js) ;
+//   - Notifications : e-mail, WhatsApp, application installée, en plus de
+//     la cloche (preferences.js) ;
 //   - Langue : français ou anglais (enregistrée dans le profil, la page se
 //     recharge dans la langue choisie) ;
 //   - Se déconnecter.
 // Une adresse avec ancre (#compte-lieux, #compte-proches, #compte-solde,
-// #compte-parrainage, #compte-pro, #compte-bloc-support) amène directement à
-// la section.
+// #compte-parrainage, #compte-pro, #compte-bloc-support, #compte-securite,
+// #compte-notifications) amène directement à la section.
 // Lectures : profils, lieux, proches, soldes et écritures, parrainages,
-// codes promo utilisés, comptes professionnels, mes_demandes (réponses à lire).
-// Écritures : profils (prénom, nom, téléphone, langue : droits de la base),
-// lieux et proches (les siens).
+// codes promo utilisés, comptes professionnels, mes_demandes (réponses à
+// lire), le compte de connexion (service de connexion de Supabase).
+// Écritures : profils (prénom, nom, téléphone, langue, préférences de
+// notification : droits de la base), lieux et proches (les siens).
 // =============================================================================
 import { supabase, messageErreur } from '../../commun/supabase.js';
 import { t, langueActive } from '../../commun/i18n.js';
@@ -33,10 +38,12 @@ import { creerSectionProches } from './proches.js';
 import { creerSectionSolde } from './solde.js';
 import { creerSectionParrainage } from './parrainage.js';
 import { creerSectionPro } from './pro.js';
+import { creerSectionSecurite } from './securite.js';
+import { creerSectionPreferences } from './preferences.js';
 
 const TYPES_LIEUX = ['domicile', 'travail'];
 const etat = { contexte: null, profil: null, lieux: [], zones: [], lieuEdite: null, choix: null, champAdresse: null,
-  proches: null, solde: null, parrainage: null, pro: null };
+  proches: null, solde: null, parrainage: null, pro: null, securite: null, preferences: null };
 const $ = (id) => document.getElementById(id);
 const erreurLisible = (e) => messageErreur(e, langueActive());
 let ecouteSupport = false;     // écoute de la fermeture du panneau du support, posée une fois
@@ -55,6 +62,7 @@ export async function afficher(conteneur, contexte) {
   fermerProfil();
   fermerLieu();
   etat.proches.fermer();
+  etat.securite.fermer();
   await charger();
   const id = decodeURIComponent(location.hash.slice(1));
   const cible = id ? document.getElementById(id) : null;
@@ -94,12 +102,16 @@ function construire(conteneur) {
       el('button', { type: 'submit', classe: 'bouton bouton-principal', id: 'lieu-enregistrer', texte: t('profil.enregistrer') })));
   formLieu.addEventListener('submit', (e) => { e.preventDefault(); enregistrerLieu(); });
 
-  // Proches, solde, parrainage, compte pro : sections à part (proches.js,
-  // solde.js, parrainage.js, pro.js)
+  // Proches, solde, parrainage, compte pro, sécurité, notifications :
+  // sections à part (proches.js, solde.js, parrainage.js, pro.js,
+  // securite.js, preferences.js)
   etat.proches = creerSectionProches({ contexte: etat.contexte });
   etat.solde = creerSectionSolde({ contexte: etat.contexte });
   etat.parrainage = creerSectionParrainage({ contexte: etat.contexte });
   etat.pro = creerSectionPro({ contexte: etat.contexte });
+  // Adresse e-mail changée : le profil (et ses notifications) se relisent
+  etat.securite = creerSectionSecurite({ apresChangement: () => charger().catch((e) => afficherMessage(erreurLisible(e), 'erreur')) });
+  etat.preferences = creerSectionPreferences({ contexte: etat.contexte });
 
   // Langue
   const langue = el('fieldset', { classe: 'choix-langue', id: 'compte-langue' },
@@ -145,6 +157,8 @@ function construire(conteneur) {
           onclick: () => etat.contexte.ouvrirSupport() }),
         el('button', { type: 'button', classe: 'bouton bouton-principal', id: 'compte-nouvelle-demande', texte: t('compte.nouvelle_demande'),
           onclick: () => etat.contexte.ouvrirSupport({ nouvelle: true }) }))),
+    etat.securite.section,
+    etat.preferences.section,
     el('section', { classe: 'bloc-client', id: 'compte-bloc-langue', 'aria-labelledby': 'compte-titre-langue' },
       el('h2', { id: 'compte-titre-langue', texte: t('compte.langue') }),
       el('p', { classe: 'aide-client', texte: t('compte.langue_aide') }),
@@ -171,7 +185,9 @@ async function charger() {
     etat.proches.charger(),
     etat.solde.charger(),
     etat.parrainage.charger(),
-    etat.pro.charger()
+    etat.pro.charger(),
+    etat.securite.charger(),
+    etat.preferences.charger()
   ]);
   for (const r of [profil, lieux, demandes]) if (r.error) throw r.error;
   etat.profil = profil.data || {};
@@ -265,6 +281,8 @@ async function enregistrerProfil() {
     etat.contexte.majProfil({ prenom, nom: nom || null, telephone });
     afficherProfil();
     fermerProfil();
+    // Le numéro sert aux notifications WhatsApp : la section le reprend
+    etat.preferences.charger().catch(() => {});
     afficherMessage(t('compte.profil_enregistre'), 'succes');
   } catch (e) {
     afficherMessage(erreurLisible(e), 'erreur');

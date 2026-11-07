@@ -1,13 +1,13 @@
 # Banc d'essai de l'espace client v2 (client/) : onglets Accueil, Activité,
-# Compte (lieux, proches, solde, parrainage, compte professionnel), cloche des
-# notifications, « Mes demandes au support », pourboire en fin de course,
-# lien « Mon compte » de l'accueil public.
+# Compte (lieux, proches, solde, parrainage, compte professionnel, sécurité,
+# notifications), cloche des notifications, « Mes demandes au support »,
+# pourboire en fin de course, lien « Mon compte » de l'accueil public.
 # Joué avec la cliente des scénarios de test (Claire) ; ce qui est créé ici
 # (courses, lieux, proches, demandes, notifications) est retiré, le profil
 # remis comme avant.
 import asyncio, json, re, time
 from playwright.async_api import async_playwright
-from banc import (SITE, CAPTURES, CLIENT, CHAUFFEUSE, ADMIN, PNG_GRIS, FICHIERS_DEPOSES, FICHIERS_RETIRES,
+from banc import (SITE, CAPTURES, CLIENT, CHAUFFEUSE, ADMIN, PNG_GRIS, FICHIERS_DEPOSES, FICHIERS_RETIRES, AuthSimulee,
                   systeme, en_tant_que, appel_rpc, session_injectee, routeur, serveur_local, verifier)
 
 console = []
@@ -542,6 +542,164 @@ async def pourboire_client(nav):
     systeme(f"delete from public.notifications where destinataire_id = '{CHAUFFEUSE}' and cree_le >= '{debut}';")
 
 
+def retirer_refus_console(statut):
+    """Un refus voulu (réponse « statut ») ne compte pas parmi les erreurs de la console."""
+    for i in range(len(console) - 1, -1, -1):
+        if f'status of {statut}' in console[i]:
+            del console[i]
+            return
+
+
+async def preferences_client(page):
+    """Compte > Notifications (client/compte/preferences.js) : les trois
+    interrupteurs lus dans le profil, adresse et numéro rappelés, chaque choix
+    enregistré aussitôt ; refus de la base : l'interrupteur revient à sa
+    position, message clair."""
+    print('Compte : notifications')
+    avant = valeur(f"select notif_email || ',' || notif_whatsapp || ',' || notif_push from public.profils where id = '{CLIENT}'")
+    systeme(f"update public.profils set notif_email = true, notif_whatsapp = true, notif_push = false where id = '{CLIENT}';")
+    email, telephone = ligne_sql(f"select email || '|' || telephone from public.profils where id = '{CLIENT}'")
+    try:
+        await page.goto(SITE + 'client/compte/#compte-notifications')
+        await page.wait_for_function("(document.getElementById('compte-notif-email-detail')?.textContent || '') !== ''")
+        verifier(await page.is_checked('#compte-notif-email') and await page.is_checked('#compte-notif-whatsapp')
+                 and not await page.is_checked('#compte-notif-push'),
+                 'notifications : les trois choix lus dans le profil (e-mail et WhatsApp oui, téléphone non)')
+        lisible = f'+33 {telephone[3]} {telephone[4:6]} {telephone[6:8]} {telephone[8:10]} {telephone[10:12]}'
+        verifier(email in await page.inner_text('#compte-notif-email-detail')
+                 and lisible in espaces(await page.inner_text('#compte-notif-whatsapp-detail'))
+                 and await page.get_attribute('#compte-notif-push', 'role') == 'switch',
+                 f'notifications : adresse ({email}) et numéro ({lisible}) rappelés, interrupteurs annoncés comme tels')
+        await page.click('label[for="compte-notif-whatsapp"]')
+        await message_affiche(page, 'Préférence enregistrée.')
+        await attendre_valeur(f"select notif_whatsapp from public.profils where id = '{CLIENT}'", 'f')
+        await page.click('label[for="compte-notif-push"]')
+        await attendre_valeur(f"select notif_push from public.profils where id = '{CLIENT}'", 't')
+        verifier(not await page.is_checked('#compte-notif-whatsapp') and await page.is_checked('#compte-notif-push'),
+                 'WhatsApp coupé, téléphone activé : enregistrés aussitôt dans le profil')
+        await page.evaluate("document.getElementById('zone-messages')?.replaceChildren()")
+        await page.evaluate("document.getElementById('compte-notifications').scrollIntoView({ block: 'start' })")
+        await page.screenshot(path=f'{CAPTURES}/client-notifications.png')
+        # Refus de la base (droit retiré le temps de l'essai) : retour en arrière
+        systeme("revoke update (notif_email) on public.profils from authenticated;")
+        try:
+            await page.click('label[for="compte-notif-email"]')
+            await message_affiche(page, 'L\'opération n\'a pas abouti')
+            await page.wait_for_function("document.getElementById('compte-notif-email').checked && !document.getElementById('compte-notif-email').disabled")
+            retirer_refus_console(400)
+            verifier(valeur(f"select notif_email from public.profils where id = '{CLIENT}'") == 't',
+                     'refus de la base : l\'interrupteur revient à sa position, message clair, rien de changé')
+        finally:
+            systeme("grant update (notif_email) on public.profils to authenticated;")
+    finally:
+        e, w, n = avant.split(',')
+        systeme(f"update public.profils set notif_email = {e}, notif_whatsapp = {w}, notif_push = {n} where id = '{CLIENT}';")
+
+
+async def securite_client(nav):
+    """Compte > Sécurité (client/compte/securite.js), avec le service de
+    connexion imité (AuthSimulee) : e-mail de connexion et dernière connexion,
+    changement d'adresse par code (contrôles avant l'envoi, adresse d'un autre
+    compte, « Annuler » puis reprise, code erroné, renvoi du code, double
+    confirmation : nouvelle adresse puis adresse actuelle), profil mis à jour
+    par la base, « Se déconnecter des autres appareils »."""
+    print('Compte : sécurité')
+    email = valeur(f"select email from auth.users where id = '{CLIENT}'")
+    nouvelle = 'claire.nouvelle@exemple.test'
+    auth = AuthSimulee(CLIENT, email)
+    ctx = await nav.new_context(viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True,
+                                locale='fr-FR', timezone_id='Europe/Paris', service_workers='block')
+    await ctx.add_init_script(auth.injection())
+    await ctx.route('**/*', routeur(CLIENT, auth))
+    page = await ctx.new_page()
+    page.on('console', lambda m: console.append(f'{m.type}: {m.text}') if m.type == 'error' else None)
+    page.on('pageerror', lambda e: console.append(f'pageerror: {e}'))
+    try:
+        await page.goto(SITE + 'client/compte/#compte-securite')
+        await page.wait_for_function("(document.getElementById('compte-securite-infos')?.textContent || '').includes('@')")
+        infos = espaces(await page.inner_text('#compte-securite-infos'))
+        verifier(email in infos and '6 novembre 2026 à 09:15' in infos,
+                 f'sécurité : e-mail de connexion ({email}) et dernière connexion (6 novembre 2026 à 09:15), lus au service de connexion')
+
+        # Contrôles avant l'envoi, puis adresse d'un autre compte
+        await page.click('#compte-changer-email')
+        await page.wait_for_selector('#compte-email-formulaire:not([hidden])')
+        verifier(await page.is_hidden('#compte-securite-actions') and await page.evaluate("document.activeElement.id") == 'compte-email-nouveau',
+                 '« Changer d\'adresse e-mail » : formulaire ouvert, le curseur dans le champ')
+        await page.fill('#compte-email-nouveau', 'claire@')
+        await page.click('#compte-email-valider')
+        verifier(await page.inner_text('#compte-email-nouveau-erreur') == 'Adresse e-mail invalide : vérifiez-la (ex. prenom.nom@exemple.fr).',
+                 'adresse mal formée : refusée avant l\'envoi')
+        await page.fill('#compte-email-nouveau', email.upper())
+        await page.click('#compte-email-valider')
+        verifier(await page.inner_text('#compte-email-nouveau-erreur') == 'C\'est déjà votre adresse de connexion.'
+                 and auth.nouvel_email is None, 'même adresse (en majuscules) : refusée avant l\'envoi')
+        await page.fill('#compte-email-nouveau', AuthSimulee.ADRESSE_PRISE)
+        await page.click('#compte-email-valider')
+        await page.wait_for_function("document.getElementById('compte-email-nouveau-erreur').textContent.includes('autre compte')")
+        retirer_refus_console(422)
+        verifier(await page.inner_text('#compte-email-nouveau-erreur') == 'Cette adresse est déjà celle d\'un autre compte LOC RÉACTION.',
+                 'adresse d\'un autre compte : refus du service traduit')
+
+        # Code envoyé, « Annuler » : le changement attend son code, puis se reprend
+        await page.fill('#compte-email-nouveau', 'Claire.Nouvelle@Exemple.test')
+        await page.click('#compte-email-valider')
+        await page.wait_for_selector('#compte-email-code-bloc:not([hidden])')
+        verifier(auth.nouvel_email == nouvelle and nouvelle in await page.inner_text('#compte-email-envoye')
+                 and await page.is_disabled('#compte-email-renvoyer')
+                 and re.search(r'^Renvoyer le code \(\d+ s\)$', espaces(await page.inner_text('#compte-email-renvoyer'))) is not None
+                 and await page.evaluate("document.activeElement.id") == 'compte-email-code',
+                 'code envoyé à la nouvelle adresse (en minuscules) ; « Renvoyer le code » après 60 s')
+        await page.screenshot(path=f'{CAPTURES}/client-securite-code.png')
+        await page.click('#compte-email-annuler')
+        await page.wait_for_selector('#compte-email-attente:not([hidden])')
+        verifier(nouvelle in await page.inner_text('#compte-email-attente-texte') and await page.is_visible('#compte-changer-email'),
+                 '« Annuler » : le changement reste en attente, « Saisir le code » le reprend')
+        await page.click('#compte-email-reprendre')
+        await page.wait_for_selector('#compte-email-code-bloc:not([hidden])')
+        await page.fill('#compte-email-code', '12')
+        await page.click('#compte-email-valider')
+        verifier(await page.inner_text('#compte-email-code-erreur') == 'Saisissez le code reçu par e-mail : 6 chiffres ou plus.',
+                 'code trop court : refusé avant l\'envoi')
+        await page.fill('#compte-email-code', '999999')
+        await page.click('#compte-email-valider')
+        await page.wait_for_function("document.getElementById('compte-email-code-erreur').textContent.startsWith('Code incorrect')")
+        retirer_refus_console(403)
+        verifier(True, 'code erroné : « Code incorrect ou expiré : vérifiez-le, ou demandez un nouveau code. »')
+        await page.click('#compte-email-renvoyer')
+        await message_affiche(page, 'Nouveau code envoyé.')
+        verifier(auth.renvois and auth.renvois[-1].get('type') == 'email_change' and auth.renvois[-1].get('email') == nouvelle
+                 and await page.is_disabled('#compte-email-renvoyer'),
+                 '« Renvoyer le code » : nouveau code pour la nouvelle adresse, puis 60 s d\'attente')
+
+        # Double confirmation : code de la nouvelle adresse, puis de l'actuelle
+        await page.fill('#compte-email-code', AuthSimulee.CODE_NOUVELLE)
+        await page.click('#compte-email-valider')
+        await page.wait_for_function("document.getElementById('compte-email-envoye').textContent.includes('adresse actuelle')")
+        verifier(email in await page.inner_text('#compte-email-envoye') and await page.input_value('#compte-email-code') == '',
+                 'premier code accepté : le code envoyé à l\'adresse actuelle est demandé pour finir')
+        await page.fill('#compte-email-code', AuthSimulee.CODE_ACTUELLE)
+        await page.click('#compte-email-valider')
+        await message_affiche(page, f'Adresse e-mail changée : {nouvelle}.')
+        await page.wait_for_selector('#compte-email-formulaire', state='hidden')
+        await page.wait_for_function(f"document.getElementById('compte-profil').textContent.includes({json.dumps(nouvelle)})")
+        verifier(valeur(f"select email from public.profils where id = '{CLIENT}'") == nouvelle
+                 and nouvelle in await page.inner_text('#compte-securite-infos') and await page.is_hidden('#compte-email-attente'),
+                 'adresse changée : profil mis à jour par la base, « Sécurité » et « Profil » l\'affichent')
+
+        # Autres appareils
+        await page.click('#compte-deconnecter-autres')
+        await message_affiche(page, 'Vos autres appareils sont déconnectés')
+        verifier(auth.deconnexions == ['others'] and await page.is_visible('#compte-securite'),
+                 '« Se déconnecter des autres appareils » : portée « others », ce téléphone reste connecté')
+        await page.evaluate("document.getElementById('zone-messages')?.replaceChildren()")
+        await page.evaluate("document.getElementById('compte-securite').scrollIntoView({ block: 'start' })")
+        await page.screenshot(path=f'{CAPTURES}/client-securite.png')
+    finally:
+        systeme(f"update auth.users set email = '{email}' where id = '{CLIENT}';")
+        await ctx.close()
+
+
 def commander(**autres):
     corps = {'p_categorie': 'berline_hybride', 'p_depart_adresse': '10 Rue de Rivoli 75004 Paris',
              'p_depart_lat': 48.8556, 'p_depart_lng': 2.36, 'p_arrivee_adresse': 'Gare de Lyon',
@@ -696,6 +854,8 @@ async def main():
             await solde_parrainage_client(ctx, page)
             await compte_pro_client(page)
             await pourboire_client(nav)
+            await securite_client(nav)
+            await preferences_client(page)
 
             print('Langue')
             await page.click('#onglets [data-onglet="compte"]')
