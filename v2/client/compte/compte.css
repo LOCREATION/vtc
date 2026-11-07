@@ -1,7 +1,8 @@
 /* =============================================================================
    LOC RÉACTION S.A.S — Version 2
    Espace client, onglet Compte : profil, lieux, proches, solde, parrainage
-   et codes promo, compte professionnel, aide et support, langue, déconnexion
+   et codes promo, compte professionnel, aide et support, sécurité,
+   notifications, langue, données personnelles, déconnexion
    ============================================================================= */
 .entete-bloc { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .entete-bloc h2 { margin: 0; }
@@ -76,6 +77,40 @@
 .mouvement-client[data-statut='annulee'] .mouvement-montant { color: var(--gris); }
 .pro-sans-compte { display: grid; gap: 12px; justify-items: start; }
 .pro-sans-compte[hidden] { display: none; }
+
+/* Sécurité : un libellé long passe sur deux lignes sans se tasser */
+#compte-securite-actions .bouton { line-height: 1.25; padding-top: 8px; padding-bottom: 8px; text-align: center; }
+/* Changement d'adresse en attente de son code */
+.attente-email { display: grid; gap: 6px; justify-items: start; }
+.attente-email .bouton-texte { padding-left: 0; padding-right: 0; min-height: 36px; }
+
+/* Notifications : un interrupteur par canal (texte à gauche, glissière à droite) */
+.preferences-client { list-style: none; margin: 0; padding: 0; display: grid; }
+.preference-client { border-top: 1px solid var(--trait); }
+.preference-client:first-child { border-top: none; }
+.interrupteur { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px 0; cursor: pointer; position: relative; }
+.interrupteur-texte { display: grid; gap: 2px; min-width: 0; }
+.interrupteur-titre { font-weight: 600; }
+.interrupteur-detail { color: var(--gris); font-size: 14px; overflow-wrap: anywhere; }
+/* La vraie case reste là (clavier, lecteurs d'écran), posée sur la glissière */
+.interrupteur-case { position: absolute; right: 0; top: 50%; width: 52px; height: 32px; margin: -16px 0 0; opacity: 0; cursor: pointer; }
+.interrupteur-glissiere { width: 52px; height: 32px; border-radius: 999px; background: var(--trait); position: relative; transition: background 0.15s ease; }
+.interrupteur-glissiere::after { content: ''; position: absolute; top: 4px; left: 4px; width: 24px; height: 24px; border-radius: 50%; background: var(--blanc);
+  box-shadow: 0 1px 3px rgba(10, 26, 56, 0.3); transition: transform 0.15s ease; }
+.interrupteur-case:checked + .interrupteur-glissiere { background: var(--vert); }
+.interrupteur-case:checked + .interrupteur-glissiere::after { transform: translateX(20px); }
+.interrupteur-case:focus-visible + .interrupteur-glissiere { outline: 3px solid var(--or); outline-offset: 2px; }
+.interrupteur-case:disabled + .interrupteur-glissiere { opacity: 0.6; }
+
+/* Données personnelles : boîte de suppression du compte */
+.dialogue-client { border: none; border-radius: var(--rayon-feuille); padding: 0; width: min(92vw, 480px); color: var(--nuit); background: var(--blanc); }
+.dialogue-client::backdrop { background: rgba(10, 26, 56, 0.55); }
+.dialogue-client-contenu { display: grid; gap: 14px; padding: 22px; }
+.dialogue-client-contenu h2 { margin: 0; font-size: 26px; font-weight: 700; }
+.dialogue-client-contenu p { margin: 0; }
+.consequences-suppression { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+.bouton-danger-plein { background: var(--rouge); color: var(--blanc); }
+.bouton-danger-plein:hover { background: #8E1E18; color: var(--blanc); }
 
 /* Langue */
 .choix-langue { border: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 20px; }

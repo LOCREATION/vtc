@@ -12,6 +12,10 @@
 // écran). Écritures : coordonnées du client (règles d'accès : administration,
 // modification inscrite au journal), blocage (admin_statut_client), solde
 // (ajuster_solde), notes internes.
+// Compte supprimé par le client (espace client, Données personnelles) : à
+// part dans la liste (filtre « Supprimés », absent de « Tous » et des
+// chiffres), fiche en lecture seule : courses, paiements et factures gardés
+// pour la comptabilité, sans coordonnées ; ni modification, ni blocage.
 // =============================================================================
 import { supabase } from '../../commun/supabase.js';
 import { el, euros, nombre, afficherMessage } from '../../commun/outils.js';
@@ -28,6 +32,8 @@ import {
 } from './blocs.js';
 
 const $ = (id) => document.getElementById(id);
+// Nom affiché : « Compte supprimé » pour un compte effacé à la demande du client
+const nomClient = (c) => (c.statut === 'supprime' ? 'Compte supprimé' : nomComplet(c.prenom, c.nom));
 const PAR_PAGE = 50;
 const VUES = [{ code: 'clients', libelle: 'Clients' }, { code: 'entreprises', libelle: 'Entreprises' }];
 const TRIS = [
@@ -68,14 +74,15 @@ function afficherVue(vue) {
 // #############################################################################
 const COLONNES = [
   { titre: 'Client', valeur: (c) => el('span', {},
-    el('a', { href: lienAdmin(`clients/?id=${c.id}`), texte: nomComplet(c.prenom, c.nom) }),
-    (c.statut === 'bloque' || c.candidat || c.entreprises.length)
+    el('a', { href: lienAdmin(`clients/?id=${c.id}`), texte: nomClient(c) }),
+    (c.statut !== 'actif' || c.candidat || c.entreprises.length)
       ? el('span', { classe: 'secondaire badges-ligne' },
         c.statut === 'bloque' ? badge('Bloqué', 'rouge') : null,
+        c.statut === 'supprime' ? badge(`Supprimé le ${dateCourte(c.maj_le)}`, 'gris') : null,
         c.candidat ? badge('Candidat chauffeur', 'or') : null,
         ...c.entreprises.map((e) => badge(e, 'bleu')))
       : null) },
-  { titre: 'Contact', valeur: (c) => el('span', {}, c.telephone ? telephoneLisible(c.telephone) : 'Sans téléphone',
+  { titre: 'Contact', valeur: (c) => el('span', {}, c.telephone ? telephoneLisible(c.telephone) : (c.statut === 'supprime' ? 'Effacé' : 'Sans téléphone'),
     el('span', { classe: 'secondaire', texte: c.email || '' })) },
   { titre: 'Courses', droite: true, valeur: (c) => el('span', {}, String(c.courses_terminees),
     el('span', { classe: 'secondaire', texte: c.a_venir ? `${c.a_venir} à venir` : c.derniere_course_le ? `dernière le ${dateCourte(c.derniere_course_le)}` : '' })) },
@@ -88,7 +95,7 @@ const COLONNES = [
 const COLONNES_CSV = [
   { titre: 'Prénom', csv: (c) => c.prenom }, { titre: 'Nom', csv: (c) => c.nom },
   { titre: 'E-mail', csv: (c) => c.email }, { titre: 'Téléphone', csv: (c) => c.telephone },
-  { titre: 'Statut', csv: (c) => (c.statut === 'bloque' ? 'Bloqué' : 'Actif') },
+  { titre: 'Statut', csv: (c) => ({ bloque: 'Bloqué', supprime: 'Supprimé' }[c.statut] || 'Actif') },
   { titre: 'Langue', csv: (c) => (c.langue === 'en' ? 'Anglais' : 'Français') },
   { titre: 'Inscription', csv: (c) => dateCourte(c.cree_le) },
   { titre: 'Courses terminées', csv: (c) => c.courses_terminees },
@@ -105,7 +112,7 @@ const COLONNES_CSV = [
 function lireFiltresUrl() {
   const p = new URLSearchParams(location.search);
   filtres.texte = (p.get('q') || '').slice(0, 100);
-  filtres.statut = ['actif', 'bloque'].includes(p.get('statut')) ? p.get('statut') : '';
+  filtres.statut = ['actif', 'bloque', 'supprime'].includes(p.get('statut')) ? p.get('statut') : '';
   filtres.tri = TRIS.some((t) => t.valeur === p.get('tri')) ? p.get('tri') : 'recents';
   filtres.page = Math.max(0, parseInt(p.get('page') || '0', 10) || 0);
 }
@@ -129,7 +136,8 @@ function afficherClients() {
     placeholder: 'Nom, e-mail, téléphone ou code' });
   texte.value = filtres.texte;
   const statut = el('select', { id: 'filtre-statut', classe: 'saisie' },
-    el('option', { value: '', texte: 'Tous' }), el('option', { value: 'actif', texte: 'Actifs' }), el('option', { value: 'bloque', texte: 'Bloqués' }));
+    el('option', { value: '', texte: 'Tous' }), el('option', { value: 'actif', texte: 'Actifs' }), el('option', { value: 'bloque', texte: 'Bloqués' }),
+    el('option', { value: 'supprime', texte: 'Supprimés' }));
   statut.value = filtres.statut;
   const tri = el('select', { id: 'filtre-tri', classe: 'saisie' }, ...TRIS.map((t) => el('option', { value: t.valeur, texte: t.libelle })));
   tri.value = filtres.tri;
@@ -173,7 +181,8 @@ async function chargerClients() {
 
   const r = data.resume;
   $('resume-clients').replaceChildren(
-    tuile('Clients', String(r.clients), pluriel(r.nouveaux_30_jours, 'nouveau en 30 jours', 'nouveaux en 30 jours')),
+    tuile('Clients', String(r.clients), [pluriel(r.nouveaux_30_jours, 'nouveau en 30 jours', 'nouveaux en 30 jours'),
+      r.supprimes ? pluriel(r.supprimes, 'compte supprimé', 'comptes supprimés') : null].filter(Boolean).join(' · ')),
     tuile('Actifs (30 j)', String(r.actifs_30_jours), 'au moins une course terminée'),
     tuile('Rattachés', String(r.avec_entreprise), 'à une entreprise (facture mensuelle)'),
     tuile('Bloqués', String(r.bloques), r.bloques ? 'ne peuvent plus commander' : 'aucun compte', r.bloques ? 'rouge' : null));
@@ -184,7 +193,7 @@ async function chargerClients() {
     colonnes: COLONNES, lignes: data.lignes,
     vide: filtres.texte || filtres.statut ? 'Aucun client ne correspond à ces critères.' : 'Aucun client inscrit pour le moment.',
     clicLigne: (c) => { location.href = lienAdmin(`clients/?id=${c.id}`); },
-    libelleLigne: (c) => `Ouvrir la fiche de ${nomComplet(c.prenom, c.nom)}`
+    libelleLigne: (c) => `Ouvrir la fiche de ${nomClient(c)}`
   }));
   const pages = Math.max(1, Math.ceil(total / PAR_PAGE));
   const precedent = el('button', { type: 'button', classe: 'bouton bouton-secondaire bouton-petit', texte: 'Précédent', disabled: filtres.page === 0 });
@@ -235,13 +244,15 @@ async function chargerFicheClient(id) {
 function afficherFicheClient(f) {
   const p = f.profil;
   const ch = f.chiffres;
-  const nom = nomComplet(p.prenom, p.nom);
+  const nom = nomClient(p);
+  const supprime = p.statut === 'supprime';
   const recharger = () => chargerFicheClient(p.id);
   document.title = `${nom}, administration LOC RÉACTION`;
   $('titre-page').textContent = nom;
 
   // Identité, contact, actions
-  const badges = [p.statut === 'bloque' ? badge('Compte bloqué', 'rouge') : badge('Actif', 'vert')];
+  const badges = [supprime ? badge('Compte supprimé', 'gris')
+    : p.statut === 'bloque' ? badge('Compte bloqué', 'rouge') : badge('Actif', 'vert')];
   if (p.role === 'chauffeur') badges.push(badge('Chauffeur', 'bleu'));
   if (p.role === 'admin') badges.push(badge('Administrateur', 'bleu'));
   if (f.chauffeur && f.chauffeur.statut === 'candidat') badges.push(badge('Candidat chauffeur', 'or'));
@@ -250,7 +261,7 @@ function afficherFicheClient(f) {
     el('div', { classe: 'carte-entete' }, el('h2', { id: 'titre-identite', texte: 'Coordonnées' }), ...badges),
     el('dl', { classe: 'fiche-donnees' },
       ...ligne('Téléphone', p.telephone ? lienTelephone(p.telephone)
-        : el('span', { classe: 'texte-or', texte: 'Non renseigné : ce client ne peut pas commander' })),
+        : supprime ? 'Effacé' : el('span', { classe: 'texte-or', texte: 'Non renseigné : ce client ne peut pas commander' })),
       ...ligne('E-mail', p.email ? el('a', { href: `mailto:${p.email}`, texte: p.email }) : null),
       ...ligne('Inscription', dateHeureComplete(p.cree_le)),
       ...ligne('Dernière connexion', f.connexion && f.connexion.derniere_connexion ? dateHeureComplete(f.connexion.derniere_connexion) : 'Non connue'),
@@ -276,6 +287,11 @@ function afficherFicheClient(f) {
   if (p.statut === 'bloque') {
     blocs.splice(1, 0, el('p', { classe: 'alerte', texte: 'Compte bloqué : ce client ne peut plus commander. Le motif figure dans l\'historique des modifications, en bas de la fiche.' }));
   }
+  if (supprime) {
+    blocs.splice(1, 0, el('p', { classe: 'alerte alerte-info', id: 'alerte-compte-supprime',
+      texte: `Compte supprimé par le client le ${dateHeureComplete(p.maj_le)} : identité et coordonnées effacées, connexion fermée. `
+        + 'Courses, paiements et factures restent ici pour la comptabilité, sans coordonnées ; le compte ne se modifie ni ne se réactive.' }));
+  }
   if (f.paiements_a_encaisser.length) blocs.push(sectionAEncaisser(f));
   blocs.push(sectionCourses(f));
   blocs.push(sectionFactures(f));
@@ -300,6 +316,8 @@ function afficherFicheClient(f) {
 // ---------------------------------------------------------------------------
 function actionsClient(f, recharger) {
   const p = f.profil;
+  // Compte supprimé par le client : fiche en lecture seule
+  if (p.statut === 'supprime') return null;
   const liste = [boutonAction('Modifier', () => modifierClient(p, recharger), 'bouton-principal')];
   if (p.role === 'client') {
     liste.push(p.statut === 'bloque'
