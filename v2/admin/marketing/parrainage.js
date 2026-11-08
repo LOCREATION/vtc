@@ -9,14 +9,17 @@
 //   - chiffres clés : parrainages, validés, en attente, crédits versés ;
 //   - récompenses en vigueur, meilleurs parrains ;
 //   - liste filtrable (statut, recherche : nom, e-mail, code) ;
-//   - annulation motivée d'un parrainage en attente (abus).
-// Lecture : admin_lister_parrainages ; action : admin_annuler_parrainage.
+//   - annulation motivée d'un parrainage en attente (abus) ; suppression
+//     d'un parrainage (une récompense déjà versée reste sur les soldes).
+// Lecture : admin_lister_parrainages ; actions : admin_annuler_parrainage,
+// admin_supprimer_parrainage.
 // =============================================================================
 import { supabase } from '../../commun/supabase.js';
 import { el, euros, afficherMessage } from '../../commun/outils.js';
 import { lienAdmin } from '../commun/admin.js';
 import { tableau, tuile, badge, boutonAction, confirmer, messageErreurAdmin, dateCourte, pluriel } from '../commun/composants.js';
 import { ecrireAdresse } from '../commun/listes.js';
+import { boutonSupprimer, confirmerSuppression } from '../commun/suppression.js';
 
 const $ = (id) => document.getElementById(id);
 const STATUTS = {
@@ -96,11 +99,29 @@ async function charger() {
         p.valide_le ? el('span', { classe: 'secondaire', texte: `le ${dateCourte(p.valide_le)}` }) : null) },
       { titre: 'Récompenses', valeur: (p) => (p.statut === 'valide'
         ? `${euros(p.recompense_parrain)} au parrain · ${euros(p.recompense_filleul)} au filleul` : el('span', { classe: 'texte-gris', texte: 'Aucune versée' })) },
-      { titre: '', valeur: (p) => (p.statut === 'en_attente' ? boutonAction('Annuler', () => annuler(p), 'bouton-texte') : '') }
+      { titre: '', valeur: (p) => el('div', { classe: 'actions-ligne' },
+        p.statut === 'en_attente' ? boutonAction('Annuler', () => annuler(p), 'bouton-texte') : null,
+        boutonSupprimer(() => supprimer(p), `Supprimer le parrainage de ${p.filleul.nom || 'ce filleul'}`)) }
     ],
     lignes: data.lignes,
     vide: filtres.texte || filtres.statut ? 'Aucun parrainage ne correspond.' : 'Aucun parrainage pour l\'instant : chaque client a son code dans son espace.'
   }));
+}
+
+// Le lien entre parrain et filleul part ; une récompense déjà versée reste
+async function supprimer(p) {
+  const resultat = await confirmerSuppression({
+    titre: `Supprimer le parrainage de ${p.filleul.nom || 'ce filleul'} ?`,
+    texte: p.statut === 'valide'
+      ? `Les récompenses déjà versées (${euros(p.recompense_parrain)} au parrain, ${euros(p.recompense_filleul)} au filleul) restent sur leurs soldes : retirez-les avec « Créditer ou débiter » dans la fiche du client si besoin.`
+      : 'Aucune récompense ne sera versée.',
+    efface: [`Le lien entre ${p.parrain.nom || 'le parrain'} et ${p.filleul.nom || 'le filleul'}`],
+    fonction: 'admin_supprimer_parrainage',
+    parametres: { p_parrainage: p.id }
+  });
+  if (!resultat) return;
+  afficherMessage('Parrainage supprimé.', 'succes');
+  await charger();
 }
 
 function lienClient(personne) {

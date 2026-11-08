@@ -14,7 +14,11 @@
 //     somme due ou rembourser (avoir automatique), comme dans Finances ;
 //     support : demandes au sujet de la course, objets trouvés, conversation
 //     entre le client et le chauffeur ; enregistrer une demande du client,
-//     déclarer un objet trouvé (module Support).
+//     déclarer un objet trouvé (module Support) ;
+//     « Supprimer la course » (admin_supprimer_course) : une course terminée
+//     ou annulée, sans facture ni paiement encaissé, est effacée avec son
+//     historique ; sinon la boîte dit pourquoi elle reste (loi) et quoi faire
+//     à la place ; « Supprimer » un message de la conversation.
 // =============================================================================
 import { supabase } from '../../commun/supabase.js';
 import { el, euros, nombre, afficherMessage, apresPause } from '../../commun/outils.js';
@@ -26,6 +30,7 @@ import {
 } from '../commun/composants.js';
 import { fenetreAttribution, relancerRecherche, retirerChauffeur, annulerCourse } from '../commun/actions-course.js';
 import { actionsPaiement } from '../commun/actions-paiement.js';
+import { boutonSupprimer, confirmerSuppression, expliquerConservation, CONSERVATION } from '../commun/suppression.js';
 import {
   TYPES_DEMANDE, STATUTS_DEMANDE, STATUTS_OBJET, pastille, formulaireDemandePourCompte, formulaireObjet
 } from '../support/commun-support.js';
@@ -450,9 +455,25 @@ function sectionSupport(f, recharger) {
           el('time', { datetime: m.cree_le, texte: `${dateCourte(m.cree_le)} ${heure(m.cree_le)}` }),
           el('div', {},
             el('strong', { texte: `${m.auteur_nom} (${m.auteur_role === 'client' ? 'client' : m.auteur_role === 'chauffeur' ? 'chauffeur' : 'administration'}) : ` }),
-            el('span', { texte: m.contenu || 'pièce jointe' })))))
+            el('span', { texte: m.contenu || 'pièce jointe' }),
+            m.id ? el('div', { classe: 'actions-ligne' }, boutonSupprimer(() => supprimerMessage(m, recharger), `Supprimer le message de ${m.auteur_nom}`)) : null))))
       : el('p', { classe: 'vide-admin', texte: 'Aucun message échangé pendant la course.' }),
     el('div', { classe: 'actions-ligne' }, ouvrir, declarer));
+}
+
+// Un message de la conversation (propos déplacés, coordonnées échangées…)
+async function supprimerMessage(m, recharger) {
+  const extrait = (m.contenu || 'pièce jointe').length > 140 ? `${m.contenu.slice(0, 137)}…` : (m.contenu || 'pièce jointe');
+  const resultat = await confirmerSuppression({
+    titre: 'Supprimer ce message ?',
+    texte: `${m.auteur_nom} : « ${extrait} »`,
+    efface: ['Le message, pour le client comme pour le chauffeur'],
+    fonction: 'admin_supprimer_message',
+    parametres: { p_message: m.id }
+  });
+  if (!resultat) return;
+  afficherMessage('Message supprimé.', 'succes');
+  await recharger();
 }
 
 function detailEtape(e) {
@@ -502,7 +523,56 @@ function actionsFiche(f, recharger) {
   if (suivante) liste.push(boutonAction(suivante.libelle, () => avancer(c, suivante, recharger)));
   if (!['terminee', 'annulee', 'en_cours'].includes(c.statut)) liste.push(boutonAction('Modifier', () => modifier(c, recharger)));
   if (!['terminee', 'annulee', 'en_cours'].includes(c.statut)) liste.push(boutonAction('Annuler la course', () => annulerCourse(pour, recharger), 'bouton-danger'));
-  return liste.length ? el('div', { classe: 'actions-ligne' }, ...liste) : null;
+  liste.push(boutonSupprimer(() => supprimerCourse(f, pour, recharger), `Supprimer la course ${c.numero}`, 'Supprimer la course'));
+  return el('div', { classe: 'actions-ligne' }, ...liste);
+}
+
+// Suppression de la course. Seulement terminée ou annulée, et sans pièce
+// comptable : une facture, un avoir ou un paiement encaissé se conservent
+// 10 ans avec leur course (la boîte le dit, et ce qui se fait à la place).
+async function supprimerCourse(f, pour, recharger) {
+  const c = f.course;
+  if (!['terminee', 'annulee'].includes(c.statut)) {
+    await expliquerConservation({
+      titre: `La course ${c.numero} n'est pas terminée`,
+      texte: c.statut === 'en_cours'
+        ? 'Le client est à bord : attendez la fin de la course.'
+        : 'Annulez-la d\'abord : le client et le chauffeur sont prévenus. Vous pourrez ensuite la supprimer.',
+      alternative: c.statut !== 'en_cours' ? { libelle: 'Annuler la course', action: () => annulerCourse(pour, recharger) } : null
+    });
+    return;
+  }
+  const encaisse = f.paiements.some((p) => ['encaisse', 'rembourse'].includes(p.statut));
+  if (f.factures.length || f.avoirs.length || encaisse) {
+    const piece = f.factures.length ? `la facture ${f.factures[0].numero}` : f.avoirs.length ? `l'avoir ${f.avoirs[0].numero}` : 'un paiement encaissé';
+    await expliquerConservation({
+      titre: `La course ${c.numero} ne peut pas être supprimée`,
+      texte: [`Elle porte ${piece}. ${CONSERVATION.comptable}`,
+        'Pour ne plus réclamer une somme ou pour la rendre, utilisez « Annuler la somme » ou « Rembourser » dans ses paiements : un avoir corrige la facture.']
+    });
+    return;
+  }
+  const resultat = await confirmerSuppression({
+    titre: `Supprimer la course ${c.numero} ?`,
+    texte: 'Aucune facture ni aucun paiement encaissé : la course est effacée. Les demandes d\'aide et les objets trouvés qui la citent restent, sans lien vers elle.',
+    efface: [
+      'La course, son trajet et ses arrêts',
+      'Son historique, ses demandes aux chauffeurs, sa conversation et ses notes',
+      ...(f.paiements.length ? [`Ses paiements jamais encaissés (${f.paiements.length})`] : []),
+      'Les notifications qui y mènent'
+    ],
+    fonction: 'admin_supprimer_course',
+    parametres: { p_course: c.id }
+  });
+  if (!resultat) return;
+  // La fiche n'existe plus : retour à la liste, sans recharger la page
+  history.replaceState(null, '', lienAdmin('courses/'));
+  document.title = 'Courses, administration LOC RÉACTION';
+  $('titre-page').textContent = 'Courses';
+  $('vue-fiche').hidden = true;
+  $('vue-fiche').replaceChildren();
+  ouvrirListe();
+  afficherMessage(`Course ${c.numero} supprimée.`, 'succes');
 }
 
 async function avancer(c, suivante, recharger) {

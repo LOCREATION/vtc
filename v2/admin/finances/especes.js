@@ -24,6 +24,7 @@ import {
 import { champsPeriode, bornes, periodeValable, periodeLisible } from '../commun/periode.js';
 import { ecrireAdresse, lireDate, nomFichier } from '../commun/listes.js';
 import { COLONNES_REMISES } from './exports.js';
+import { boutonSupprimer, expliquerConservation, CONSERVATION } from '../commun/suppression.js';
 
 const $ = (id) => document.getElementById(id);
 const filtres = { du: '', au: '' };
@@ -182,7 +183,15 @@ async function chargerRemises() {
       { titre: 'État', valeur: (r) => (r.annulee_le
         ? el('span', {}, badge('Annulée', 'gris'), el('span', { classe: 'secondaire', texte: `le ${dateCourte(r.annulee_le)}${r.annulee_par_nom ? ` par ${r.annulee_par_nom}` : ''} : ${r.motif_annulation}` }))
         : badge('Enregistrée', 'vert')) },
-      { titre: '', valeur: (r) => (r.annulee_le ? el('span') : boutonAction('Annuler', () => annulerRemise(r), 'bouton-danger')) }
+      { titre: '', valeur: (r) => el('div', { classe: 'actions-ligne' },
+        r.annulee_le ? null : boutonAction('Annuler', () => annulerRemise(r), 'bouton-danger'),
+        boutonSupprimer(() => expliquerConservation({
+          titre: `Le reçu ${r.numero} ne peut pas être supprimé`,
+          texte: [`Un reçu de remise d'espèces est numéroté : la caisse du bureau en dépend. ${CONSERVATION.comptable}`,
+            r.annulee_le ? 'Il est déjà annulé : il ne compte plus dans les totaux, son motif reste lisible.'
+              : 'En cas d\'erreur, annulez-le avec son motif : il ne compte plus dans les totaux, et le chauffeur doit de nouveau ces espèces.'],
+          alternative: r.annulee_le ? null : { libelle: 'Annuler le reçu', action: () => annulerRemise(r) }
+        }), `Supprimer le reçu ${r.numero}`)) }
     ],
     lignes: data.lignes, vide: 'Aucune remise sur cette période.'
   }));

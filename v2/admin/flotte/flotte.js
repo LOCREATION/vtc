@@ -7,8 +7,12 @@
 // l'utilisent ; entretiens (le kilométrage du véhicule suit le dernier relevé)
 // et pièces du véhicule (déposées par l'administration dans le dossier privé
 // « documents », validées aussitôt : leur date d'expiration est reportée sur
-// la fiche). Un véhicule utilisé par des courses ne se supprime pas : on le
-// désactive. Tout est inscrit au journal des modifications.
+// la fiche). « Supprimer » (admin_supprimer_vehicule) : le véhicule part avec
+// ses pièces (fichiers compris) et ses entretiens ; les courses qu'il a faites
+// gardent sa description (marque, couleur, immatriculation copiées à la
+// course). Refusé tant qu'il fait une course ; « Désactiver » le retire du
+// service sans rien effacer. Une pièce se supprime seule (« Supprimer » de la
+// pièce). Tout est inscrit au journal des modifications.
 // =============================================================================
 import { supabase } from '../../commun/supabase.js';
 import { el, euros, nombre, afficherMessage } from '../../commun/outils.js';
@@ -17,6 +21,7 @@ import {
   badge, dateCourte, echeance, jourParis, tableau, exporterCsv, nombreCsv, boutonExporter, fenetreFormulaire,
   confirmer, messageErreurAdmin, nomComplet, ouvrirPiece, TYPES_DOCUMENT, STATUTS_DOCUMENT, DOCUMENTS_DATES
 } from '../commun/composants.js';
+import { boutonSupprimer, confirmerSuppression } from '../commun/suppression.js';
 
 const $ = (id) => document.getElementById(id);
 const ENERGIES = { hybride: 'Hybride', electrique: 'Électrique', essence: 'Essence', diesel: 'Diesel', autre: 'Autre' };
@@ -118,12 +123,47 @@ function ficheVehicule(v) {
           badge((STATUTS_DOCUMENT[d.statut] || {}).libelle || d.statut, (STATUTS_DOCUMENT[d.statut] || {}).ton || 'gris'),
           el('span', { classe: 'secondaire', texte: [d.numero ? `n° ${d.numero}` : null, d.expire_le ? `jusqu'au ${dateCourte(d.expire_le)}` : null,
             `ajoutée le ${dateCourte(d.cree_le)}`].filter(Boolean).join(' · ') })),
-        el('div', { classe: 'actions-ligne' }, bouton('Voir la pièce', () => voirPiece(d))))))
+        el('div', { classe: 'actions-ligne' }, bouton('Voir la pièce', () => voirPiece(d)),
+          boutonSupprimer(() => supprimerPiece(d, v), `Supprimer la pièce ${TYPES_DOCUMENT[d.type] || d.type} de ${v.immatriculation}`)))))
         : el('p', { classe: 'texte-gris', texte: 'Aucune pièce. Ajoutez la carte grise, l\'attestation d\'assurance, le contrôle technique…' }),
       el('div', { classe: 'actions-ligne' }, bouton('Ajouter une pièce', () => ajouterPiece(v)))),
     el('div', { classe: 'actions-ligne' },
       bouton('Modifier', () => formulaireVehicule(v)),
-      v.actif ? bouton('Désactiver', () => basculerActif(v, conducteurs), 'bouton-danger') : bouton('Remettre en service', () => basculerActif(v, conducteurs), 'bouton-principal')));
+      v.actif ? bouton('Désactiver', () => basculerActif(v, conducteurs), 'bouton-danger') : bouton('Remettre en service', () => basculerActif(v, conducteurs), 'bouton-principal'),
+      boutonSupprimer(() => supprimerVehicule(v, conducteurs, entretiens, pieces), `Supprimer le véhicule ${v.immatriculation}`, 'Supprimer le véhicule')));
+}
+
+// Véhicule (saisie en double, véhicule vendu…) : ses pièces et entretiens
+// partent ; les courses gardent sa description
+async function supprimerVehicule(v, conducteurs, entretiens, pieces) {
+  const resultat = await confirmerSuppression({
+    titre: `Supprimer ${v.marque} ${v.modele} ${v.immatriculation} ?`,
+    texte: 'Les courses qu\'il a faites gardent sa description (marque, couleur, immatriculation). Pour le retirer du service sans rien effacer, utilisez plutôt « Désactiver ».',
+    efface: [
+      'La fiche du véhicule et ses échéances',
+      `Ses pièces (${pieces.length}) et leurs fichiers, ses entretiens (${entretiens.length})`,
+      ...(conducteurs.length ? [`Son affectation : ${conducteurs.map((c) => nomComplet(c.prenom, c.nom)).join(', ')} n'aura plus de véhicule`] : [])
+    ],
+    fonction: 'admin_supprimer_vehicule',
+    parametres: { p_vehicule: v.id }
+  });
+  if (!resultat) return;
+  afficherMessage(`Véhicule ${v.immatriculation} supprimé.`, 'succes');
+  await charger();
+}
+
+// Une pièce du véhicule (mauvais fichier, pièce périmée) : la ligne et son fichier
+async function supprimerPiece(d, v) {
+  const resultat = await confirmerSuppression({
+    titre: `Supprimer la pièce « ${TYPES_DOCUMENT[d.type] || d.type} » de ${v.immatriculation} ?`,
+    texte: 'La date d\'expiration déjà reportée sur la fiche reste : corrigez-la avec « Modifier » si besoin.',
+    efface: ['La pièce et son fichier'],
+    fonction: 'admin_supprimer_document',
+    parametres: { p_document: d.id }
+  });
+  if (!resultat) return;
+  afficherMessage('Pièce supprimée.', 'succes');
+  await charger();
 }
 
 async function voirPiece(d) {

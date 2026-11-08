@@ -19,6 +19,7 @@ import { lienAdmin } from '../commun/admin.js';
 import {
   tableau, tuile, badge, boutonAction, boutonExporter, exporterCsv, confirmer, fenetreFormulaire, messageErreurAdmin, dateCourte, pluriel
 } from '../commun/composants.js';
+import { boutonSupprimer, expliquerConservation, CONSERVATION } from '../commun/suppression.js';
 import { nomFichier } from '../commun/listes.js';
 import { STATUTS_BULLETIN, pastille, montant, debutMois, moisEnLettres, choixMois, decimal } from './commun-rh.js';
 
@@ -106,6 +107,10 @@ function actions(l) {
   } else {
     boutons.push(el('a', { classe: 'bouton bouton-secondaire bouton-petit', href: lienAdmin(`rh/?bulletin=${b.id}`), texte: 'Voir, imprimer' }));
     if (b.statut === 'valide') boutons.push(boutonAction('Remis au salarié', () => remettre(l)));
+    boutons.push(boutonSupprimer(() => expliquerConservation({
+      titre: `Le bulletin de ${l.nom} ne peut pas être supprimé`,
+      texte: [`Il est validé. ${CONSERVATION.paie}`, 'Une erreur se corrige sur le bulletin du mois suivant (régularisation).']
+    }), `Supprimer le bulletin de ${l.nom}`));
   }
   return el('span', { classe: 'actions-ligne' }, ...boutons);
 }

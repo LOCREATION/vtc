@@ -7,6 +7,8 @@
 // Un remboursement se fait depuis le paiement : onglet Encaissements, liste
 // « Encaissés », ou fiche de la course (bouton « Rembourser »). Celui d'une
 // course ou de frais d'annulation crée l'avoir qui corrige la facture.
+// « Supprimer » : un remboursement est une écriture comptable, conservée
+// 10 ans avec son avoir ; la boîte le dit.
 // Lecture : admin_lister_remboursements.
 // =============================================================================
 import { supabase } from '../../commun/supabase.js';
@@ -17,6 +19,7 @@ import {
   MODES_PAIEMENT, NATURES_PAIEMENT, MODES_REMBOURSEMENT
 } from '../commun/composants.js';
 import { champsPeriode, bornes, periodeValable, periodeLisible, periodeCourte } from '../commun/periode.js';
+import { boutonSupprimer, expliquerConservation, CONSERVATION } from '../commun/suppression.js';
 import { ecrireAdresse, lireDate, lirePage, pagination, chargerTout, nomFichier } from '../commun/listes.js';
 import { COLONNES_REMBOURSEMENTS } from './exports.js';
 
@@ -87,7 +90,13 @@ async function charger() {
       { titre: 'Motif', valeur: (r) => r.motif },
       { titre: 'Avoir', valeur: (r) => (r.avoir_id
         ? el('a', { href: lienAdmin(`finances/?avoir=${r.avoir_id}`), texte: r.avoir_numero })
-        : badge('Pourboire : sans avoir', 'gris')) }
+        : badge('Pourboire : sans avoir', 'gris')) },
+      { titre: '', valeur: (r) => boutonSupprimer(() => expliquerConservation({
+        titre: 'Ce remboursement ne peut pas être supprimé',
+        texte: [`L'argent est déjà rendu : c'est une écriture comptable${r.avoir_id ? `, avec l'avoir ${r.avoir_numero}` : ''}. ${CONSERVATION.comptable}`,
+          'En cas d\'erreur de montant, enregistrez un nouvel encaissement ou un nouveau remboursement depuis la course : chaque mouvement reste lisible.'],
+        alternative: { libelle: 'Ouvrir la course', action: () => { location.href = lienAdmin(`courses/?id=${r.course_id}`); } }
+      }), `Supprimer le remboursement de ${euros(r.montant)} de la course ${r.course_numero}`) }
     ],
     lignes: data.lignes,
     vide: filtres.texte ? 'Aucun remboursement ne correspond à cette recherche.' : 'Aucun remboursement sur cette période.'

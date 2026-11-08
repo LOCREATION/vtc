@@ -11,11 +11,13 @@
 //   - l'e-mail et WhatsApp attendent un service d'envoi : seul le canal
 //     « application » est proposé.
 // Lectures et actions : admin_lister_campagnes, admin_enregistrer_campagne,
-// admin_envoyer_campagne ; suppression directe d'un brouillon.
+// admin_envoyer_campagne, admin_supprimer_campagne (brouillon, ou
+// notification envoyée : elle disparaît aussi chez ses destinataires).
 // =============================================================================
 import { supabase } from '../../commun/supabase.js';
 import { el, afficherMessage } from '../../commun/outils.js';
 import { tableau, badge, boutonAction, fenetreFormulaire, confirmer, messageErreurAdmin, jourHeure, pluriel } from '../commun/composants.js';
+import { boutonSupprimer, confirmerSuppression } from '../commun/suppression.js';
 
 const $ = (id) => document.getElementById(id);
 const CIBLES = { clients: 'Tous les clients', chauffeurs: 'Tous les chauffeurs', tous: 'Clients et chauffeurs' };
@@ -51,10 +53,10 @@ async function charger() {
         : el('span', {}, badge('Brouillon', 'or'), el('span', { classe: 'secondaire', texte: `${pluriel(etat.cibles[c.cible] || 0, 'destinataire', 'destinataires')} aujourd'hui` }))) },
       { titre: 'Lue', valeur: (c) => (c.envoyee_le
         ? `${c.lus} / ${c.nb_destinataires}${c.nb_destinataires ? ` (${Math.round((100 * c.lus) / c.nb_destinataires)} %)` : ''}` : '') },
-      { titre: 'Actions', valeur: (c) => (c.envoyee_le ? '' : el('div', { classe: 'actions-ligne' },
-        boutonAction('Envoyer', () => envoyer(c), 'bouton-principal'),
-        boutonAction('Modifier', () => formulaire(c)),
-        boutonAction('Supprimer', () => supprimer(c), 'bouton-texte'))) }
+      { titre: 'Actions', valeur: (c) => el('div', { classe: 'actions-ligne' },
+        c.envoyee_le ? null : boutonAction('Envoyer', () => envoyer(c), 'bouton-principal'),
+        c.envoyee_le ? null : boutonAction('Modifier', () => formulaire(c)),
+        boutonSupprimer(() => supprimer(c), `Supprimer la notification ${c.titre}`)) }
     ],
     lignes: data.lignes,
     vide: 'Aucune notification groupée pour l\'instant.'
@@ -98,11 +100,19 @@ async function envoyer(c) {
   await charger();
 }
 
+// Brouillon, ou notification déjà envoyée (message erroné) : elle disparaît
+// aussi des notifications de ses destinataires
 async function supprimer(c) {
-  const r = await confirmer({ titre: `Supprimer le brouillon « ${c.titre} » ?`, texte: 'Il n\'a pas été envoyé.', libelle: 'Supprimer', danger: true });
-  if (!r) return;
-  const { error } = await supabase.from('campagnes').delete().eq('id', c.id);
-  if (error) { afficherMessage(messageErreurAdmin(error), 'erreur'); return; }
-  afficherMessage('Brouillon supprimé.', 'succes');
+  const resultat = await confirmerSuppression({
+    titre: c.envoyee_le ? `Supprimer la notification « ${c.titre} » ?` : `Supprimer le brouillon « ${c.titre} » ?`,
+    texte: c.envoyee_le
+      ? `Envoyée le ${jourHeure(c.envoyee_le)} : elle disparaît aussi de l'application de ses ${pluriel(c.nb_destinataires, 'destinataire', 'destinataires')}, lue ou non.`
+      : 'Elle n\'a pas été envoyée.',
+    efface: c.envoyee_le ? ['La notification groupée', `Ses ${pluriel(c.nb_destinataires, 'envoi', 'envois')} chez les destinataires`] : ['Le brouillon'],
+    fonction: 'admin_supprimer_campagne',
+    parametres: { p_campagne: c.id }
+  });
+  if (!resultat) return;
+  afficherMessage(c.envoyee_le ? `Notification supprimée, retirée chez ${pluriel(resultat.notifications_retirees, 'destinataire', 'destinataires')}.` : 'Brouillon supprimé.', 'succes');
   await charger();
 }

@@ -11,7 +11,9 @@
 //        - application déjà configurée → code à 6 chiffres de l'application ;
 //        - première fois → choix du mot de passe, puis configuration de
 //          l'application d'authentification (QR code ou clé à recopier) ;
-//   4. affichage du menu des modules et de la page demandée.
+//   4. affichage du menu des modules et de la page demandée ; puis, sans
+//      bruit, effacement des fichiers des lignes supprimées restés dans le
+//      stockage (fichiers-en-attente.js).
 // La base refuse de toute façon toute action d'administration sans le niveau
 // « aal2 » : cette porte n'est que le parcours qui permet de l'obtenir.
 // =============================================================================
@@ -19,6 +21,7 @@ import { supabase, profilConnecte, messageErreur } from '../../commun/supabase.j
 import { RACINE } from '../../commun/config.js';
 import { imposerLangue } from '../../commun/i18n.js';
 import { el, afficherMessage, emailValide } from '../../commun/outils.js';
+import { effacerFichiersEnAttente } from './fichiers-en-attente.js';
 
 imposerLangue('fr');                 // administration en français
 
@@ -346,6 +349,9 @@ class Porte {
       if (evenement === 'SIGNED_OUT') setTimeout(() => location.reload(), 0);
     });
     this.entrer(this.profil);
+    // Fichiers des lignes supprimées restés dans le stockage (suppression
+    // interrompue, purge du 8 novembre 2026) : effacés sans bruit
+    setTimeout(() => { effacerFichiersEnAttente(); }, 1500);
   }
 
   async deconnecter() {
