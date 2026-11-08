@@ -198,7 +198,8 @@ select test.verifier((:'envoi'::jsonb ->> 'destinataires')::int = :nb_clients
 call test.connexion(:'admin', 'aal2');
 select test.doit_echouer(format('select public.admin_envoyer_campagne(%L)', :'campagne'), 'déjà envoyée');
 select test.doit_echouer(format('select public.admin_enregistrer_campagne(%L, %L, %L, %L)', :'campagne', 'Autre', 'Autre', 'tous'), 'déjà envoyée');
-select test.doit_echouer(format('delete from public.campagnes where id = %L', :'campagne'), 'déjà envoyée');
+-- (Une notification envoyée se supprime, avec ses envois : migration 28,
+-- voir 27_suppressions_admin.sql)
 call test.connexion(:'client1');
 select test.verifier(exists (select 1 from public.notifications where campagne_id = :'campagne' and titre = 'Horaires des fêtes'),
                      'Claire la reçoit dans l''application');

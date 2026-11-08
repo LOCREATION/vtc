@@ -9,9 +9,10 @@
 //     utilisations, remises accordées, chiffre d'affaires des courses
 //     terminées, statut (actif, à venir, expiré, épuisé, désactivé) ;
 //   - création, modification, activation, désactivation ; utilisations d'un
-//     code (client, course, remise) ; suppression d'un code jamais utilisé.
+//     code (client, course, remise) ; suppression d'un code, même utilisé :
+//     les courses gardent la remise accordée (admin_supprimer_code_promo).
 // Lectures et actions : admin_lister_codes_promo, admin_enregistrer_code_promo,
-// admin_activer_code_promo, admin_utilisations_code ; suppression directe.
+// admin_activer_code_promo, admin_utilisations_code, admin_supprimer_code_promo.
 // =============================================================================
 import { supabase } from '../../commun/supabase.js';
 import { el, euros, nombre, afficherMessage } from '../../commun/outils.js';
@@ -20,6 +21,7 @@ import {
   tableau, tuile, badge, boutonAction, fenetreFormulaire, confirmer, ouvrirFenetre, messageErreurAdmin, dateCourte,
   jourParis, ajouterJours, pluriel, badgeCourse, jourHeure
 } from '../commun/composants.js';
+import { boutonSupprimer, confirmerSuppression } from '../commun/suppression.js';
 
 const $ = (id) => document.getElementById(id);
 const STATUTS = {
@@ -95,19 +97,25 @@ function actions(c) {
       afficherMessage(c.actif ? `Code ${c.code} désactivé : il n'est plus accepté à la commande.` : `Code ${c.code} activé.`, 'succes');
       await charger();
     }));
-  if (c.utilisations > 0) {
-    liste.append(boutonAction('Utilisations', () => utilisations(c)));
-  } else {
-    liste.append(boutonAction('Supprimer', async () => {
-      const r = await confirmer({ titre: `Supprimer le code ${c.code} ?`, texte: 'Il n\'a jamais servi. La suppression est gardée au journal.', libelle: 'Supprimer', danger: true });
-      if (!r) return;
-      const { error } = await supabase.from('codes_promo').delete().eq('id', c.id);
-      if (error) { afficherMessage(messageErreurAdmin(error), 'erreur'); return; }
-      afficherMessage(`Code ${c.code} supprimé.`, 'succes');
-      await charger();
-    }, 'bouton-texte'));
-  }
+  if (c.utilisations > 0) liste.append(boutonAction('Utilisations', () => utilisations(c)));
+  liste.append(boutonSupprimer(() => supprimerCode(c), `Supprimer le code ${c.code}`));
   return liste;
+}
+
+// Code promo, même déjà utilisé : les courses gardent la remise accordée
+async function supprimerCode(c) {
+  const resultat = await confirmerSuppression({
+    titre: `Supprimer le code ${c.code} ?`,
+    texte: c.utilisations > 0
+      ? `Il a servi ${pluriel(c.utilisations, 'fois', 'fois')} : les courses gardent la remise accordée, sans le nom du code. Pour seulement arrêter de l'accepter, utilisez plutôt « Désactiver ».`
+      : 'Il n\'a jamais servi.',
+    efface: ['Le code et ses conditions', ...(c.utilisations > 0 ? [`Le suivi de ses utilisations (${c.utilisations})`] : [])],
+    fonction: 'admin_supprimer_code_promo',
+    parametres: { p_code: c.id }
+  });
+  if (!resultat) return;
+  afficherMessage(`Code ${c.code} supprimé.`, 'succes');
+  await charger();
 }
 
 async function formulaireCode(c) {

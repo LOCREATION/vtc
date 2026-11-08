@@ -12,6 +12,9 @@
 //   - rembourser (virement, carte, espèces) : avoir automatique ;
 //   - paiement sur facture mensuelle : il se règle avec le relevé de
 //     l'entreprise (lien vers la fiche de l'entreprise).
+//   - supprimer : seulement un paiement jamais encaissé et sans facture
+//     (admin_supprimer_paiement) ; un paiement encaissé est une pièce
+//     comptable, conservée 10 ans : la boîte le dit et propose « Rembourser ».
 // Chaque action est vérifiée et enregistrée par la base (fonctions serveur),
 // et inscrite au journal à votre nom.
 // =============================================================================
@@ -21,6 +24,7 @@ import { lienAdmin } from './admin.js';
 import {
   fenetreFormulaire, confirmer, messageErreurAdmin, MODES_PAIEMENT, NATURES_PAIEMENT, MODES_REMBOURSEMENT, dateCourte, avecDe
 } from './composants.js';
+import { boutonSupprimer, confirmerSuppression, expliquerConservation, CONSERVATION } from './suppression.js';
 
 const centimes = (x) => Math.round(Number(x || 0) * 100);
 
@@ -67,7 +71,33 @@ export function actionsPaiement(p, recharger) {
   if (['encaisse', 'rembourse'].includes(p.statut) && reste > 0) {
     actions.push(bouton('Rembourser', () => rembourserPaiement(p, reste, recharger)));
   }
+  actions.push(boutonSupprimer(() => supprimerPaiement(p, reste, recharger), `Supprimer le paiement de ${quoi(p)}`));
   return actions;
+}
+
+// ---------------------------------------------------------------------------
+// Supprimer (paiement jamais encaissé, sans facture)
+// ---------------------------------------------------------------------------
+async function supprimerPaiement(p, reste, recharger) {
+  if (['encaisse', 'rembourse'].includes(p.statut)) {
+    await expliquerConservation({
+      titre: 'Ce paiement ne peut pas être supprimé',
+      texte: [`Il a été encaissé : c'est une écriture comptable. ${CONSERVATION.comptable}`,
+        reste > 0 ? 'Pour rendre l\'argent au client, faites un remboursement : un avoir est établi automatiquement.' : 'Il est déjà entièrement remboursé.'],
+      alternative: reste > 0 ? { libelle: 'Rembourser', action: () => rembourserPaiement(p, reste, recharger) } : null
+    });
+    return;
+  }
+  const resultat = await confirmerSuppression({
+    titre: `Supprimer le paiement de ${quoi(p)} ?`,
+    texte: `${euros(p.montant)}, ${(MODES_PAIEMENT[p.mode] || p.mode || '').toLowerCase()}, jamais encaissé. Si une facture le couvre, la base refuse et dit quoi faire (« Annuler la somme » : un avoir corrige la facture).`,
+    efface: ['Le paiement à encaisser'],
+    fonction: 'admin_supprimer_paiement',
+    parametres: { p_paiement: p.id }
+  });
+  if (!resultat) return;
+  afficherMessage('Paiement supprimé.', 'succes');
+  await recharger();
 }
 
 // ---------------------------------------------------------------------------

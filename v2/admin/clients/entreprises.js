@@ -14,11 +14,15 @@
 // Lectures : admin_lister_comptes_pro, admin_fiche_compte_pro,
 // admin_releve_compte_pro. Écritures : tables comptes_pro et
 // comptes_pro_membres (règles d'accès : administration ; tout est inscrit au
-// journal), admin_encaisser_releve.
+// journal), admin_encaisser_releve, admin_supprimer_compte_pro (« Supprimer » :
+// un compte sans course est effacé avec ses membres et ses notes ; avec des
+// courses, ses factures se conservent 10 ans : la boîte le dit et propose de
+// le suspendre).
 // =============================================================================
 import { supabase } from '../../commun/supabase.js';
 import { el, euros, nombre, afficherMessage } from '../../commun/outils.js';
 import { lienAdmin } from '../commun/admin.js';
+import { boutonSupprimer, confirmerSuppression, expliquerConservation, CONSERVATION } from '../commun/suppression.js';
 import {
   badge, badgeCourse, dateCourte, jourHeure, MODES_PAIEMENT, tableau, exporterCsv, nombreCsv,
   boutonExporter, fenetreFormulaire, confirmer, ouvrirFenetre, messageErreurAdmin, jourParis, nomComplet,
@@ -236,7 +240,7 @@ function afficherFiche(f) {
       c.statut === 'actif'
         ? boutonAction('Suspendre', () => changerStatut(c, 'suspendu', recharger), 'bouton-danger')
         : boutonAction('Réactiver', () => changerStatut(c, 'actif', recharger)),
-      f.courses.length === 0 ? boutonAction('Supprimer', () => supprimerCompte(c), 'bouton-danger') : null));
+      boutonSupprimer(() => supprimerCompte(f, recharger), `Supprimer le compte ${c.raison_sociale}`)));
 
   const plafondAtteint = c.plafond_mensuel !== null && Number(ch.engage_mois) >= Number(c.plafond_mensuel);
   const chiffres = el('div', { classe: 'chiffres-cles' },
@@ -288,15 +292,26 @@ async function changerStatut(c, statut, recharger) {
   await recharger();
 }
 
-async function supprimerCompte(c) {
-  const ok = await confirmer({
+async function supprimerCompte(f, recharger) {
+  const c = f.compte;
+  // Des courses au nom de l'entreprise : ses factures se conservent 10 ans
+  if (f.courses.length > 0) {
+    await expliquerConservation({
+      titre: `${c.raison_sociale} ne peut pas être supprimé`,
+      texte: [`Des courses ont été commandées au nom de l'entreprise : leurs factures portent son nom. ${CONSERVATION.comptable}`,
+        'Suspendez plutôt le compte : ses membres ne pourront plus commander sur facture mensuelle, son historique reste.'],
+      alternative: c.statut === 'actif' ? { libelle: 'Suspendre le compte', action: () => changerStatut(c, 'suspendu', recharger) } : null
+    });
+    return;
+  }
+  const resultat = await confirmerSuppression({
     titre: `Supprimer ${c.raison_sociale} ?`,
-    texte: 'Possible tant qu\'aucune course n\'a été commandée à son nom. Les membres sont détachés. La suppression est inscrite au journal.',
-    libelle: 'Supprimer', danger: true
+    texte: 'Aucune course n\'a été commandée à son nom : le compte est effacé.',
+    efface: ['Le compte, son identité et son plafond', `Ses membres (${f.membres.length}), détachés`, 'Ses notes internes'],
+    fonction: 'admin_supprimer_compte_pro',
+    parametres: { p_compte: c.id }
   });
-  if (!ok) return;
-  const { error } = await supabase.from('comptes_pro').delete().eq('id', c.id);
-  if (error) { afficherMessage(messageErreurAdmin(error), 'erreur'); return; }
+  if (!resultat) return;
   afficherMessage('Compte professionnel supprimé.', 'succes');
   location.href = lienAdmin('clients/?vue=entreprises');
 }

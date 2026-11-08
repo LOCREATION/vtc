@@ -12,7 +12,10 @@
 //     avec pièce jointe facultative (photo ou PDF, rangée dans le dossier
 //     privé « support »), et « résolue » d'un coup si c'est réglé ;
 //   - objets trouvés de la course (déclaration rattachée à la demande) ;
-//   - autres demandes de la même personne.
+//   - autres demandes de la même personne ;
+//   - « Supprimer la demande » (admin_supprimer_demande : messages, pièces
+//     jointes et notifications partent ; un objet trouvé reste, détaché) et
+//     « Supprimer » un message (admin_supprimer_message).
 // Lecture : admin_fil_demande ; actions : admin_repondre_demande,
 // admin_statut_demande, admin_attribuer_demande, admin_enregistrer_objet.
 // =============================================================================
@@ -25,6 +28,7 @@ import {
 } from '../commun/composants.js';
 import { nomFichier } from '../commun/listes.js';
 import { TYPES_DEMANDE, STATUTS_DEMANDE, STATUTS_OBJET, ROLES, pastille, lienEmail, formulaireObjet } from './commun-support.js';
+import { boutonSupprimer, confirmerSuppression } from '../commun/suppression.js';
 
 const $ = (id) => document.getElementById(id);
 const FORMATS = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'];
@@ -103,6 +107,7 @@ function sectionDemande(f, recharger) {
   } else {
     actions.append(boutonAction('Rouvrir la demande', () => changerStatut(d, 'en_cours', null, recharger)));
   }
+  actions.append(boutonSupprimer(() => supprimerDemande(f), `Supprimer la demande ${d.numero}`, 'Supprimer la demande'));
 
   return el('section', { classe: 'carte-admin', 'aria-labelledby': 'titre-demande' },
     el('div', { classe: 'carte-entete' }, el('h2', { id: 'titre-demande', texte: d.sujet }), pastille(STATUTS_DEMANDE, d.statut)),
@@ -112,6 +117,45 @@ function sectionDemande(f, recharger) {
       ...ligne(d.statut === 'resolue' ? 'Résolue le' : 'Fermée le', d.cloturee_le ? jourHeure(d.cloturee_le) : null)),
     el('div', { classe: 'champ champ-assignee' }, el('label', { for: 'demande-assignee', texte: 'Personne chargée' }), choix),
     actions);
+}
+
+// Demande (doublon, message indésirable…) : ses messages, pièces jointes et
+// notifications partent ; un objet trouvé qui la cite reste, détaché
+async function supprimerDemande(f) {
+  const d = f.demande;
+  const pieces = f.messages.filter((m) => m.piece_jointe_chemin).length;
+  const resultat = await confirmerSuppression({
+    titre: `Supprimer la demande ${d.numero} ?`,
+    texte: f.objets.length ? 'Les objets trouvés qui la citent restent au registre, sans lien vers elle.' : null,
+    efface: [
+      `La demande « ${d.sujet} » et ses ${pluriel(f.messages.length, 'message', 'messages')}`,
+      ...(pieces ? [`Ses pièces jointes (${pieces}) et leurs fichiers`] : []),
+      'Les notifications qui y mènent'
+    ],
+    fonction: 'admin_supprimer_demande',
+    parametres: { p_demande: d.id }
+  });
+  if (!resultat) return;
+  // Le fil n'existe plus : retour à la file des demandes, sans recharger
+  history.replaceState(null, '', lienAdmin('support/'));
+  const { afficherVue } = await import('./support.js');
+  afficherVue('demandes');
+  afficherMessage(`Demande ${d.numero} supprimée.`, 'succes');
+}
+
+// Un message du fil (erreur, propos déplacés) ; sa pièce jointe part aussi
+async function supprimerMessage(m, recharger) {
+  const extrait = m.contenu ? (m.contenu.length > 140 ? `${m.contenu.slice(0, 137)}…` : m.contenu) : 'pièce jointe seule';
+  const resultat = await confirmerSuppression({
+    titre: 'Supprimer ce message ?',
+    texte: `${m.auteur_nom} : « ${extrait} »`,
+    efface: ['Le message, pour vous comme pour l\'auteur de la demande', ...(m.piece_jointe_chemin ? ['Sa pièce jointe et son fichier'] : [])],
+    fonction: 'admin_supprimer_message',
+    parametres: { p_message: m.id }
+  });
+  if (!resultat) return;
+  afficherMessage('Message supprimé.', 'succes');
+  await recharger();
 }
 
 async function changerStatut(d, statut, motif, recharger) {
@@ -137,7 +181,9 @@ function sectionMessages(f, recharger) {
       m.contenu ? el('p', { classe: 'fil-texte', texte: m.contenu }) : null,
       m.piece_jointe_chemin ? el('button', { type: 'button', classe: 'bouton bouton-texte fil-piece', texte: 'Ouvrir la pièce jointe',
         onclick: () => ouvrirPiece('support', m.piece_jointe_chemin).catch((e) => afficherMessage(messageErreurAdmin(e), 'erreur')) }) : null,
-      m.de_l_administration ? el('span', { classe: 'fil-lu', texte: m.lu_le ? `Lu le ${jourHeure(m.lu_le)}` : 'Pas encore lu' }) : null)));
+      m.de_l_administration ? el('span', { classe: 'fil-lu', texte: m.lu_le ? `Lu le ${jourHeure(m.lu_le)}` : 'Pas encore lu' }) : null,
+      el('div', { classe: 'actions-ligne fil-actions' },
+        boutonSupprimer(() => supprimerMessage(m, recharger), `Supprimer le message de ${m.auteur_nom} du ${jourHeure(m.cree_le)}`)))));
 
   const texte = el('textarea', { id: 'reponse-texte', classe: 'saisie saisie-zone', maxlength: '2000', rows: '5' });
   const fichier = el('input', { id: 'reponse-fichier', classe: 'saisie', type: 'file', accept: '.pdf,image/jpeg,image/png,image/webp,image/heic,image/heif' });

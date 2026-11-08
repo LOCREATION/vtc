@@ -8,6 +8,9 @@
 // En tête : nombre et montants des factures et des avoirs, chiffre d'affaires
 // HT et TVA nets, et le contrôle de la numérotation continue de chaque série
 // (aucun numéro ne doit manquer). Chaque numéro ouvre la pièce imprimable.
+// « Supprimer » : une facture ou un avoir émis se conserve 10 ans (Code de
+// commerce, art. L123-22) ; la boîte le dit et mène à la course, où « Annuler
+// la somme » ou « Rembourser » établissent l'avoir qui corrige la facture.
 // Lecture : admin_lister_factures.
 // =============================================================================
 import { supabase } from '../../commun/supabase.js';
@@ -20,6 +23,7 @@ import {
 import { champsPeriode, bornes, periodeValable, periodeLisible, periodeCourte } from '../commun/periode.js';
 import { ecrireAdresse, lireDate, lirePage, pagination, chargerTout, nomFichier } from '../commun/listes.js';
 import { COLONNES_REGISTRE, chronologique, etatFacture } from './exports.js';
+import { boutonSupprimer, expliquerConservation, CONSERVATION } from '../commun/suppression.js';
 
 const $ = (id) => document.getElementById(id);
 const PAR_PAGE = 50;
@@ -139,8 +143,21 @@ const COLONNES = [
     ? el('strong', { classe: 'texte-rouge', texte: `− ${euros(l.montant_ttc)}` })
     : el('span', {}, el('strong', { texte: euros(l.montant_ttc) }),
       Number(l.credite) > 0 ? el('span', { classe: 'secondaire', texte: `${euros(l.credite)} crédités` }) : null)) },
-  { titre: 'État', valeur: etat }
+  { titre: 'État', valeur: etat },
+  { titre: '', valeur: (l) => boutonSupprimer(() => expliquerPiece(l), `Supprimer ${l.type === 'avoir' ? 'l\'avoir' : 'la facture'} ${l.numero}`) }
 ];
+
+// Une pièce émise ne s'efface jamais : pourquoi, et ce qui se fait à la place
+function expliquerPiece(l) {
+  const avoir = l.type === 'avoir';
+  return expliquerConservation({
+    titre: `${avoir ? 'L\'avoir' : 'La facture'} ${l.numero} ne peut pas être supprimé${avoir ? '' : 'e'}`,
+    texte: [CONSERVATION.comptable, avoir
+      ? 'Un avoir corrige une facture : il reste avec elle, et la numérotation de la série doit rester continue.'
+      : 'Pour l\'annuler ou la corriger, établissez un avoir : dans la course, « Annuler la somme » (somme pas encore réglée) ou « Rembourser » (somme réglée).'],
+    alternative: { libelle: 'Ouvrir la course', action: () => { location.href = lienAdmin(`courses/?id=${l.course_id}`); } }
+  });
+}
 
 function dessinerListe(data) {
   $('periode-registre').textContent = `Émises ${periodeLisible(filtres.du, filtres.au)}`;

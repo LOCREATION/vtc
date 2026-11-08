@@ -18,6 +18,13 @@
 // chauffeur). Écritures : fonctions serveur (validation, refus, statut,
 // véhicule, documents) ou modification directe de la fiche (règles d'accès :
 // administration).
+// « Supprimer » à tous les niveaux (commun/suppression.js) :
+//   - chauffeur (admin_supprimer_chauffeur) : effacé en entier s'il n'a
+//     jamais conduit ; sinon ses courses, espèces et relevés restent, sans son
+//     nom ni ses coordonnées, et sa fiche « supprimée » quitte la liste ;
+//   - candidature (admin_supprimer_candidature) : avec le dossier et les
+//     pièces d'un candidat jamais validé ; son compte client reste ;
+//   - pièce (admin_supprimer_document) : la ligne et son fichier.
 // =============================================================================
 import { supabase } from '../../commun/supabase.js';
 import { el, euros, nombre, afficherMessage } from '../../commun/outils.js';
@@ -27,6 +34,7 @@ import {
   boutonExporter, fenetreFormulaire, confirmer, ouvrirFenetre, messageErreurAdmin, nomComplet, ouvrirPiece,
   TYPES_DOCUMENT, STATUTS_DOCUMENT, DOCUMENTS_DATES, lienTelephone, telephoneLisible
 } from '../commun/composants.js';
+import { boutonSupprimer, confirmerSuppression } from '../commun/suppression.js';
 
 const $ = (id) => document.getElementById(id);
 const ONGLETS = [
@@ -84,7 +92,8 @@ function carteSansFiche() {
         ...[p.email, telephoneLisible(p.telephone), `inscrit le ${dateCourte(p.cree_le)}`].filter(Boolean)
           .flatMap((texte, i) => [i ? ' · ' : null, el('span', { classe: 'insecable', texte })]).filter(Boolean)),
       el('div', { classe: 'choix-action' },
-        p.statut === 'actif' ? bouton('Enregistrer comme chauffeur', () => validerCandidature({ ...p, documents: [] }), 'bouton-principal') : null)))));
+        p.statut === 'actif' ? bouton('Enregistrer comme chauffeur', () => validerCandidature({ ...p, documents: [] }), 'bouton-principal') : null,
+        boutonSupprimer(() => supprimerChauffeur({ ...p, documents: [], salarie: false }), `Supprimer le compte de ${nomComplet(p.prenom, p.nom) || p.email}`, 'Supprimer le compte'))))));
 }
 
 function afficher() {
@@ -142,7 +151,25 @@ function listeDocuments(c) {
     el('div', { classe: 'actions-ligne' },
       bouton('Voir la pièce', () => voirPiece(d)),
       d.statut === 'en_attente' ? bouton('Valider', () => validerDocument(d, c), 'bouton-principal') : null,
-      d.statut === 'en_attente' ? bouton('Refuser', () => refuserDocument(d, c), 'bouton-danger') : null))));
+      d.statut === 'en_attente' ? bouton('Refuser', () => refuserDocument(d, c), 'bouton-danger') : null,
+      boutonSupprimer(() => supprimerDocument(d, c), `Supprimer la pièce ${TYPES_DOCUMENT[d.type] || d.type} de ${nomComplet(c.prenom, c.nom)}`)))));
+}
+
+// Une pièce (mauvais fichier, doublon) : la ligne et son fichier partent
+async function supprimerDocument(d, c) {
+  const piece = TYPES_DOCUMENT[d.type] || d.type;
+  const resultat = await confirmerSuppression({
+    titre: `Supprimer la pièce « ${piece} » de ${nomComplet(c.prenom, c.nom)} ?`,
+    texte: d.statut === 'valide'
+      ? 'Le numéro et la date déjà reportés sur la fiche restent : corrigez-les avec « Modifier la fiche » si besoin.'
+      : 'Le chauffeur pourra en déposer une nouvelle depuis son espace.',
+    efface: ['La pièce et son fichier'],
+    fonction: 'admin_supprimer_document',
+    parametres: { p_document: d.id }
+  });
+  if (!resultat) return;
+  afficherMessage('Pièce supprimée.', 'succes');
+  await charger();
 }
 
 async function voirPiece(d) {
@@ -183,7 +210,38 @@ function ficheChauffeur(c) {
       bouton('Modifier la fiche', () => modifierFiche(c)),
       bouton('Changer de véhicule', () => changerVehicule(c)),
       c.statut === 'valide' ? bouton('Suspendre', () => suspendre(c), 'bouton-danger') : bouton('Réactiver', () => reactiver(c), 'bouton-principal'),
-      el('a', { classe: 'bouton bouton-texte bouton-petit', href: lienAdmin(`courses/?q=${encodeURIComponent(nomComplet(c.prenom, c.nom))}`), texte: 'Ses courses' })));
+      el('a', { classe: 'bouton bouton-texte bouton-petit', href: lienAdmin(`courses/?q=${encodeURIComponent(nomComplet(c.prenom, c.nom))}`), texte: 'Ses courses' }),
+      boutonSupprimer(() => supprimerChauffeur(c), `Supprimer le chauffeur ${nomComplet(c.prenom, c.nom)}`, 'Supprimer le chauffeur')));
+}
+
+// Suppression du chauffeur. La base décide : jamais parti en course (ni
+// espèces, ni relevé, ni paie), il est effacé en entier ; sinon ses courses
+// restent (obligation comptable), sans son prénom ni son téléphone, et sa
+// fiche « supprimée » quitte la liste. Refusée tant qu'une course lui est
+// confiée (la base le dit, avec le numéro).
+async function supprimerChauffeur(c) {
+  const nom = nomComplet(c.prenom, c.nom);
+  const resultat = await confirmerSuppression({
+    titre: `Supprimer le chauffeur ${nom} ?`,
+    texte: 'S\'il a déjà conduit, la loi impose de garder ses courses : elles restent, sans son nom ni ses coordonnées. S\'il n\'a jamais conduit, tout son compte est effacé.',
+    efface: [
+      'Son identité, son e-mail, son téléphone et sa connexion : il ne peut plus se connecter',
+      `Ses pièces (${c.documents.length}) et leurs fichiers, ses numéros de carte VTC et de permis`,
+      'Sa position, ses demandes de course en attente, sa candidature, les notes des clients sur lui',
+      'Ses notifications et les conversations de ses courses'
+    ],
+    garde: ['Ses courses, les espèces encaissées et les relevés des plateformes, sans son nom ni ses coordonnées',
+      ...(c.salarie ? ['Son dossier de paie (module RH et paie), s\'il en a un'] : [])],
+    fonction: 'admin_supprimer_chauffeur',
+    parametres: { p_chauffeur: c.id },
+    mot: true
+  });
+  if (!resultat) return;
+  afficherMessage(resultat.mode === 'efface'
+    ? `Chauffeur ${nom} effacé.`
+    : `Chauffeur ${nom} supprimé : ses courses restent, sans ses coordonnées.${resultat.dossier_paie_garde ? ' Son dossier de paie reste dans le module RH.' : ''}`,
+  'succes');
+  await charger();
 }
 
 async function modifierFiche(c) {
@@ -291,10 +349,29 @@ function ficheCandidature(c) {
       ...(refusee && ca.motif_refus ? [el('dt', { texte: 'Motif du refus' }), el('dd', { texte: ca.motif_refus })] : [])),
     el('h3', { classe: 'sous-section', texte: 'Pièces déposées' }),
     listeDocuments(c),
-    refusee ? null : el('div', { classe: 'actions-ligne' },
-      bouton('Valider la candidature', () => validerCandidature(c), 'bouton-principal'),
-      ca.statut === 'nouvelle' ? bouton('Marquer « en cours d\'examen »', () => marquerEnCours(c)) : null,
-      bouton('Refuser', () => refuserCandidature(c), 'bouton-danger')));
+    el('div', { classe: 'actions-ligne' },
+      refusee ? null : bouton('Valider la candidature', () => validerCandidature(c), 'bouton-principal'),
+      !refusee && ca.statut === 'nouvelle' ? bouton('Marquer « en cours d\'examen »', () => marquerEnCours(c)) : null,
+      refusee ? null : bouton('Refuser', () => refuserCandidature(c), 'bouton-danger'),
+      ca.statut ? boutonSupprimer(() => supprimerCandidature(c), `Supprimer la candidature de ${nomComplet(c.prenom, c.nom)}`, 'Supprimer la candidature') : null));
+}
+
+// Candidature (spam, doublon, erreur) : elle part avec le dossier et les
+// pièces du candidat ; son compte client reste, il peut en déposer une autre
+async function supprimerCandidature(c) {
+  const { data: candidature, error } = await supabase.from('candidatures').select('id').eq('profil_id', c.id).maybeSingle();
+  if (error || !candidature) { afficherMessage(error ? messageErreurAdmin(error) : 'Candidature introuvable : rechargez la page.', 'erreur'); return; }
+  const resultat = await confirmerSuppression({
+    titre: `Supprimer la candidature de ${nomComplet(c.prenom, c.nom)} ?`,
+    texte: 'Son compte client reste : il pourra déposer une nouvelle candidature.',
+    efface: ['La candidature : ville, expérience, message, motif de refus',
+      `Ses pièces déposées (${c.documents.length}) et leurs fichiers, ses numéros de carte VTC et de permis`],
+    fonction: 'admin_supprimer_candidature',
+    parametres: { p_candidature: candidature.id }
+  });
+  if (!resultat) return;
+  afficherMessage('Candidature supprimée.', 'succes');
+  await charger();
 }
 
 async function validerCandidature(c) {
@@ -356,7 +433,8 @@ function afficherDocuments() {
         { titre: '', valeur: (d) => el('div', { classe: 'actions-ligne' },
           bouton('Voir la pièce', () => voirPiece(d)),
           bouton('Valider', () => validerDocument(d, d.chauffeur), 'bouton-principal'),
-          bouton('Refuser', () => refuserDocument(d, d.chauffeur), 'bouton-danger')) }
+          bouton('Refuser', () => refuserDocument(d, d.chauffeur), 'bouton-danger'),
+          boutonSupprimer(() => supprimerDocument(d, d.chauffeur), `Supprimer la pièce ${TYPES_DOCUMENT[d.type] || d.type} de ${nomComplet(d.chauffeur.prenom, d.chauffeur.nom)}`)) }
       ],
       lignes: liste, vide: 'Aucun document à vérifier.'
     })));

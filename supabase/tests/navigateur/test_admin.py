@@ -7,7 +7,7 @@
 import asyncio, json, re, sys, time
 from playwright.async_api import async_playwright
 from banc import (SITE, CAPTURES, ADMIN, CLIENT, CHAUFFEUR, CHAUFFEUSE, AuthSimulee, systeme, en_tant_que,
-                  appel_rpc, session_injectee, routeur, serveur_local, verifier)
+                  appel_rpc, session_injectee, routeur, serveur_local, verifier, FICHIERS_RETIRES)
 
 EMAIL_ADMIN = 'admin@exemple.test'
 console = []
@@ -871,10 +871,10 @@ insert into auth.users (email, raw_user_meta_data) values ('efface{int(time.time
     await page.get_by_role('button', name='Ajouter la note').click()
     await page.wait_for_selector('.liste-notes li')
     verifier('Alice Martin' in await page.inner_text('.liste-notes'), 'note interne ajoutée, avec son auteur')
-    await page.locator('.liste-notes li').get_by_role('button', name='Retirer').click()
-    await page.locator('dialog.fenetre').get_by_role('button', name='Retirer').click()
+    await page.locator('.liste-notes li').get_by_role('button', name='Supprimer').click()
+    await page.locator('dialog.fenetre').get_by_role('button', name='Supprimer').click()
     await page.wait_for_selector('.liste-notes', state='detached')
-    verifier(valeur(f"select count(*) from public.notes_internes where profil_id = '{KARIM}'") == '0', 'note interne retirée')
+    verifier(valeur(f"select count(*) from public.notes_internes where profil_id = '{KARIM}'") == '0', 'note interne supprimée')
     await ctx.close()
 
     # Téléphone : liste et fiche lisibles sur 390 px
@@ -1908,7 +1908,12 @@ async def marketing(nav):
     await page.reload()
     ligne = page.locator('#liste-codes tbody tr', has_text='BIENVENUE10')
     await ligne.wait_for()
-    verifier(await ligne.get_by_role('button', name='Supprimer').count() == 0, 'code déjà servi : pas de bouton « Supprimer »')
+    await ligne.get_by_role('button', name='Supprimer').click()
+    f = await fenetre(page)
+    verifier(re.search(r'Il a servi \d+ fois', texte(await f.inner_text())) is not None and 'les courses gardent la remise accordée' in texte(await f.inner_text()),
+             'code déjà servi : la boîte dit que les courses gardent leur remise')
+    await f.get_by_role('button', name='Annuler').click()
+    await fermee(page)
     await ligne.get_by_role('button', name='Utilisations').click()
     f = await fenetre(page)
     verifier(numero_course in await f.inner_text() and 'Claire Durand' in await f.inner_text() and '− 3,00 €' in texte(await f.inner_text()),
@@ -1997,11 +2002,230 @@ async def marketing(nav):
         await page.screenshot(path=f'{CAPTURES}/{capture}.png', full_page=True)
     await ctx.close()
 
+# ---------------------------------------------------------------------------
+# Suppressions (migrations 28 et 29) : « Supprimer » à tous les niveaux
+# ---------------------------------------------------------------------------
+async def attendre_fichier(page, chemin, essais=50):
+    """Le fichier est retiré du stockage (API simulée) : FICHIERS_RETIRES."""
+    for _ in range(essais):
+        if chemin in FICHIERS_RETIRES:
+            return True
+        await page.wait_for_timeout(200)
+    return False
+
+
+async def suppressions(nav):
+    print('Suppressions')
+    ctx, page, _ = await entrer(nav)
+
+    # 0. File d'effacement : un fichier resté dans le stockage (suppression
+    #    interrompue) part à l'ouverture de l'administration
+    orphelin = 'e0000000-0000-4000-8000-0000000000ff/permis-orphelin.jpg'
+    systeme(f"insert into storage.objects (bucket_id, name) values ('documents', '{orphelin}');"
+            f"insert into prive.fichiers_a_effacer (dossier, chemin, origine) values ('documents', '{orphelin}', 'documents');")
+    await page.goto(SITE + 'admin/')
+    await page.wait_for_selector('#admin-cadre:not([hidden])')
+    verifier(await attendre_fichier(page, f'documents/{orphelin}')
+             and valeur(f"select count(*) from prive.fichiers_a_effacer where chemin = '{orphelin}'") == '0',
+             'file d\'effacement : un fichier resté dans le stockage part à l\'ouverture de l\'administration')
+
+    # 1. Client sans course : effacé en entier, mot SUPPRIMER exigé
+    ninon, _ = nouveau_compte('Ninon', 'Essai', '+33612340001')
+    await page.goto(SITE + f'admin/clients/?id={ninon}')
+    await page.get_by_role('button', name='Supprimer le compte').click()
+    f = await fenetre(page)
+    contenu = texte(await f.inner_text())
+    verifier('Supprimer le compte de Ninon Essai ?' in contenu and 'ni course, ni paiement' in contenu and 'Effacé' in contenu,
+             'client sans course : la boîte dit que tout son compte est effacé')
+    await page.screenshot(path=f'{CAPTURES}/admin-suppression-client-telephone.png')
+    await f.get_by_role('button', name='Supprimer définitivement').click()
+    await page.wait_for_selector('#suppression-erreur:not([hidden])')
+    verifier('Écrivez SUPPRIMER pour confirmer' in await page.inner_text('#suppression-erreur')
+             and valeur(f"select count(*) from auth.users where id = '{ninon}'") == '1',
+             'sans le mot SUPPRIMER : rien n\'est effacé')
+    await f.locator('#suppression-mot').fill('supprimer')
+    await f.get_by_role('button', name='Supprimer définitivement').click()
+    await fermee(page)
+    await page.wait_for_selector('text=Compte de Ninon Essai effacé.')
+    verifier(valeur(f"select count(*) from auth.users where id = '{ninon}'") == '0'
+             and valeur(f"select count(*) from public.profils where id = '{ninon}'") == '0'
+             and await page.evaluate("location.pathname.endsWith('/admin/clients/') && !location.search"),
+             'client sans course : compte effacé dans la base, retour à la liste des clients')
+
+    # 2. Client avec une course terminée : fiche « Compte supprimé », course gardée
+    oscar, _ = nouveau_compte('Oscar', 'Essai', '+33612340002')
+    course_oscar = course_terminee(oscar, 'especes', '04:20')
+    await page.goto(SITE + f'admin/clients/?id={oscar}')
+    await page.get_by_role('button', name='Supprimer le compte').click()
+    f = await fenetre(page)
+    contenu = texte(await f.inner_text())
+    verifier('la loi impose de les garder' in contenu and 'Gardé, comme la loi l\'impose' in contenu,
+             'client avec une course : la boîte dit ce que la loi impose de garder')
+    await f.locator('#suppression-mot').fill('SUPPRIMER')
+    await f.get_by_role('button', name='Supprimer définitivement').click()
+    await fermee(page)
+    await page.wait_for_selector('#alerte-compte-supprime')
+    verifier(valeur(f"select statut from public.profils where id = '{oscar}'") == 'supprime'
+             and valeur(f"select client_prenom is null and statut = 'terminee' from public.courses where id = '{course_oscar['id']}'") == 't'
+             and valeur(f"select count(*) from public.factures where course_id = '{course_oscar['id']}'") == '1'
+             and await page.inner_text('.admin-titre') == 'Compte supprimé',
+             'client avec une course : fiche « Compte supprimé », course et facture gardées sans ses coordonnées')
+
+    # 3. Chauffeur jamais parti en course : effacé, sa pièce part du stockage
+    pierre, _ = nouveau_compte('Pierre', 'Essai', '+33612340003')
+    ok, sortie = appel_rpc('deposer_candidature', {'p_ville': 'Paris', 'p_experience': 'Deux ans', 'p_a_carte_vtc': True,
+                                                   'p_permis_numero': 'P-ESSAI-03'}, pierre)
+    assert ok, sortie
+    piece = f'{pierre}/permis-1.jpg'
+    systeme(f"insert into public.documents (chauffeur_id, type, fichier_chemin, numero) values ('{pierre}', 'permis', '{piece}', 'P-ESSAI-03');"
+            f"insert into storage.objects (bucket_id, name) values ('documents', '{piece}');")
+    ok, sortie = appel_rpc('valider_candidature', {'p_profil': pierre, 'p_vehicule': None, 'p_chauffeuse': False}, ADMIN)
+    assert ok, sortie
+    await page.goto(SITE + 'admin/chauffeurs/')
+    fiche = page.locator('.fiche-chauffeur', has_text='Pierre Essai')
+    await fiche.get_by_role('button', name='Supprimer le chauffeur').click()
+    f = await fenetre(page)
+    await f.locator('#suppression-mot').fill('SUPPRIMER')
+    await f.get_by_role('button', name='Supprimer définitivement').click()
+    await fermee(page)
+    await page.wait_for_selector('text=Chauffeur Pierre Essai effacé.')
+    verifier(valeur(f"select count(*) from auth.users where id = '{pierre}'") == '0'
+             and valeur(f"select count(*) from public.documents where chauffeur_id = '{pierre}'") == '0'
+             and await attendre_fichier(page, f'documents/{piece}')
+             and await page.locator('.fiche-chauffeur', has_text='Pierre Essai').count() == 0,
+             'chauffeur jamais parti : compte, dossier et pièce effacés, fichier retiré du stockage, fiche partie de la liste')
+
+    # 4. Chauffeur avec une course confiée : refus de la base, raison affichée
+    reservation = commander(CLIENT, p_type='planifiee', p_quand=demain('04:50'))
+    ok, sortie = appel_rpc('attribuer_course', {'p_course': reservation['id'], 'p_chauffeur': CHAUFFEUSE}, ADMIN)
+    assert ok, sortie
+    await page.goto(SITE + 'admin/chauffeurs/')
+    fiche = page.locator('.fiche-chauffeur', has_text='Nadia Moreau')
+    await fiche.get_by_role('button', name='Supprimer le chauffeur').click()
+    f = await fenetre(page)
+    await f.locator('#suppression-mot').fill('SUPPRIMER')
+    await f.get_by_role('button', name='Supprimer définitivement').click()
+    await page.wait_for_selector('#suppression-erreur:not([hidden])')
+    verifier(f"La course {reservation['numero']} est confiée à ce chauffeur" in await page.inner_text('#suppression-erreur')
+             and await f.get_by_role('button', name='Supprimer définitivement').is_hidden()
+             and await f.get_by_role('button', name='Fermer').count() == 1
+             and valeur(f"select statut from public.chauffeurs where id = '{CHAUFFEUSE}'") == 'valide',
+             'refus de la base (course confiée) : raison affichée, bouton retiré, rien n\'est effacé')
+    await page.screenshot(path=f'{CAPTURES}/admin-suppression-refus-telephone.png')
+    await f.get_by_role('button', name='Fermer').click()
+    await fermee(page)
+    ok, sortie = appel_rpc('annuler_course', {'p_course': reservation['id'], 'p_motif': 'Essai de suppression'}, ADMIN)
+    assert ok, sortie
+
+    # 5. Course : annulée sans frais, effacée depuis sa fiche ; terminée et
+    #    facturée, la boîte dit pourquoi elle reste
+    await page.goto(SITE + f'admin/courses/?id={reservation["id"]}')
+    await page.get_by_role('button', name='Supprimer la course').click()
+    f = await fenetre(page)
+    await f.get_by_role('button', name='Supprimer définitivement').click()
+    await fermee(page)
+    await page.wait_for_selector(f'text=Course {reservation["numero"]} supprimée.')
+    verifier(valeur(f"select count(*) from public.courses where id = '{reservation['id']}'") == '0'
+             and await page.evaluate("location.pathname.endsWith('/admin/courses/') && !location.search"),
+             'course annulée sans frais : effacée, retour à la liste des courses')
+    await page.goto(SITE + f'admin/courses/?id={course_oscar["id"]}')
+    await page.get_by_role('button', name='Supprimer la course').click()
+    await page.wait_for_selector('#fenetre-conservation[open]')
+    contenu = texte(await page.inner_text('#fenetre-conservation'))
+    verifier('ne peut pas être supprimée' in contenu and '10 ans' in contenu and 'Annuler la somme' in contenu
+             and await page.locator('#fenetre-conservation').get_by_role('button', name=re.compile('Supprimer')).count() == 0,
+             'course facturée : la boîte dit pourquoi elle reste (10 ans) et quoi faire à la place')
+    await page.screenshot(path=f'{CAPTURES}/admin-suppression-conservation-telephone.png')
+    await page.locator('#fenetre-conservation').get_by_role('button', name='Compris').click()
+    await page.wait_for_selector('#fenetre-conservation', state='detached')
+
+    # 6. Véhicule : effacé avec sa pièce (fichier retiré) et son entretien
+    vehicule = systeme("insert into public.vehicules (categorie_id, immatriculation, marque, modele, couleur) "
+                       "select id, 'ES-555-AI', 'Peugeot', '508', 'Gris' from public.categories where code = 'berline_hybride' returning id;").splitlines()[-1]
+    papier = f'vehicules/{vehicule}/assurance.pdf'
+    systeme(f"insert into public.documents (vehicule_id, type, fichier_chemin, statut) values ('{vehicule}', 'assurance', '{papier}', 'valide');"
+            f"insert into storage.objects (bucket_id, name) values ('documents', '{papier}');"
+            f"insert into public.entretiens (vehicule_id, jour, type, montant) values ('{vehicule}', current_date, 'vidange', 80);")
+    await page.goto(SITE + 'admin/flotte/')
+    fiche = page.locator('.fiche-vehicule', has_text='ES-555-AI')
+    await fiche.get_by_role('button', name='Supprimer le véhicule').click()
+    f = await fenetre(page)
+    await f.get_by_role('button', name='Supprimer définitivement').click()
+    await fermee(page)
+    await page.wait_for_selector('text=Véhicule ES-555-AI supprimé.')
+    verifier(valeur(f"select count(*) from public.vehicules where id = '{vehicule}'") == '0'
+             and valeur(f"select count(*) from public.entretiens where vehicule_id = '{vehicule}'") == '0'
+             and await attendre_fichier(page, f'documents/{papier}'),
+             'véhicule : effacé avec son entretien et sa pièce, fichier retiré du stockage')
+
+    # 7. Demande d'aide avec pièce jointe : effacée depuis son fil
+    ok, sortie = appel_rpc('ouvrir_demande', {'p_type': 'autre', 'p_sujet': 'Demande à supprimer', 'p_message': 'Message en double.'}, CLIENT)
+    assert ok, sortie
+    demande = json.loads(sortie)
+    jointe = f"{demande['id']}/photo.jpg"
+    systeme(f"insert into public.messages (demande_id, auteur_id, contenu, piece_jointe_chemin) values ('{demande['id']}', '{CLIENT}', 'Photo', '{jointe}');"
+            f"insert into storage.objects (bucket_id, name) values ('support', '{jointe}');")
+    await page.goto(SITE + f"admin/support/?demande={demande['id']}")
+    await page.wait_for_selector('.fil-message')
+    # Un message seul d'abord
+    await page.locator('.fil-message', has_text='Message en double.').get_by_role('button', name=re.compile('^Supprimer le message')).click()
+    f = await fenetre(page)
+    await f.get_by_role('button', name='Supprimer définitivement').click()
+    await fermee(page)
+    await page.wait_for_selector('text=Message supprimé.')
+    verifier(valeur(f"select count(*) from public.messages where demande_id = '{demande['id']}'") == '1',
+             'message du fil : supprimé seul, la demande reste')
+    await page.get_by_role('button', name='Supprimer la demande').click()
+    f = await fenetre(page)
+    verifier('Ses pièces jointes (1)' in texte(await f.inner_text()), 'demande : la boîte annonce la pièce jointe effacée')
+    await f.get_by_role('button', name='Supprimer définitivement').click()
+    await fermee(page)
+    await page.wait_for_selector(f"text=Demande {demande['numero']} supprimée.")
+    verifier(valeur(f"select count(*) from public.demandes where id = '{demande['id']}'") == '0'
+             and await attendre_fichier(page, f'support/{jointe}'),
+             'demande d\'aide : effacée avec sa pièce jointe (fichier retiré), retour à la file')
+
+    # 8. Notification groupée envoyée : retirée chez ses destinataires
+    ok, sortie = appel_rpc('admin_enregistrer_campagne', {'p_campagne': None, 'p_titre': 'Message erroné', 'p_message': 'À retirer.',
+                                                          'p_cible': 'chauffeurs', 'p_canal': 'application'}, ADMIN)
+    assert ok, sortie
+    campagne = json.loads(sortie)['id']
+    ok, sortie = appel_rpc('admin_envoyer_campagne', {'p_campagne': campagne}, ADMIN)
+    assert ok, sortie
+    await page.goto(SITE + 'admin/marketing/?vue=campagnes')
+    ligne = page.locator('#liste-campagnes tbody tr', has_text='Message erroné')
+    await ligne.get_by_role('button', name=re.compile('^Supprimer')).click()
+    f = await fenetre(page)
+    verifier('elle disparaît aussi de l\'application' in texte(await f.inner_text()), 'notification envoyée : la boîte dit qu\'elle est retirée chez les destinataires')
+    await f.get_by_role('button', name='Supprimer définitivement').click()
+    await fermee(page)
+    await page.wait_for_selector('text=Notification supprimée')
+    verifier(valeur(f"select count(*) from public.notifications where campagne_id = '{campagne}'") == '0'
+             and valeur(f"select count(*) from public.campagnes where id = '{campagne}'") == '0',
+             'notification groupée envoyée : effacée, et retirée chez ses destinataires')
+
+    # 9. Facture : la boîte explique la loi et mène à la course
+    await page.goto(SITE + 'admin/finances/?vue=factures')
+    await page.wait_for_selector('#liste-registre tbody tr')
+    await page.locator('#liste-registre tbody tr').first.get_by_role('button', name=re.compile('^Supprimer')).click()
+    await page.wait_for_selector('#fenetre-conservation[open]')
+    contenu = texte(await page.inner_text('#fenetre-conservation'))
+    verifier('ne peut pas être supprimé' in contenu and 'L123-22' in contenu
+             and await page.locator('#fenetre-conservation').get_by_role('button', name='Ouvrir la course').count() == 1,
+             'facture : la boîte cite la loi (10 ans) et mène à la course')
+    await page.locator('#fenetre-conservation').get_by_role('button', name='Compris').click()
+
+    # 10. Journal : chaque suppression inscrite, sans coordonnées
+    verifier(valeur("select count(*) from prive.journal where action like 'suppression_%' and acteur_id = 'a0000000-0000-4000-8000-000000000001'") != '0'
+             and valeur("select count(*) from prive.journal where (coalesce(avant::text, '') || coalesce(apres::text, '')) ~ '(Ninon|33612340001|P-ESSAI-03)'") == '0',
+             'journal : suppressions inscrites au nom de l\'administrateur, sans nom, téléphone ni numéro de pièce')
+    await ctx.close()
+
 
 ETAPES = {'porte': porte, 'tableau': tableau_de_bord, 'dispatch': dispatch, 'courses': courses,
           'clients': clients, 'entreprises': entreprises, 'finances': finances, 'plateformes': plateformes, 'rh': rh,
           'support': support, 'marketing': marketing, 'chauffeurs': chauffeurs, 'flotte': flotte, 'tarifs': tarifs,
-          'parametres': parametres}
+          'parametres': parametres, 'suppressions': suppressions}
 
 
 async def main():

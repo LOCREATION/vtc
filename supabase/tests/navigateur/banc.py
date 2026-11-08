@@ -375,6 +375,9 @@ def routeur(uid, auth=None):
                 retires = []
             seau = urlparse(url).path.split('/storage/v1/object/')[1].strip('/')
             FICHIERS_RETIRES.extend(f'{seau}/{c}' for c in retires)
+            # Comme l'API de stockage : la ligne du fichier disparaît aussi de la base
+            if retires:
+                systeme(f"delete from storage.objects where bucket_id = {_q(seau)} and name in ({', '.join(_q(c) for c in retires)});")
             return await route.fulfill(status=200, headers=entetes, body=json.dumps([{'name': c} for c in retires]))
         if url.startswith(f'{API}/storage/v1/object/sign/'):
             chemin = urlparse(url).path.split('/object/sign/')[1]

@@ -15,6 +15,11 @@
 //     desservie (rectangle sur la carte), TVA, parrainage.
 // Toutes les modifications passent par les règles d'accès (administration
 // avec double authentification) et sont inscrites au journal.
+// « Supprimer » (commun/suppression.js) : un tarif ou un forfait qui a servi à
+// une course reste (il justifie un prix facturé), le tarif en vigueur aussi ;
+// un lieu part avec ses forfaits jamais utilisés ; une catégorie jamais
+// commandée ni portée par un véhicule part avec ses tarifs et forfaits ; la
+// base dit sinon pourquoi, et ce qui se fait à la place (désactiver).
 // =============================================================================
 import { supabase } from '../../commun/supabase.js';
 import { el, euros, nombre, afficherMessage } from '../../commun/outils.js';
@@ -23,6 +28,7 @@ import { ouvrirAdministration } from '../commun/admin.js';
 import {
   badge, dateCourte, jourParis, ajouterJours, tableau, fenetreFormulaire, confirmer, messageErreurAdmin
 } from '../commun/composants.js';
+import { boutonSupprimer, confirmerSuppression } from '../commun/suppression.js';
 
 const $ = (id) => document.getElementById(id);
 const ONGLETS = [
@@ -183,7 +189,7 @@ function afficherTarifs() {
           { titre: 'Chauffeuse', droite: true, valeur: (t) => euros(t.supplement_chauffeuse) },
           { titre: '', valeur: (t) => el('div', { classe: 'actions-ligne' },
             bouton('Modifier', () => modifierTarif(t)),
-            etatTarif(t).code === 'a_venir' ? bouton('Supprimer', () => supprimerTarif(t), 'bouton-danger') : null) }
+            boutonSupprimer(() => supprimerTarif(t), `Supprimer le tarif du ${dateCourte(t.valide_du)}`)) }
         ],
         lignes: tarifs, vide: 'Aucun tarif.'
       }));
@@ -223,13 +229,19 @@ async function modifierTarif(t) {
   if (fait) { afficherMessage('Tarif enregistré.', 'succes'); await charger(); }
 }
 
+// Tarif : jamais celui en vigueur, ni un tarif qui a servi à une course (il
+// justifie le prix facturé) : la base le dit ; fixez alors une date de fin
 async function supprimerTarif(t) {
-  const ok = await confirmer({ titre: 'Supprimer ce tarif à venir ?', texte: `Tarif prévu à partir du ${dateCourte(t.valide_du)}.`, libelle: 'Supprimer', danger: true });
-  if (!ok) return;
-  if (await supprimerLigne('tarifs', t.id, 'Ce tarif a servi à des courses : il ne peut pas être supprimé. Fixez plutôt une date de fin.')) {
-    afficherMessage('Tarif supprimé.', 'succes');
-    await charger();
-  }
+  const resultat = await confirmerSuppression({
+    titre: `Supprimer le tarif du ${dateCourte(t.valide_du)} ?`,
+    texte: `${nomCategorie(t.categorie_id)} : ${t.valide_au ? `du ${dateCourte(t.valide_du)} au ${dateCourte(t.valide_au)}` : `à partir du ${dateCourte(t.valide_du)}`}. Un tarif qui a déjà servi à une course, ou le tarif en vigueur, reste : fixez plutôt une date de fin (« Modifier »).`,
+    efface: ['Le tarif et ses prix'],
+    fonction: 'admin_supprimer_tarif',
+    parametres: { p_tarif: t.id }
+  });
+  if (!resultat) return;
+  afficherMessage('Tarif supprimé.', 'succes');
+  await charger();
 }
 
 // #############################################################################
@@ -248,7 +260,8 @@ function afficherLieux() {
           { titre: 'Type', valeur: (z) => TYPES_ZONE[z.type] || z.type },
           { titre: 'Rayon', droite: true, valeur: (z) => `${nombre(z.rayon_km, 2)} km` },
           { titre: 'État', valeur: (z) => (z.active ? badge('Actif', 'vert') : badge('Désactivé', 'gris')) },
-          { titre: '', valeur: (z) => bouton('Modifier', () => formulaireZone(z)) }
+          { titre: '', valeur: (z) => el('div', { classe: 'actions-ligne' }, bouton('Modifier', () => formulaireZone(z)),
+            boutonSupprimer(() => supprimerZone(z), `Supprimer le lieu ${z.nom}`)) }
         ],
         lignes: etat.zones, vide: 'Aucun lieu.'
       })),
@@ -261,7 +274,8 @@ function afficherLieux() {
           { titre: 'Catégorie', valeur: (f) => nomCategorie(f.categorie_id) },
           { titre: 'Prix TTC', droite: true, valeur: (f) => euros(f.prix) },
           { titre: 'État', valeur: (f) => (f.active ? badge('Actif', 'vert') : badge('Désactivé', 'gris')) },
-          { titre: '', valeur: (f) => el('div', { classe: 'actions-ligne' }, bouton('Modifier', () => formulaireForfait(f)), bouton('Supprimer', () => supprimerForfait(f), 'bouton-danger')) }
+          { titre: '', valeur: (f) => el('div', { classe: 'actions-ligne' }, bouton('Modifier', () => formulaireForfait(f)),
+            boutonSupprimer(() => supprimerForfait(f), `Supprimer le forfait ${nomZone(f.zone_a_id)} ↔ ${nomZone(f.zone_b_id)}`)) }
         ],
         lignes: [...etat.forfaits].sort((a, b) => `${nomZone(a.zone_a_id)}${nomZone(a.zone_b_id)}`.localeCompare(`${nomZone(b.zone_a_id)}${nomZone(b.zone_b_id)}`)),
         vide: 'Aucun forfait. Exemple : un lieu « Paris » (ville, rayon 6 km) et un forfait Paris ↔ Roissy-CDG.'
@@ -349,13 +363,35 @@ async function formulaireForfait(f) {
   if (fait) { afficherMessage('Forfait enregistré.', 'succes'); await charger(); }
 }
 
+// Forfait : jamais un forfait qui a servi à une course (la base le dit) ;
+// désactivez-le alors
 async function supprimerForfait(f) {
-  const ok = await confirmer({ titre: 'Supprimer ce forfait ?', texte: `${nomZone(f.zone_a_id)} ↔ ${nomZone(f.zone_b_id)}, ${euros(f.prix)}.`, libelle: 'Supprimer', danger: true });
-  if (!ok) return;
-  if (await supprimerLigne('forfaits', f.id, 'Ce forfait a servi à des courses : désactivez-le plutôt (Modifier, puis décocher « Forfait actif »).')) {
-    afficherMessage('Forfait supprimé.', 'succes');
-    await charger();
-  }
+  const resultat = await confirmerSuppression({
+    titre: 'Supprimer ce forfait ?',
+    texte: `${nomZone(f.zone_a_id)} ↔ ${nomZone(f.zone_b_id)}, ${euros(f.prix)}. Un forfait qui a déjà servi à une course reste : désactivez-le plutôt (« Modifier », puis décocher « Forfait actif »).`,
+    efface: ['Le forfait et son prix'],
+    fonction: 'admin_supprimer_forfait',
+    parametres: { p_forfait: f.id }
+  });
+  if (!resultat) return;
+  afficherMessage('Forfait supprimé.', 'succes');
+  await charger();
+}
+
+// Lieu : ses forfaits jamais utilisés partent avec lui ; s'il a servi à des
+// courses au forfait, la base le refuse : désactivez-le alors
+async function supprimerZone(z) {
+  const forfaits = etat.forfaits.filter((f) => f.zone_a_id === z.id || f.zone_b_id === z.id).length;
+  const resultat = await confirmerSuppression({
+    titre: `Supprimer le lieu « ${z.nom} » ?`,
+    texte: 'S\'il a servi à des courses payées au forfait, il reste : désactivez-le plutôt (« Modifier »).',
+    efface: ['Le lieu et son cercle sur la carte', ...(forfaits ? [`Ses forfaits (${forfaits})`] : [])],
+    fonction: 'admin_supprimer_zone',
+    parametres: { p_zone: z.id }
+  });
+  if (!resultat) return;
+  afficherMessage(`Lieu « ${z.nom} » supprimé${resultat.forfaits_retires ? `, avec ${resultat.forfaits_retires} forfait${resultat.forfaits_retires > 1 ? 's' : ''}` : ''}.`, 'succes');
+  await charger();
 }
 
 // #############################################################################
@@ -439,10 +475,28 @@ function afficherCategories() {
         { titre: 'Bagages', droite: true, valeur: (c) => String(c.bagages) },
         { titre: 'Ordre', droite: true, valeur: (c) => String(c.ordre) },
         { titre: 'État', valeur: (c) => (c.active ? badge('Proposée', 'vert') : badge('Désactivée', 'gris')) },
-        { titre: '', valeur: (c) => bouton('Modifier', () => formulaireCategorie(c)) }
+        { titre: '', valeur: (c) => el('div', { classe: 'actions-ligne' }, bouton('Modifier', () => formulaireCategorie(c)),
+          boutonSupprimer(() => supprimerCategorie(c), `Supprimer la catégorie ${c.nom_fr}`)) }
       ],
       lignes: etat.categories
     })));
+}
+
+// Catégorie jamais commandée ni portée par un véhicule : elle part avec ses
+// tarifs et forfaits ; sinon la base le dit (désactivez-la alors)
+async function supprimerCategorie(c) {
+  const tarifs = etat.tarifs.filter((t) => t.categorie_id === c.id).length;
+  const forfaits = etat.forfaits.filter((f) => f.categorie_id === c.id).length;
+  const resultat = await confirmerSuppression({
+    titre: `Supprimer la catégorie « ${c.nom_fr} » ?`,
+    texte: 'Une catégorie déjà commandée reste pour l\'historique des courses : désactivez-la plutôt (« Modifier »). Les véhicules classés dedans doivent d\'abord changer de catégorie.',
+    efface: ['La catégorie', ...(tarifs ? [`Ses tarifs (${tarifs})`] : []), ...(forfaits ? [`Ses forfaits (${forfaits})`] : [])],
+    fonction: 'admin_supprimer_categorie',
+    parametres: { p_categorie: c.id }
+  });
+  if (!resultat) return;
+  afficherMessage(`Catégorie « ${c.nom_fr} » supprimée.`, 'succes');
+  await charger();
 }
 
 async function formulaireCategorie(c) {

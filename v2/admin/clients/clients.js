@@ -12,10 +12,12 @@
 // écran). Écritures : coordonnées du client (règles d'accès : administration,
 // modification inscrite au journal), blocage (admin_statut_client), solde
 // (ajuster_solde), notes internes.
-// Compte supprimé par le client (espace client, Données personnelles) : à
-// part dans la liste (filtre « Supprimés », absent de « Tous » et des
-// chiffres), fiche en lecture seule : courses, paiements et factures gardés
-// pour la comptabilité, sans coordonnées ; ni modification, ni blocage.
+// Compte supprimé (par le client, espace client, Données personnelles, ou
+// par l'administration, bouton « Supprimer le compte » de la fiche) : à part
+// dans la liste (filtre « Supprimés », absent de « Tous » et des chiffres),
+// fiche en lecture seule : courses, paiements et factures gardés pour la
+// comptabilité, sans coordonnées ; ni modification, ni blocage. Un compte
+// sans rien à garder est effacé en entier et disparaît de la liste.
 // =============================================================================
 import { supabase } from '../../commun/supabase.js';
 import { el, euros, nombre, afficherMessage } from '../../commun/outils.js';
@@ -26,6 +28,7 @@ import {
   telephoneLisible
 } from '../commun/composants.js';
 import { afficherEntreprises, ouvrirFicheEntreprise, ouvrirReleve } from './entreprises.js';
+import { boutonSupprimer, confirmerSuppression } from '../commun/suppression.js';
 import {
   boutonAction, tuile, etoiles, ligne, pluriel, montantCourse, normaliserTelephone, erreurTelephone, section,
   tableauRepliable, blocNotesInternes, blocHistorique
@@ -289,7 +292,7 @@ function afficherFicheClient(f) {
   }
   if (supprime) {
     blocs.splice(1, 0, el('p', { classe: 'alerte alerte-info', id: 'alerte-compte-supprime',
-      texte: `Compte supprimé par le client le ${dateHeureComplete(p.maj_le)} : identité et coordonnées effacées, connexion fermée. `
+      texte: `Compte supprimé le ${dateHeureComplete(p.maj_le)} : identité et coordonnées effacées, connexion fermée. `
         + 'Courses, paiements et factures restent ici pour la comptabilité, sans coordonnées ; le compte ne se modifie ni ne se réactive.' }));
   }
   if (f.paiements_a_encaisser.length) blocs.push(sectionAEncaisser(f));
@@ -298,7 +301,7 @@ function afficherFicheClient(f) {
   blocs.push(el('div', { classe: 'grille-2' }, sectionSolde(f, recharger), sectionNotes(f)));
   blocs.push(el('div', { classe: 'grille-2' },
     el('div', { classe: 'pile' }, sectionParrainage(f), sectionPromos(f)),
-    el('div', { classe: 'pile' }, sectionEntreprises(f), sectionLieux(f), sectionDemandes(f))));
+    el('div', { classe: 'pile' }, sectionEntreprises(f), sectionLieux(f, recharger), sectionDemandes(f))));
   blocs.push(blocNotesInternes({ cible: { profil_id: p.id }, notes: f.notes_internes, moi: etat.profil.id, recharger }));
   blocs.push(blocHistorique({
     aide: 'Blocages et déblocages (avec leur motif), corrections de coordonnées par l\'administration, changements de rôle.',
@@ -331,7 +334,51 @@ function actionsClient(f, recharger) {
   if (recherche && f.chiffres.courses_total > 0) {
     liste.push(el('a', { classe: 'bouton bouton-secondaire bouton-petit', href: lienAdmin(`courses/?q=${encodeURIComponent(recherche)}`), texte: 'Ses courses dans le module Courses' }));
   }
+  if (p.role === 'client') {
+    liste.push(boutonSupprimer(() => supprimerClient(f, recharger), `Supprimer le compte de ${nomClient(p)}`, 'Supprimer le compte'));
+  }
   return el('div', { classe: 'actions-ligne' }, ...liste);
+}
+
+// Suppression du compte. La base décide : sans course, paiement, facture ni
+// demande d'aide, le compte est effacé en entier ; sinon ces pièces restent
+// (obligation comptable de 10 ans), sans son nom ni ses coordonnées, et la
+// fiche devient « Compte supprimé ». Refusée tant qu'une course est en cours
+// ou à venir (la base le dit, avec le numéro de la course).
+async function supprimerClient(f, recharger) {
+  const p = f.profil;
+  const nom = nomClient(p);
+  const pieces = f.courses.length > 0 || (f.factures || []).length > 0 || (f.avoirs || []).length > 0
+    || (f.demandes || []).length > 0 || f.paiements_a_encaisser.length > 0;
+  const solde = Number(f.solde) || 0;
+  const resultat = await confirmerSuppression({
+    titre: `Supprimer le compte de ${nom} ?`,
+    texte: pieces
+      ? 'Ce client a des courses, des paiements ou des demandes d\'aide : la loi impose de les garder. Tout le reste est effacé, et sa fiche devient « Compte supprimé ».'
+      : 'Ce client n\'a ni course, ni paiement, ni demande d\'aide : tout son compte est effacé, il disparaît de la liste.',
+    efface: [
+      'Son identité, son e-mail, son téléphone et sa connexion : il ne peut plus se connecter (la même adresse pourra ouvrir un nouveau compte)',
+      'Ses lieux, proches, appareils, notifications et les notes internes à son sujet',
+      'Les conversations de ses courses et les notes des chauffeurs sur lui',
+      ...(f.chauffeur ? ['Son dossier de candidature chauffeur et ses pièces'] : []),
+      ...(solde > 0 ? [`Son solde de ${euros(solde)}, abandonné`] : [])
+    ],
+    garde: pieces ? ['Ses courses, paiements, factures et avoirs, sans son nom ni ses coordonnées', 'Ses demandes d\'aide (litiges éventuels)'] : [],
+    fonction: 'admin_supprimer_client',
+    parametres: { p_profil: p.id },
+    mot: true
+  });
+  if (!resultat) return;
+  if (resultat.mode === 'efface') {
+    // La fiche n'existe plus : retour à la liste, sans recharger la page
+    history.replaceState(null, '', lienAdmin('clients/'));
+    document.title = 'Clients et entreprises, administration LOC RÉACTION';
+    afficherVue('clients');
+    afficherMessage(`Compte de ${nom} effacé.`, 'succes');
+    return;
+  }
+  afficherMessage(`Compte de ${nom} supprimé : ses courses restent, sans ses coordonnées.`, 'succes');
+  await recharger();
 }
 
 async function modifierClient(p, recharger) {
@@ -560,17 +607,43 @@ function sectionEntreprises(f) {
     : el('p', { classe: 'vide-admin', texte: 'Rattaché à aucun compte professionnel. Pour la facture mensuelle, rattachez-le depuis la fiche de l\'entreprise.' }));
 }
 
-function sectionLieux(f) {
+function sectionLieux(f, recharger) {
+  const p = f.profil;
+  const supprimable = p.statut !== 'supprime';
   return section('Lieux et proches', 'titre-lieux',
     f.lieux.length
       ? el('ul', { classe: 'liste-simple' }, ...f.lieux.map((l) => el('li', {},
         el('strong', { texte: `${l.libelle || TYPES_LIEU[l.type] || l.type} : ` }), l.adresse,
-        l.precision ? el('span', { classe: 'secondaire', texte: l.precision }) : null)))
+        l.precision ? el('span', { classe: 'secondaire', texte: l.precision }) : null,
+        supprimable ? boutonSupprimer(() => supprimerLieu(p, l, recharger), `Supprimer le lieu ${l.libelle || TYPES_LIEU[l.type] || l.type}`) : null)))
       : el('p', { classe: 'vide-admin', texte: 'Aucun lieu enregistré.' }),
     f.proches.length
       ? el('ul', { classe: 'liste-simple' }, ...f.proches.map((x) => el('li', {},
-        el('strong', { texte: x.nom }), x.relation ? ` (${x.relation}) ` : ' ', lienTelephone(x.telephone))))
+        el('strong', { texte: x.nom }), x.relation ? ` (${x.relation}) ` : ' ', lienTelephone(x.telephone),
+        supprimable ? boutonSupprimer(() => supprimerProche(p, x, recharger), `Supprimer le proche ${x.nom}`) : null)))
       : el('p', { classe: 'vide-admin', texte: 'Aucun proche enregistré.' }));
+}
+
+// Lieu ou proche enregistré par le client (adresse erronée, demande du
+// client) : effacé directement (règles d'accès : administration)
+async function supprimerLieu(p, l, recharger) {
+  const ok = await confirmer({ titre: 'Supprimer ce lieu ?', texte: `${l.libelle || TYPES_LIEU[l.type] || l.type} : ${l.adresse}. Le client ne le retrouvera plus à la commande.`,
+    libelle: 'Supprimer', danger: true });
+  if (!ok) return;
+  const { error } = await supabase.from('lieux').delete().eq('client_id', p.id).eq('type', l.type).eq('adresse', l.adresse);
+  if (error) { afficherMessage(messageErreurAdmin(error), 'erreur'); return; }
+  afficherMessage('Lieu supprimé.', 'succes');
+  await recharger();
+}
+
+async function supprimerProche(p, x, recharger) {
+  const ok = await confirmer({ titre: 'Supprimer ce proche ?', texte: `${x.nom}${x.relation ? ` (${x.relation})` : ''}. Le client ne le retrouvera plus à la commande.`,
+    libelle: 'Supprimer', danger: true });
+  if (!ok) return;
+  const { error } = await supabase.from('proches').delete().eq('client_id', p.id).eq('nom', x.nom).eq('telephone', x.telephone);
+  if (error) { afficherMessage(messageErreurAdmin(error), 'erreur'); return; }
+  afficherMessage('Proche supprimé.', 'succes');
+  await recharger();
 }
 
 function sectionDemandes(f) {

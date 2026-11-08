@@ -659,7 +659,8 @@ export const JOURNAL_TABLES = {
   paiements: 'Paiements', remboursements: 'Remboursements', factures: 'Factures', salaries: 'Salariés', contrats: 'Contrats',
   constantes_paie: 'Constantes de paie', parametres_paie: 'Taux de cotisation', bulletins: 'Bulletins de paie', absences: 'Absences',
   temps_travail: 'Temps de travail', releves_plateformes: 'Relevés des plateformes', campagnes: 'Campagnes',
-  avoirs: 'Avoirs', remises_especes: 'Remises d\'espèces'
+  avoirs: 'Avoirs', remises_especes: 'Remises d\'espèces', demandes: 'Demandes d\'aide', messages: 'Messages',
+  parrainages: 'Parrainages'
 };
 export const JOURNAL_ACTIONS = {
   INSERT: 'Création', UPDATE: 'Modification', DELETE: 'Suppression',
@@ -667,7 +668,13 @@ export const JOURNAL_ACTIONS = {
   retrait_chauffeur: 'Course retirée au chauffeur', relance_recherche: 'Recherche relancée',
   validation_chauffeur: 'Chauffeur validé', refus_candidature: 'Candidature refusée', affectation_vehicule: 'Véhicule affecté',
   suspension_chauffeur: 'Chauffeur suspendu', reactivation_chauffeur: 'Chauffeur réactivé', nomination_admin: 'Administrateur nommé',
-  blocage_compte: 'Compte bloqué', deblocage_compte: 'Compte débloqué', encaissement_releve: 'Relevé mensuel encaissé'
+  blocage_compte: 'Compte bloqué', deblocage_compte: 'Compte débloqué', encaissement_releve: 'Relevé mensuel encaissé',
+  suppression_compte: 'Compte supprimé', suppression_candidature: 'Candidature supprimée', suppression_document: 'Document supprimé',
+  suppression_course: 'Course supprimée', suppression_paiement: 'Paiement supprimé', suppression_vehicule: 'Véhicule supprimé',
+  suppression_code_promo: 'Code promo supprimé', suppression_campagne: 'Notification groupée supprimée',
+  suppression_parrainage: 'Parrainage supprimé', suppression_demande: 'Demande d\'aide supprimée', suppression_message: 'Message supprimé',
+  suppression_salarie: 'Salarié supprimé', suppression_compte_pro: 'Compte professionnel supprimé', suppression_zone: 'Lieu supprimé',
+  suppression_categorie: 'Catégorie supprimée', suppression_tarif: 'Tarif supprimé', suppression_forfait: 'Forfait supprimé'
 };
 export const JOURNAL_ROLES = { admin: 'administration', chauffeur: 'chauffeur', client: 'client' };
 

@@ -68,7 +68,8 @@ export function tableauRepliable({ premiers = 10, libelleSuite, ...options }) {
 // Notes internes
 // ---------------------------------------------------------------------------
 // cible : { profil_id } ou { compte_pro_id } ; notes : lues avec la fiche ;
-// moi : identifiant de l'administrateur connecté (il ne retire que les siennes).
+// moi : identifiant de l'administrateur connecté. Tout administrateur peut
+// supprimer une note, la sienne comme celle d'un autre (migration 28).
 export function blocNotesInternes({ cible, notes, moi, recharger }) {
   const zone = el('textarea', { id: 'nouvelle-note', classe: 'saisie saisie-zone', maxlength: '2000',
     placeholder: 'Ex. préfère être appelé ; relevé à adresser au service comptable…' });
@@ -94,14 +95,19 @@ export function blocNotesInternes({ cible, notes, moi, recharger }) {
       el('p', { classe: 'texte-long', texte: n.texte }),
       el('div', { classe: 'note-pied' },
         el('span', { classe: 'secondaire', texte: `${n.auteur || 'Administrateur retiré'} · ${dateCourte(n.cree_le)} à ${heure(n.cree_le)}` }),
-        n.auteur_id === moi ? boutonAction('Retirer', async () => {
-          const ok = await confirmer({ titre: 'Retirer cette note ?', texte: n.texte.length > 140 ? `${n.texte.slice(0, 137)}…` : n.texte, libelle: 'Retirer', danger: true });
+        boutonAction('Supprimer', async () => {
+          const extrait = n.texte.length > 140 ? `${n.texte.slice(0, 137)}…` : n.texte;
+          const ok = await confirmer({
+            titre: 'Supprimer cette note ?',
+            texte: n.auteur_id === moi ? extrait : `Note de ${n.auteur || 'un administrateur retiré'} : ${extrait}`,
+            libelle: 'Supprimer', danger: true
+          });
           if (!ok) return;
           const { error } = await supabase.from('notes_internes').delete().eq('id', n.id);
           if (error) { afficherMessage(messageErreurAdmin(error), 'erreur'); return; }
-          afficherMessage('Note retirée.', 'succes');
+          afficherMessage('Note supprimée.', 'succes');
           await recharger();
-        }, 'bouton-texte') : null))))
+        }, 'bouton-texte bouton-retirer')))))
     : el('p', { classe: 'vide-admin', texte: 'Aucune note pour le moment.' });
 
   return el('section', { classe: 'carte-admin', 'aria-labelledby': 'titre-notes-internes' },

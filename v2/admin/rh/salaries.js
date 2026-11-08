@@ -9,7 +9,10 @@
 //   - dossier (?salarie=…) : fiche, ce qui manque pour établir un contrat,
 //     contrats (établir, remettre pour signature, classer le PDF signé,
 //     terminer, supprimer un contrat non signé), bulletins, congés,
-//     reprise d'une paie faite ailleurs.
+//     reprise d'une paie faite ailleurs ;
+//   - « Supprimer le salarié » (admin_supprimer_salarie) : fiche saisie par
+//     erreur, sans bulletin validé ni contrat signé (sinon 5 ans de
+//     conservation : la boîte le dit et propose d'indiquer la date de sortie).
 // Lectures et actions : admin_lister_salaries, admin_dossier_salarie,
 // admin_enregistrer_salarie, admin_enregistrer_reprise, admin_statut_contrat,
 // admin_classer_contrat ; suppressions directes (administration).
@@ -27,6 +30,7 @@ import {
   heures, joursConges, nssLisible, erreurNss, montant, debutMois, moisEnLettres, deMois, moisVoisin, tauxExact
 } from './commun-rh.js';
 import { formulaireContrat } from './contrat.js';
+import { boutonSupprimer, confirmerSuppression, expliquerConservation, CONSERVATION } from '../commun/suppression.js';
 
 const $ = (id) => document.getElementById(id);
 const etat = { donnees: null, dossier: null };
@@ -215,7 +219,8 @@ export async function ouvrirDossier(id) {
     const fait = await formulaireFiche(s, data.comptes);
     if (fait) { afficherMessage('Fiche enregistrée.', 'succes'); ouvrirDossier(id); }
   }, 'bouton-principal');
-  $('entete-actions').replaceChildren(el('a', { classe: 'bouton bouton-secondaire bouton-petit', href: lienAdmin('rh/'), texte: 'Salariés' }), modifier);
+  $('entete-actions').replaceChildren(el('a', { classe: 'bouton bouton-secondaire bouton-petit', href: lienAdmin('rh/'), texte: 'Salariés' }), modifier,
+    boutonSupprimer(() => supprimerSalarie(data, modifier), `Supprimer le salarié ${s.prenom} ${s.nom}`, 'Supprimer le salarié'));
 
   $('contenu').replaceChildren(
     blocFiche(data),
@@ -228,6 +233,38 @@ export async function ouvrirDossier(id) {
 function introuvable() {
   $('contenu').replaceChildren(el('section', { classe: 'carte-admin' },
     el('p', { texte: 'Salarié introuvable.' }), el('a', { href: lienAdmin('rh/'), texte: 'Retour à la liste des salariés' })));
+}
+
+// Fiche saisie par erreur : effacée avec ses brouillons, contrats non signés,
+// absences, temps et reprise. Un bulletin validé ou un contrat signé se
+// conserve 5 ans : la boîte le dit et propose d'indiquer la date de sortie.
+async function supprimerSalarie(d, modifier) {
+  const s = d.salarie;
+  const valides = d.bulletins.filter((b) => b.statut !== 'brouillon').length;
+  const signes = d.contrats.filter((k) => ['signe', 'termine'].includes(k.statut)).length;
+  if (valides || signes) {
+    await expliquerConservation({
+      titre: `Le dossier de ${s.prenom} ${s.nom} ne peut pas être supprimé`,
+      texte: [`${valides ? `${valides > 1 ? `${valides} bulletins de paie sont validés` : 'Un bulletin de paie est validé'}` : `${signes > 1 ? `${signes} contrats sont signés` : 'Un contrat est signé'}`}. ${CONSERVATION.paie}`,
+        'À son départ, indiquez plutôt sa date de sortie (« Modifier la fiche ») : il quitte la liste des salariés en poste, son dossier reste.'],
+      alternative: { libelle: 'Modifier la fiche', action: () => modifier.click() }
+    });
+    return;
+  }
+  const resultat = await confirmerSuppression({
+    titre: `Supprimer le salarié ${s.prenom} ${s.nom} ?`,
+    texte: 'Aucun bulletin validé ni contrat signé : la fiche est effacée. Son compte dans l\'application, s\'il en a un, reste.',
+    efface: [
+      'Sa fiche : identité, n° de Sécurité sociale, adresse, coordonnées bancaires',
+      'Ses brouillons de bulletin et ses contrats non signés (fichiers compris)',
+      'Ses absences, son temps de travail et sa reprise de paie'
+    ],
+    fonction: 'admin_supprimer_salarie',
+    parametres: { p_salarie: s.id }
+  });
+  if (!resultat) return;
+  afficherMessage(`Fiche de ${s.prenom} ${s.nom} supprimée.`, 'succes');
+  location.href = lienAdmin('rh/');
 }
 
 function blocFiche(d) {
@@ -300,6 +337,13 @@ function actionsContrat(k) {
   if (k.pdf_chemin) boutons.push(boutonAction('PDF signé', () => voirPdf(k.pdf_chemin)));
   if (k.statut === 'signe') boutons.push(boutonAction('Terminer', () => statutContrat(k, 'termine')));
   if (k.statut === 'brouillon' || k.statut === 'envoye') boutons.push(boutonAction('Supprimer', () => supprimerContrat(k), 'bouton-danger'));
+  if (k.statut === 'signe' || k.statut === 'termine') {
+    boutons.push(boutonSupprimer(() => expliquerConservation({
+      titre: 'Ce contrat ne peut pas être supprimé',
+      texte: [`Il est signé : il reste dans le dossier du salarié 5 ans après son départ. ${CONSERVATION.paie}`,
+        k.statut === 'signe' ? 'À la sortie du salarié, ou quand un avenant le remplace, utilisez « Terminer ».' : 'Il est déjà terminé.']
+    }), 'Supprimer ce contrat'));
+  }
   return el('span', { classe: 'actions-ligne' }, ...boutons);
 }
 

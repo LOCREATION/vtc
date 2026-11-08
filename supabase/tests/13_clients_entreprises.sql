@@ -450,18 +450,17 @@ select test.doit_echouer(format($$insert into public.notes_internes (profil_id, 
 call test.connexion(:'admin');
 select test.verifier((select count(*) from public.notes_internes) = 0, 'administrateur sans double authentification : notes fermées');
 
--- Une note d'un autre auteur ne se retire pas
+-- Une note d'un autre auteur se retire aussi (migration 28 : tout
+-- administrateur peut supprimer une note, à tous les niveaux)
 call test.systeme();
 insert into public.notes_internes (profil_id, texte, auteur_id) values (:'client1', 'Note d''un autre administrateur', :'chauffeur1');
 call test.connexion(:'admin', 'aal2');
 delete from public.notes_internes where texte = 'Note d''un autre administrateur';
-select test.verifier((select count(*) from public.notes_internes where texte = 'Note d''un autre administrateur') = 1,
-                     'notes internes : chacun ne retire que les siennes');
+select test.verifier((select count(*) from public.notes_internes where texte = 'Note d''un autre administrateur') = 0,
+                     'notes internes : un administrateur retire aussi la note d''un autre auteur');
 delete from public.notes_internes where texte like 'Préfère être appelée%';
 select test.verifier((select count(*) from public.notes_internes where profil_id = :'client1' and auteur_id = :'admin') = 0,
                      'notes internes : retrait de sa propre note');
-call test.systeme();
-delete from public.notes_internes where texte = 'Note d''un autre administrateur';
 
 
 -- #############################################################################
