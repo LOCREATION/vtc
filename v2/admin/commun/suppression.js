@@ -58,19 +58,31 @@ export function confirmerSuppression({
     const annuler = el('button', { type: 'button', classe: 'bouton bouton-secondaire', id: 'suppression-annuler', texte: 'Annuler',
       onclick: () => dialogue.close() });
     const valider = el('button', { type: 'submit', classe: 'bouton bouton-danger-plein', id: 'suppression-confirmer', texte: libelle });
-    const formulaire = el('form', { novalidate: true },
-      el('h2', { id: 'fenetre-titre', texte: titre }),
+    // Ce qui annonce la suppression : retiré de la boîte si la base refuse
+    // (rien n'a été effacé, seule la raison du refus compte alors)
+    const annonce = [
       texte ? el('p', { texte }) : null,
       liste('Effacé', efface, null),
       liste('Gardé, comme la loi l\'impose', garde, 'suppression-garde'),
       mot ? el('div', { classe: 'champ' },
-        el('label', { for: 'suppression-mot', texte: `Pour confirmer, écrivez ${MOT_SUPPRESSION}` }), saisie) : null,
+        el('label', { for: 'suppression-mot', texte: `Pour confirmer, écrivez ${MOT_SUPPRESSION}` }), saisie) : null
+    ].filter(Boolean);
+    const formulaire = el('form', { novalidate: true },
+      el('h2', { id: 'fenetre-titre', texte: titre }),
+      ...annonce,
       erreur,
       el('div', { classe: 'fenetre-actions' }, annuler, valider));
     const dialogue = el('dialog', { classe: 'fenetre fenetre-suppression', id: 'fenetre-suppression', 'aria-labelledby': 'fenetre-titre' },
       formulaire);
 
-    const montrer = (message) => { erreur.textContent = message; erreur.hidden = false; };
+    // Le message est juste au-dessus des boutons : la boîte défile jusqu'en
+    // bas pour qu'il soit lu (sur téléphone, la barre des boutons, collée en
+    // bas de la boîte, le cacherait sinon)
+    const montrer = (message) => {
+      erreur.textContent = message;
+      erreur.hidden = false;
+      dialogue.scrollTop = dialogue.scrollHeight;
+    };
     if (saisie) saisie.addEventListener('input', () => { erreur.hidden = true; });
 
     formulaire.addEventListener('submit', async (e) => {
@@ -84,16 +96,19 @@ export function confirmerSuppression({
       erreur.hidden = true;
       const { data, error } = await supabase.rpc(fonction, parametres);
       if (error) {
-        montrer(messageErreurAdmin(error));
-        // Refus de la base : la raison et la marche à suivre sont affichées,
-        // rien à retenter depuis cette boîte
-        if (error.code === 'P0001') {
+        // Refus de la base : la raison et la marche à suivre prennent la
+        // place de l'annonce, rien à retenter depuis cette boîte. Autre
+        // erreur (réseau…) : l'annonce reste, le bouton peut être repris.
+        const refus = error.code === 'P0001';
+        if (refus) {
+          annonce.forEach((n) => { n.hidden = true; });
           valider.hidden = true;
           annuler.textContent = 'Fermer';
-          annuler.focus();
         } else {
           valider.disabled = false;
         }
+        montrer(messageErreurAdmin(error));
+        if (refus) annuler.focus();
         return;
       }
       resultat = data ?? {};

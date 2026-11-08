@@ -10,7 +10,9 @@
 //   1. lit la file (admin_fichiers_a_effacer : fichiers encore présents et
 //      cités par aucune ligne) ;
 //   2. les efface par l'API de stockage, dossier par dossier ;
-//   3. fait oublier à la file ce qui n'existe plus (admin_fichiers_effaces).
+//   3. fait oublier à la file ce qui n'existe plus (admin_fichiers_effaces),
+//      à chaque passage, même sans fichier à effacer : une ligne dont le
+//      fichier n'a jamais été déposé (dépôt interrompu) ne reste pas en file.
 // Appelée juste après chaque suppression, et à chaque ouverture de
 // l'administration pour ce qui resterait (coupure réseau, onglet fermé).
 // Sans bruit : un échec laisse la file intacte, reprise la fois suivante.
@@ -27,7 +29,7 @@ export function effacerFichiersEnAttente() {
 async function passer() {
   try {
     const { data, error } = await supabase.rpc('admin_fichiers_a_effacer');
-    if (error || !Array.isArray(data) || !data.length) return 0;
+    if (error || !Array.isArray(data)) return 0;
     const parDossier = new Map();
     for (const f of data) {
       if (!parDossier.has(f.dossier)) parDossier.set(f.dossier, []);

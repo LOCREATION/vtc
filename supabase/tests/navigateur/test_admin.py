@@ -2014,6 +2014,28 @@ async def attendre_fichier(page, chemin, essais=50):
     return False
 
 
+async def attendre_requete(page, requete, attendu, essais=50):
+    """La base renvoie « attendu » avant 10 secondes (la page a fini son travail)."""
+    for _ in range(essais):
+        if valeur(requete) == attendu:
+            return True
+        await page.wait_for_timeout(200)
+    return False
+
+
+async def lisible(page, selecteur):
+    """L'élément est dans la partie visible de la boîte, au-dessus de la barre
+    des boutons (collée en bas de la boîte) : lu sans avoir à faire défiler."""
+    return await page.evaluate("""(s) => {
+      const e = document.querySelector(s);
+      const d = e && e.closest('dialog');
+      if (!d) return false;
+      const r = e.getBoundingClientRect(), rd = d.getBoundingClientRect();
+      const ra = d.querySelector('.fenetre-actions').getBoundingClientRect();
+      return r.height > 0 && r.top >= rd.top - 1 && r.bottom <= ra.top + 1;
+    }""", selecteur)
+
+
 async def suppressions(nav):
     print('Suppressions')
     ctx, page, _ = await entrer(nav)
@@ -2025,9 +2047,12 @@ async def suppressions(nav):
             f"insert into prive.fichiers_a_effacer (dossier, chemin, origine) values ('documents', '{orphelin}', 'documents');")
     await page.goto(SITE + 'admin/')
     await page.wait_for_selector('#admin-cadre:not([hidden])')
+    # La page retire le fichier, puis la file l'oublie : on attend la fin du
+    # passage. La file se vide en entier : les lignes laissées par les étapes
+    # précédentes (fichiers jamais déposés dans ce banc) partent aussi.
     verifier(await attendre_fichier(page, f'documents/{orphelin}')
-             and valeur(f"select count(*) from prive.fichiers_a_effacer where chemin = '{orphelin}'") == '0',
-             'file d\'effacement : un fichier resté dans le stockage part à l\'ouverture de l\'administration')
+             and await attendre_requete(page, 'select count(*) from prive.fichiers_a_effacer', '0'),
+             'file d\'effacement : un fichier resté dans le stockage part à l\'ouverture de l\'administration, la file se vide')
 
     # 1. Client sans course : effacé en entier, mot SUPPRIMER exigé
     ninon, _ = nouveau_compte('Ninon', 'Essai', '+33612340001')
@@ -2041,8 +2066,9 @@ async def suppressions(nav):
     await f.get_by_role('button', name='Supprimer définitivement').click()
     await page.wait_for_selector('#suppression-erreur:not([hidden])')
     verifier('Écrivez SUPPRIMER pour confirmer' in await page.inner_text('#suppression-erreur')
+             and await lisible(page, '#suppression-erreur')
              and valeur(f"select count(*) from auth.users where id = '{ninon}'") == '1',
-             'sans le mot SUPPRIMER : rien n\'est effacé')
+             'sans le mot SUPPRIMER : message lu sans faire défiler, rien n\'est effacé')
     await f.locator('#suppression-mot').fill('supprimer')
     await f.get_by_role('button', name='Supprimer définitivement').click()
     await fermee(page)
@@ -2107,10 +2133,12 @@ async def suppressions(nav):
     await f.get_by_role('button', name='Supprimer définitivement').click()
     await page.wait_for_selector('#suppression-erreur:not([hidden])')
     verifier(f"La course {reservation['numero']} est confiée à ce chauffeur" in await page.inner_text('#suppression-erreur')
+             and await lisible(page, '#fenetre-suppression h2') and await lisible(page, '#suppression-erreur')
+             and await f.locator('.suppression-liste').first.is_hidden() and await f.locator('#suppression-mot').is_hidden()
              and await f.get_by_role('button', name='Supprimer définitivement').is_hidden()
              and await f.get_by_role('button', name='Fermer').count() == 1
              and valeur(f"select statut from public.chauffeurs where id = '{CHAUFFEUSE}'") == 'valide',
-             'refus de la base (course confiée) : raison affichée, bouton retiré, rien n\'est effacé')
+             'refus de la base (course confiée) : titre et raison lus sans faire défiler, annonce et bouton retirés, rien n\'est effacé')
     await page.screenshot(path=f'{CAPTURES}/admin-suppression-refus-telephone.png')
     await f.get_by_role('button', name='Fermer').click()
     await fermee(page)
