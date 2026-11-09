@@ -46,7 +46,7 @@ def appel_rpc(nom, corps, uid):
         'retour', format_type(p.prorettype, null))
       from pg_proc p where p.oid = 'public.{nom}'::regproc;""")[1])
     parties = []
-    for arg in meta['args']:
+    for arg in (meta['args'] or []):            # fonction sans paramètre : aucun
         if arg['nom'] not in corps:
             continue
         acces = f"j->'{arg['nom']}'" if arg['type'] == 'jsonb' else f"(j->>'{arg['nom']}')::{arg['type']}"

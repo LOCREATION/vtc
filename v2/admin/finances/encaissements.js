@@ -36,7 +36,8 @@ const VIDES = {
   annules: 'Aucune somme annulée.'
 };
 const PAR_PAGE = 50;
-const MODES = [['', 'Tous'], ['especes', 'Espèces'], ['carte', 'Carte au terminal'], ['facture_mensuelle', 'Facture mensuelle'], ['solde', 'Solde']];
+const MODES = [['', 'Tous'], ['especes', 'Espèces'], ['carte', 'Carte au terminal'], ['solde', 'Portefeuille'], ['virement', 'Virement'],
+  ['facture_mensuelle', 'Facture mensuelle']];
 const NATURES = [['', 'Toutes'], ['course', 'Course'], ['pourboire', 'Pourboire'], ['frais_annulation', 'Frais d\'annulation']];
 const filtres = { liste: 'a_encaisser', du: '', au: '', texte: '', mode: '', nature: '', page: 0 };
 
@@ -146,14 +147,17 @@ function dessinerChiffres(s) {
   const parMode = [
     Number(enc.especes) > 0 ? `espèces ${euros(enc.especes)}` : null,
     Number(enc.carte) > 0 ? `carte ${euros(enc.carte)}` : null,
-    Number(enc.facture_mensuelle) > 0 ? `virements ${euros(enc.facture_mensuelle)}` : null,
-    Number(enc.solde) > 0 ? `solde ${euros(enc.solde)}` : null
+    Number(enc.solde) > 0 ? `portefeuille ${euros(enc.solde)}` : null,
+    Number(enc.virement) > 0 ? `virements ${euros(enc.virement)}` : null,
+    Number(enc.facture_mensuelle) > 0 ? `relevés ${euros(enc.facture_mensuelle)}` : null
   ].filter(Boolean).join(' · ');
   const esp = s.especes;
   $('chiffres-encaissements').replaceChildren(
     caseLien('a_encaisser', tuile('À encaisser', euros(a.sur_place),
       [a.nb_sur_place ? pluriel(a.nb_sur_place, 'paiement sur place', 'paiements sur place') : 'rien sur place',
         a.plus_24h ? `${a.plus_24h} depuis plus de 24 h` : null,
+        Number(a.virements) > 0 ? `virements attendus ${euros(a.virements)}` : null,
+        Number(a.portefeuille) > 0 ? `reste dû aux portefeuilles ${euros(a.portefeuille)}` : null,
         Number(a.releves) > 0 ? `relevés des entreprises ${euros(a.releves)}` : null].filter(Boolean).join(' · '),
       a.plus_24h ? 'or' : null), filtres.liste === 'a_encaisser'),
     caseLien('impayes', tuile('Impayés', euros(s.impayes.total),

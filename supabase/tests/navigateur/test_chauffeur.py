@@ -1,6 +1,8 @@
 # Banc d'essai de l'espace chauffeur v2 : service, demande entrante, course
 # complète, encaissement, note, feuille de route, délai dépassé, refus,
-# réservation prise ; onglets Revenus, Courses et Compte, demande reçue sur
+# réservation prise ; gains du jour dans l'angle ; course payée par le
+# portefeuille du client (rien à encaisser) ; onglets Revenus, Courses et
+# Compte, demande reçue sur
 # un autre onglet, feuille de route et relevé en PDF ; onglet Compte de la
 # salariée : documents (dépôt, vérification, retrait), bulletins et contrat
 # imprimables, heures, demande et retrait d'absence ; liens des
@@ -877,6 +879,23 @@ async def main():
             await page.goto(SITE + 'chauffeur/')
             await page.wait_for_selector('#espace:not([hidden])')
             verifier(await page.inner_text('#courses-jour') != '0', 'accueil : course du jour comptée')
+            # Gains du jour, dans l'angle : courses, attente et pourboires du jour
+            gains = valeur(f"""select coalesce(sum(prix_total + frais_attente) filter (where statut = 'terminee'), 0)
+                                       + coalesce(sum(pourboire), 0)
+                               from public.courses where chauffeur_id = '{CHAUFFEUSE}' and statut in ('terminee', 'annulee')
+                                 and (coalesce(terminee_le, annulee_le) at time zone 'Europe/Paris')::date
+                                     = (now() at time zone 'Europe/Paris')::date""")
+            await page.wait_for_selector('#bandeau-gains:not([hidden])')
+            verifier(normaliser(await page.inner_text('#gains-jour')) == montant_fr(gains)
+                     and await page.inner_text('.pastille-gains-libelle') == 'Aujourd\'hui'
+                     and 'pourboires' in await page.inner_text('#gains-detail'),
+                     f'gains du jour dans l\'angle, dès la connexion : {montant_fr(gains)} (courses, attente, pourboires)')
+            await page.screenshot(path=f'{CAPTURES}/chauffeur-gains-jour.png')
+            await page.click('#pastille-gains')
+            await page.wait_for_selector('#vue-revenus:not([hidden])')
+            verifier('onglet=revenus' in page.url, 'appui sur les gains du jour : onglet Revenus')
+            await page.goto(SITE + 'chauffeur/')
+            await page.wait_for_selector('#espace:not([hidden])')
             course2 = commander()
             await page.reload()
             await page.wait_for_selector('#demande:not([hidden])', timeout=12000)
@@ -911,6 +930,29 @@ async def main():
                      'réservation prise : attribuée à la chauffeuse, visible dans « Mes courses »')
             await page.screenshot(path=f'{CAPTURES}/chauffeur-reservation-prise.png', full_page=True)
             annuler_par_admin(course4['id'])
+
+            print('Course payée par le portefeuille du client')
+            solde_avant = valeur(f"select coalesce((select montant from public.soldes where profil_id = '{CLIENT}'), 0)")
+            systeme(f"select prive.ecrire_solde('{CLIENT}', 100, 'Essai : portefeuille', null);")
+            course5 = commander(p_type='planifiee', p_quand=demain, p_mode_paiement='solde')
+            ok, sortie = appel_rpc('attribuer_course', {'p_course': course5['id'], 'p_chauffeur': CHAUFFEUSE}, ADMIN)
+            assert ok, sortie
+            for etape in ('en_route', 'arrivee', 'a_bord', 'terminee'):
+                ok, sortie = appel_rpc('avancer_course', {'p_course': course5['id'], 'p_etape': etape}, CHAUFFEUSE)
+                assert ok, sortie
+            await page.goto(SITE + f"chauffeur/course/?id={course5['id']}")
+            await page.wait_for_selector('#rien-a-encaisser:not([hidden])')
+            verifier(await page.inner_text('#rien-a-encaisser') == 'Payé avec le portefeuille du client : rien à encaisser.'
+                     and await page.inner_text('#mode-encaisser') == 'Portefeuille du client'
+                     and await page.is_hidden('#confirmer-encaissement') and await page.is_hidden('#encaisse')
+                     and valeur(f"select mode || '|' || statut from public.paiements where course_id = '{course5['id']}' and nature = 'course'")
+                         == 'solde|encaisse',
+                     'course payée par le portefeuille : « rien à encaisser », pas de bouton d\'encaissement, payée dans la base')
+            await page.screenshot(path=f'{CAPTURES}/chauffeur-course-portefeuille.png', full_page=True)
+            solde_apres = valeur(f"select montant from public.soldes where profil_id = '{CLIENT}'")
+            systeme(f"select prive.ecrire_solde('{CLIENT}', {solde_avant} - {solde_apres}, 'Essai : portefeuille', null);")
+            await page.goto(SITE + 'chauffeur/')
+            await page.wait_for_selector('#espace:not([hidden])')
 
             await onglets_chauffeur(ctx, page, course, course4)
             await notifications_chauffeur(page)

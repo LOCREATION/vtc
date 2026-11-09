@@ -10,6 +10,8 @@
 //   ?vue=especes            espèces des chauffeurs (especes.js)
 //   ?vue=factures           factures et avoirs (factures.js)
 //   ?vue=remboursements     remboursements (remboursements.js)
+//   ?vue=portefeuilles      portefeuilles des clients, recharges Mollie,
+//                           reste dû (portefeuilles.js)
 //   ?vue=tva                TVA et dossier pour l'expert-comptable (tva.js)
 // Les alertes du tableau de bord mènent directement à la bonne liste
 // (paiements à encaisser, impayés, espèces des chauffeurs).
@@ -20,6 +22,7 @@ import { afficherEncaissements, LISTES } from './encaissements.js';
 import { afficherEspeces } from './especes.js';
 import { afficherFactures } from './factures.js';
 import { afficherRemboursements } from './remboursements.js';
+import { afficherPortefeuilles } from './portefeuilles.js';
 import { afficherTva } from './tva.js';
 import { ouvrirFacture, ouvrirAvoir } from './pieces.js';
 
@@ -29,6 +32,7 @@ const ONGLETS = [
   { code: 'especes', libelle: 'Espèces des chauffeurs', afficher: afficherEspeces },
   { code: 'factures', libelle: 'Factures et avoirs', afficher: afficherFactures },
   { code: 'remboursements', libelle: 'Remboursements', afficher: afficherRemboursements },
+  { code: 'portefeuilles', libelle: 'Portefeuilles', afficher: afficherPortefeuilles },
   { code: 'tva', libelle: 'TVA et export', afficher: afficherTva }
 ];
 

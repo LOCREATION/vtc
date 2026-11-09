@@ -200,7 +200,7 @@ select test.doit_echouer($$select public.commander_course('berline_hybride', 'A'
 select test.doit_echouer($$select public.commander_course('berline_hybride', 'A', 48.8656, 2.3212, 'B', 48.8809, 2.3553,
                            p_type => 'planifiee', p_quand => now() + interval '1 day', p_prix_annonce => 1.00)$$, 'Le prix a changé');
 select test.doit_echouer($$select public.commander_course('berline_hybride', 'A', 48.8656, 2.3212, 'B', 48.8809, 2.3553,
-                           p_type => 'planifiee', p_quand => now() + interval '1 day', p_mode_paiement => 'solde')$$, 'prochaine version');
+                           p_type => 'planifiee', p_quand => now() + interval '1 day', p_mode_paiement => 'solde')$$, 'Solde insuffisant');
 
 call test.connexion(:'admin', 'aal2');
 select test.verifier(exists (select 1 from public.notifications where titre = 'Course à attribuer'),

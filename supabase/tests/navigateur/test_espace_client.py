@@ -1,15 +1,18 @@
 # Banc d'essai de l'espace client v2 (client/) : onglets Accueil, Activité,
 # Compte (lieux, proches, solde, parrainage, compte professionnel, sécurité,
 # notifications, données personnelles), cloche des notifications, « Mes
-# demandes au support », pourboire en fin de course, lien « Mon compte » de
-# l'accueil public.
+# demandes au support », pourboire en fin de course, portefeuille (solde sur
+# l'accueil, recharge par Mollie simulé, courses payées par le portefeuille
+# ou par virement), lien « Mon compte » de l'accueil public.
 # Joué avec la cliente des scénarios de test (Claire) ; ce qui est créé ici
 # (courses, lieux, proches, demandes, notifications) est retiré, le profil
 # remis comme avant.
 import asyncio, json, re, time
+from decimal import Decimal
+from urllib.parse import urlencode
 from playwright.async_api import async_playwright
 from banc import (SITE, CAPTURES, CLIENT, CHAUFFEUSE, ADMIN, PNG_GRIS, FICHIERS_DEPOSES, FICHIERS_RETIRES, AuthSimulee,
-                  systeme, en_tant_que, appel_rpc, session_injectee, routeur, serveur_local, verifier)
+                  MOLLIE_ETATS, systeme, en_tant_que, appel_rpc, session_injectee, routeur, serveur_local, verifier)
 
 console = []
 
@@ -543,6 +546,219 @@ async def pourboire_client(nav):
     systeme(f"delete from public.notifications where destinataire_id = '{CHAUFFEUSE}' and cree_le >= '{debut}';")
 
 
+def fixer_solde(montant):
+    """Solde de Claire fixé à un montant exact (écriture d'ajustement)."""
+    systeme(f"""do $$ declare v numeric; begin
+      insert into public.soldes (profil_id) values ('{CLIENT}') on conflict (profil_id) do nothing;
+      select montant into v from public.soldes where profil_id = '{CLIENT}';
+      if v <> {montant} then perform prive.ecrire_solde('{CLIENT}', {montant} - v, 'Essai : solde ajusté', null); end if;
+    end $$;""")
+
+
+def euros_fr(montant):
+    """Montant écrit comme à l'écran : Decimal('12.5') → « 12,50 € »."""
+    return f'{Decimal(montant):.2f}'.replace('.', ',') + ' €'
+
+
+def terminer_par_nadia(course):
+    """La course de Claire est prise par Nadia et terminée (étapes de la chauffeuse)."""
+    ok, sortie = appel_rpc('attribuer_course', {'p_course': course, 'p_chauffeur': CHAUFFEUSE}, ADMIN)
+    assert ok, sortie
+    for etape in ('en_route', 'arrivee', 'a_bord', 'terminee'):
+        ok, sortie = appel_rpc('avancer_course', {'p_course': course, 'p_etape': etape}, CHAUFFEUSE)
+        assert ok, sortie
+
+
+async def portefeuille_client(nav):
+    """Portefeuille : solde sur l'accueil dès la connexion ; « Recharger »
+    (formulaire de l'onglet Compte, montant contrôlé avant l'envoi) ; page de
+    paiement de Mollie (simulée) ; retour : état relu, nouveau solde, « Mes
+    recharges », paiement abandonné sans effet ; commande payée par le
+    portefeuille (« Il vous manque », « Il vous restera ») ; fin de course :
+    prélevé, pourboire prélevé ; virement : proposé avec les coordonnées de
+    l'entreprise, coordonnées bancaires et référence sur la page de la course,
+    « Virement reçu » une fois enregistré par l'administration."""
+    print('Portefeuille, recharge par Mollie, paiement des courses')
+    banque = valeur("select coalesce(iban, '') || '|' || coalesce(bic, '') from public.societe where id = 1")
+    solde_avant = valeur(f"select coalesce((select montant from public.soldes where profil_id = '{CLIENT}'), 0)")
+    systeme("update public.societe set iban = null, bic = null where id = 1")
+    fixer_solde(3)
+    ctx, page = await nouveau_contexte(nav)
+    try:
+        # 1. Accueil : le solde dès la connexion
+        await page.goto(SITE + 'client/')
+        await page.wait_for_selector('#accueil-portefeuille')
+        verifier(espaces(await page.inner_text('#accueil-solde')) == '3,00 €'
+                 and await page.inner_text('#accueil-portefeuille-titre') == 'Mon portefeuille'
+                 and await page.is_visible('#accueil-recharger') and await page.is_visible('#accueil-mouvements'),
+                 'accueil : « Mon portefeuille », solde de 3,00 € dès la connexion, « Recharger » et « Mouvements »')
+        await page.screenshot(path=f'{CAPTURES}/client-portefeuille-accueil.png')
+
+        # 2. « Recharger » : le formulaire s'ouvre dans l'onglet Compte
+        await page.click('#accueil-recharger')
+        await page.wait_for_selector('#vue-compte:not([hidden]) #compte-recharge:not([hidden])')
+        verifier(await page.get_attribute('.pastille-montant[data-montant="20"]', 'aria-pressed') == 'true'
+                 and espaces(await page.inner_text('#recharge-payer')) == 'Payer 20,00 € avec Mollie'
+                 and 'Paiement sécurisé par Mollie' in await page.inner_text('#compte-recharge')
+                 and 'jamais transmises à LOC RÉACTION' in await page.inner_text('#compte-recharge')
+                 and await page.is_hidden('#compte-ouvrir-recharge'),
+                 '« Recharger » : onglet Compte, formulaire ouvert, 20 € proposés, paiement sécurisé par Mollie expliqué')
+        avant = valeur(f"select count(*) from public.recharges where client_id = '{CLIENT}'")
+        await page.fill('#recharge-autre', '2')
+        await page.click('#recharge-payer')
+        verifier(espaces(await page.inner_text('#recharge-erreur')) == 'Indiquez un montant de 5,00 € à 500,00 €.'
+                 and valeur(f"select count(*) from public.recharges where client_id = '{CLIENT}'") == avant,
+                 'recharge de 2 € : refusée avant l\'envoi (5 € à 500 €), rien dans la base')
+        await page.fill('#recharge-autre', '25')
+        verifier(espaces(await page.inner_text('#recharge-payer')) == 'Payer 25,00 € avec Mollie'
+                 and await page.get_attribute('.pastille-montant[data-montant="20"]', 'aria-pressed') == 'false',
+                 'autre montant (25) : « Payer 25,00 € avec Mollie »')
+        await page.evaluate("document.getElementById('compte-recharger').scrollIntoView({ block: 'start' })")
+        await page.screenshot(path=f'{CAPTURES}/client-portefeuille-recharge.png')
+        await page.click('#recharge-payer')
+        await page.wait_for_url(re.compile(r'^https://www\.mollie\.com/checkout/'))
+        recharge, numero, montant, statut, mollie = ligne_sql(f"""select id || '|' || numero || '|' || montant || '|' || statut
+            || '|' || mollie_id from public.recharges where client_id = '{CLIENT}' order by cree_le desc limit 1""")
+        verifier(montant == '25.00' and statut == 'ouverte' and mollie.startswith('tr_essai'),
+                 f'« Payer » : recharge {numero} de 25,00 € enregistrée, paiement Mollie rattaché, page de Mollie ouverte')
+
+        # 3. Retour de Mollie, paiement accepté
+        MOLLIE_ETATS[mollie] = 'paid'
+        await page.goto(SITE + f'client/compte/?recharge={recharge}')
+        await page.wait_for_selector('#compte-recharge-etat[data-ton="succes"]')
+        verifier(espaces(await page.inner_text('#compte-recharge-etat'))
+                 == 'Paiement reçu : 25,00 € ajoutés à votre portefeuille. Nouveau solde : 28,00 €.'
+                 and espaces(await page.inner_text('#compte-solde-montant')) == '28,00 €'
+                 and 'recharge=' not in page.url,
+                 'retour de Mollie, paiement accepté : « Paiement reçu », nouveau solde 28,00 €, l\'adresse ne garde pas la recharge')
+        await page.wait_for_selector('#compte-recharges li')
+        verifier(f'Recharge {numero}' in await page.inner_text('#compte-recharges li:first-child')
+                 and 'Payée' in await page.inner_text('#compte-recharges li:first-child')
+                 and f'Recharge {numero}' in await page.inner_text('#compte-mouvements li:first-child')
+                 and valeur(f"select statut from public.recharges where id = '{recharge}'") == 'payee',
+                 f'« Mes recharges » : {numero} payée ; mouvement « Recharge {numero} » ; base : payée')
+        await page.evaluate("document.getElementById('zone-messages')?.replaceChildren()")
+        await page.evaluate("document.getElementById('compte-solde').scrollIntoView({ block: 'start' })")
+        await page.screenshot(path=f'{CAPTURES}/client-portefeuille-recharge-payee.png')
+
+        # 4. Paiement abandonné chez Mollie : rien n'est prélevé
+        await page.click('#compte-ouvrir-recharge')
+        await page.click('.pastille-montant[data-montant="10"]')
+        await page.click('#recharge-payer')
+        await page.wait_for_url(re.compile(r'^https://www\.mollie\.com/checkout/'))
+        recharge2, mollie2 = ligne_sql(f"""select id || '|' || mollie_id from public.recharges
+            where client_id = '{CLIENT}' order by cree_le desc limit 1""")
+        MOLLIE_ETATS[mollie2] = 'canceled'
+        await page.goto(SITE + f'client/compte/?recharge={recharge2}')
+        await page.wait_for_selector('#compte-recharge-etat[data-ton="info"]')
+        verifier(espaces(await page.inner_text('#compte-recharge-etat')) == 'Paiement annulé : rien n\'a été prélevé.'
+                 and espaces(await page.inner_text('#compte-solde-montant')) == '28,00 €'
+                 and valeur(f"select statut from public.recharges where id = '{recharge2}'") == 'annulee',
+                 'paiement annulé chez Mollie : « rien n\'a été prélevé », solde inchangé, recharge annulée')
+
+        # 5. Commande payée par le portefeuille (réservation de demain, 10 h UTC)
+        quand = valeur("""select to_char(date_trunc('day', now()) + interval '1 day 10 hours', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')""")
+        prix = Decimal(valeur(f"""select public.estimer_course('berline_hybride', 48.8556, 2.36, 48.8443, 2.3743,
+            p_quand => '{quand}', p_type => 'planifiee') ->> 'prix_total'"""))
+        lien = SITE + 'client/commande/?' + urlencode({
+            'd': '10 Rue de Rivoli 75004 Paris', 'dlat': '48.8556', 'dlng': '2.36',
+            'a': 'Gare de Lyon', 'alat': '48.8443', 'alng': '2.3743', 'q': quand})
+        fixer_solde(prix - 1)
+        await page.goto(lien)
+        await page.wait_for_selector('#choix-solde:not([hidden])')
+        await page.check('#choix-solde input')
+        await page.wait_for_selector('#info-solde[data-etat="manque"]:not([hidden])')
+        verifier(espaces(await page.inner_text('#info-solde-texte'))
+                 == 'Il vous manque 1,00 € : rechargez votre portefeuille ou choisissez un autre paiement.'
+                 and await page.is_visible('#lien-recharger') and await page.is_disabled('#commander')
+                 and (await page.get_attribute('#lien-recharger', 'href')).endswith('client/compte/#compte-recharger')
+                 and await page.is_hidden('#choix-virement'),
+                 f'commande à {euros_fr(prix)}, portefeuille à {euros_fr(prix - 1)} : « Il vous manque 1,00 € », « Recharger », '
+                 '« Commander » inactif ; virement pas proposé (coordonnées bancaires non saisies)')
+        fixer_solde(prix + 5)
+        await page.goto(lien)
+        await page.wait_for_selector('#choix-solde:not([hidden])')
+        verifier(espaces(await page.inner_text('#solde-disponible')) == f'Disponible : {euros_fr(prix + 5)}',
+                 f'« Portefeuille » : disponible {euros_fr(prix + 5)} affiché')
+        await page.check('#choix-solde input')
+        await page.wait_for_selector('#info-solde[data-etat="ok"]:not([hidden])')
+        verifier(espaces(await page.inner_text('#info-solde-texte'))
+                 == f'Prélevé à la fin de la course : {euros_fr(prix)}. Il vous restera 5,00 €.'
+                 and await page.is_enabled('#commander') and await page.is_hidden('#lien-recharger'),
+                 f'portefeuille suffisant : « Prélevé à la fin de la course : {euros_fr(prix)}. Il vous restera 5,00 €. »')
+        await page.evaluate("document.querySelector('fieldset.paiement').scrollIntoView({ block: 'start' })")
+        await page.screenshot(path=f'{CAPTURES}/client-commande-portefeuille.png')
+        await page.click('#commander')
+        await page.wait_for_url(re.compile(r'client/course/\?id='))
+        course = page.url.split('id=')[1]
+        verifier(valeur(f"select mode_paiement || '|' || statut from public.courses where id = '{course}'") == 'solde|planifiee'
+                 and Decimal(valeur(f"select montant from public.soldes where profil_id = '{CLIENT}'")) == prix + 5,
+                 'réservation payée par le portefeuille : rien n\'est prélevé avant la fin de la course')
+
+        # 6. Fin de course : prélevé ; pourboire prélevé aussi
+        terminer_par_nadia(course)
+        await page.reload()
+        await page.wait_for_selector('#recap-reglement:not([hidden])')
+        verifier(espaces(await page.inner_text('#recap-reglement')) == f'Payé avec votre portefeuille : {euros_fr(prix)}.'
+                 and await page.inner_text('#recap-paiement') == 'Portefeuille'
+                 and valeur(f"select montant from public.soldes where profil_id = '{CLIENT}'") == '5.00'
+                 and valeur(f"""select mode || '|' || statut from public.paiements
+                                where course_id = '{course}' and nature = 'course'""") == 'solde|encaisse',
+                 f'course terminée : « Payé avec votre portefeuille : {euros_fr(prix)} », solde 5,00 €, paiement encaissé')
+        await page.wait_for_selector('#bloc-pourboire:not([hidden])')
+        verifier(espaces(await page.inner_text('#pourboire-aide')).startswith('Prélevé sur votre portefeuille, dans les 24 heures'),
+                 'pourboire : « Prélevé sur votre portefeuille, dans les 24 heures »')
+        await page.evaluate("document.getElementById('recap-reglement').scrollIntoView({ block: 'center' })")
+        await page.screenshot(path=f'{CAPTURES}/client-course-portefeuille.png')
+        await page.click('#montants-pourboire button[data-montant="2"]')
+        await page.click('#envoyer-pourboire')
+        await page.wait_for_selector('#pourboire-donne:not([hidden])')
+        verifier(espaces(await page.inner_text('#pourboire-donne')) == 'Votre pourboire : 2,00 €. Merci !'
+                 and valeur(f"select montant from public.soldes where profil_id = '{CLIENT}'") == '3.00'
+                 and valeur(f"""select mode || '|' || statut from public.paiements
+                                where course_id = '{course}' and nature = 'pourboire'""") == 'solde|encaisse',
+                 'pourboire de 2 € par le portefeuille : prélevé aussitôt (solde 3,00 €), « Merci ! »')
+
+        # 7. Virement : proposé une fois les coordonnées bancaires saisies
+        systeme("update public.societe set iban = 'FR7630006000011234567890189', bic = 'AGRIFRPP' where id = 1")
+        await page.goto(lien)
+        await page.wait_for_selector('#choix-virement:not([hidden])')
+        await page.check('#choix-virement input')
+        verifier(await page.is_visible('#info-virement') and await page.is_hidden('#info-solde')
+                 and 'réglez la facture par virement' in await page.inner_text('#info-virement'),
+                 'virement choisi : « Après la course, réglez la facture par virement »')
+        await page.wait_for_function("!document.getElementById('commander').disabled")
+        await page.click('#commander')
+        await page.wait_for_url(re.compile(r'client/course/\?id='))
+        course2 = page.url.split('id=')[1]
+        terminer_par_nadia(course2)
+        await page.reload()
+        await page.wait_for_selector('#recap-reglement[data-mode="virement"]:not([hidden])')
+        texte = espaces(await page.inner_text('#recap-reglement'))
+        facture = valeur(f"select numero from public.factures where course_id = '{course2}' and nature = 'course'")
+        raison = valeur("select raison_sociale from public.societe where id = 1")
+        verifier(f'À régler par virement : {euros_fr(prix)}' in texte and 'FR76 3000 6000 0112 3456 7890 189' in texte
+                 and 'AGRIFRPP' in texte and facture in texte and raison in texte
+                 and await page.locator('#recap-reglement .bouton-copier').count() == 2,
+                 f'course terminée par virement : somme, titulaire, IBAN, BIC, référence {facture} (IBAN et référence copiables)')
+        await page.evaluate("document.getElementById('recap-reglement').scrollIntoView({ block: 'center' })")
+        await page.screenshot(path=f'{CAPTURES}/client-course-virement.png')
+        paiement = valeur(f"select id from public.paiements where course_id = '{course2}' and nature = 'course'")
+        ok, sortie = appel_rpc('confirmer_encaissement', {'p_paiement': paiement}, CHAUFFEUSE)
+        verifier(not ok and 'l\'administration l\'enregistre à réception' in sortie,
+                 'virement : la chauffeuse n\'a rien à encaisser (refusé par la base)')
+        ok, sortie = appel_rpc('confirmer_encaissement', {'p_paiement': paiement}, ADMIN)
+        assert ok, sortie
+        await page.reload()
+        await page.wait_for_function("(document.getElementById('recap-reglement')?.textContent || '').includes('Virement reçu le')")
+        verifier(True, 'virement enregistré par l\'administration : « Virement reçu le … Merci ! »')
+    finally:
+        iban, bic = banque.split('|')
+        systeme(f"update public.societe set iban = nullif('{iban}', ''), bic = nullif('{bic}', '') where id = 1;")
+        fixer_solde(Decimal(solde_avant))
+        await ctx.close()
+
+
 def retirer_refus_console(statut):
     """Un refus voulu (réponse « statut ») ne compte pas parmi les erreurs de la console."""
     for i in range(len(console) - 1, -1, -1):
@@ -948,6 +1164,7 @@ async def main():
             await solde_parrainage_client(ctx, page)
             await compte_pro_client(page)
             await pourboire_client(nav)
+            await portefeuille_client(nav)
             await securite_client(nav)
             await preferences_client(page)
             await donnees_client(nav)

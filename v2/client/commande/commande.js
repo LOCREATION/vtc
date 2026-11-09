@@ -10,6 +10,12 @@
 // - Le prix est recalculé par la base à chaque changement (arrêts, date, code
 //   promo). À la confirmation, la base le recalcule encore et refuse la
 //   commande s'il ne correspond plus au prix affiché.
+// - Paiement : espèces, carte dans le véhicule, portefeuille (disponible
+//   affiché ; le prix doit y tenir : « Il vous restera … », sinon « Il vous
+//   manque … » et « Recharger mon portefeuille »), virement bancaire (quand
+//   les coordonnées bancaires de l'entreprise sont saisies), facture
+//   mensuelle (membres d'un compte professionnel). La base refait chaque
+//   contrôle à la commande.
 // =============================================================================
 import { supabase, profilConnecte, messageErreur } from '../../commun/supabase.js';
 import { CATEGORIE_PAR_DEFAUT, RACINE } from '../../commun/config.js';
@@ -25,6 +31,7 @@ const etat = {
   arrets: [],                 // [{ bloc, champ, valeur }]
   estimation: null, numeroEstimation: 0,
   delaiMinutes: 60, zones: [], profil: null, proches: [], comptesPro: [],
+  portefeuille: null,         // mon_portefeuille (null si illisible : pas de choix « Portefeuille »)
   codePromo: null,            // code en cours d'application
   initialisation: true        // pas d'estimation pendant le remplissage initial
 };
@@ -52,12 +59,14 @@ async function demarrer() {
     $('lien-profil').href = lienAvecLangue(`${RACINE}connexion/?suite=${encodeURIComponent(cheminRelatif())}`);
   }
 
-  const [zones, parametres, proches, comptes] = await Promise.all([
+  const [zones, parametres, proches, comptes, portefeuille] = await Promise.all([
     supabase.from('zones').select('code, nom, type, latitude, longitude, rayon_km').eq('active', true).order('nom'),
     supabase.from('parametres').select('delai_min_planification_min').maybeSingle(),
     supabase.from('proches').select('id, nom, telephone').order('nom'),
-    supabase.from('comptes_pro_membres').select('compte_pro_id, comptes_pro(raison_sociale, statut)')
+    supabase.from('comptes_pro_membres').select('compte_pro_id, comptes_pro(raison_sociale, statut)'),
+    supabase.rpc('mon_portefeuille')
   ]);
+  etat.portefeuille = portefeuille.error ? null : portefeuille.data;
   if (zones.error) throw zones.error;
   etat.zones = zones.data || [];
   if (parametres.data) etat.delaiMinutes = parametres.data.delai_min_planification_min;
@@ -231,7 +240,7 @@ function quandChoisi() {
 function majBoutonCommande() {
   const plusTard = document.querySelector('input[name="quand"]:checked').value === 'plus_tard';
   $('commander').textContent = t(plusTard ? 'action.reserver' : 'action.commander');
-  $('commander').disabled = !etat.estimation || !etat.profil?.telephone || !etat.profil?.prenom;
+  $('commander').disabled = !etat.estimation || !etat.profil?.telephone || !etat.profil?.prenom || soldeInsuffisant();
 }
 
 // ---------------------------------------------------------------------------
@@ -256,14 +265,58 @@ function preparerProche() {
 }
 
 // ---------------------------------------------------------------------------
-// Paiement : espèces, carte au terminal, facture mensuelle (comptes pro)
+// Paiement : espèces, carte au terminal, portefeuille, virement, facture
+// mensuelle (comptes pro)
 // ---------------------------------------------------------------------------
 function preparerPaiement() {
+  const pf = etat.portefeuille;
+  // Recharge : onglet Compte, formulaire ouvert, langue gardée
+  $('lien-recharger').href = lienAvecLangue(`${RACINE}client/compte/#compte-recharger`);
+  if (pf) {
+    $('choix-solde').hidden = false;
+    $('solde-disponible').textContent = t('commande.solde_detail', { montant: euros(pf.disponible) });
+    $('choix-virement').hidden = !pf.virement_possible;
+  }
   etat.comptesPro.forEach((membre) => {
     $('choix-comptes-pro').append(el('label', { classe: 'case' },
       el('input', { type: 'radio', name: 'paiement', value: 'facture_mensuelle', dataset: { compte: membre.compte_pro_id } }),
       el('span', { texte: t('commande.facture_mensuelle', { compte: membre.comptes_pro.raison_sociale }) })));
   });
+  document.querySelector('fieldset.paiement').addEventListener('change', () => { majPaiement(); majBoutonCommande(); });
+  majPaiement();
+}
+
+function modePaiement() {
+  const choisi = document.querySelector('input[name="paiement"]:checked');
+  return choisi ? choisi.value : 'especes';
+}
+
+// Portefeuille choisi et prix connu, mais disponible insuffisant
+function soldeInsuffisant() {
+  if (modePaiement() !== 'solde' || !etat.estimation || !etat.portefeuille) return false;
+  return Math.round(Number(etat.portefeuille.disponible) * 100) < Math.round(Number(etat.estimation.prix_total) * 100);
+}
+
+// Ce que le client doit savoir du paiement choisi
+function majPaiement() {
+  const mode = modePaiement();
+  $('info-virement').hidden = mode !== 'virement';
+  const solde = mode === 'solde' && !!etat.portefeuille;
+  $('info-solde').hidden = !solde;
+  if (!solde) return;
+  const disponible = Number(etat.portefeuille.disponible) || 0;
+  const manque = soldeInsuffisant();
+  $('info-solde').dataset.etat = manque ? 'manque' : 'ok';
+  $('lien-recharger').hidden = !manque;
+  if (!etat.estimation) {
+    $('info-solde-texte').textContent = t('commande.solde_detail', { montant: euros(disponible) });
+  } else if (manque) {
+    $('info-solde-texte').textContent = t('commande.solde_insuffisant', {
+      manque: euros(Number(etat.estimation.prix_total) - disponible) });
+  } else {
+    $('info-solde-texte').textContent = t('commande.solde_apres', {
+      prix: euros(etat.estimation.prix_total), reste: euros(disponible - Number(etat.estimation.prix_total)) });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -306,6 +359,7 @@ async function estimer() {
   etat.estimation = null;
   $('hors-zone').hidden = true;
   $('erreur-commande').hidden = true;
+  majPaiement();
   majBoutonCommande();
 
   const arretsIncomplets = etat.arrets.some((a) => !a.valeur);
@@ -355,6 +409,7 @@ async function estimer() {
     details.push(t(cle, { pct: nombre(data.majoration_pourcentage, 0) }));
   }
   afficherPrix(euros(data.prix_total), t('prix.fixe'), details);
+  majPaiement();
   majBoutonCommande();
 }
 

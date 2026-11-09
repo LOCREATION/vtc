@@ -20,6 +20,11 @@
 //   règle que la base, seule juge : ajouter_pourboire). Une fois laissé : la
 //   consigne (« à remettre en espèces à Nadia »), et son reçu sous la facture
 //   (hors TVA, en plus de la facture, réglé ou non : paiement « pourboire »).
+//   Portefeuille : prélevé aussitôt (dans le disponible) ; virement : ajouté
+//   à la somme à virer ; les deux dans les 24 heures.
+// - Règlement, sous le prix : portefeuille (« Payé avec votre portefeuille »,
+//   ou le reste dû et « Recharger ») ; virement (somme à virer, titulaire,
+//   IBAN, BIC et référence à indiquer, copiables ; « Virement reçu le … »).
 // =============================================================================
 import { supabase, profilConnecte, messageErreur } from '../../commun/supabase.js';
 import { RACINE } from '../../commun/config.js';
@@ -36,9 +41,10 @@ const MONTANTS_POURBOIRE = [2, 5, 10];
 const POURBOIRE_MIN = 0.5;
 const POURBOIRE_MAX = 100;
 const DELAI_SUR_PLACE_MS = 30 * 60000;          // espèces, carte au terminal
-const DELAI_FACTURE_MS = 24 * 3600000;          // facture mensuelle
+const DELAI_FACTURE_MS = 24 * 3600000;          // facture mensuelle, portefeuille, virement
 const etat = {
   course: null, arrets: [], position: null, tarif: null, factures: [], noteDonnee: null,
+  paiements: [], societe: null,
   parametres: { coefficient_detour: 1.3, vitesse_moyenne_kmh: 27.3, annulation_gratuite_planifiee_min: 120 },
   carte: null, reperes: {}, canalCourse: null, canalPosition: null, minuteur: null, noteChoisie: 0,
   discussion: null,
@@ -100,17 +106,24 @@ async function chargerAnnexes() {
   const [factures, note] = await Promise.all([
     supabase.from('factures').select('numero, nature, montant_ht, taux_tva, montant_tva, montant_ttc').eq('course_id', idCourse).order('numero'),
     supabase.from('evaluations').select('note').eq('course_id', idCourse).eq('sens', 'client_vers_chauffeur').maybeSingle(),
-    chargerPourboire()
+    chargerPaiements()
   ]);
   etat.factures = factures.data || [];
   etat.noteDonnee = note.data ? note.data.note : null;
 }
 
-// Paiement « pourboire » de la course : mode, montant, réglé ou non
-async function chargerPourboire() {
-  const { data } = await supabase.from('paiements').select('mode, montant, statut, encaisse_le')
-    .eq('course_id', idCourse).eq('nature', 'pourboire').order('cree_le').limit(1);
-  etat.pourboire = (data || [])[0] || null;
+// Paiements de la course (course, pourboire, frais d'annulation) : mode,
+// montant, réglé ou non ; coordonnées bancaires de l'entreprise si la course
+// se règle par virement
+async function chargerPaiements() {
+  const { data } = await supabase.from('paiements').select('nature, mode, montant, statut, encaisse_le')
+    .eq('course_id', idCourse).order('cree_le');
+  etat.paiements = data || [];
+  etat.pourboire = etat.paiements.find((p) => p.nature === 'pourboire') || null;
+  if (etat.course && etat.course.mode_paiement === 'virement' && !etat.societe) {
+    const { data: societe } = await supabase.from('societe').select('raison_sociale, iban, bic').maybeSingle();
+    etat.societe = societe || null;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -241,6 +254,7 @@ function afficherRecapitulatif() {
   $('recap-attente').textContent = t('suivi.attente', { min: c.attente_min, montant: euros(c.frais_attente) });
   $('recap-frais').hidden = !(Number(c.frais_annulation) > 0);
   $('recap-frais').textContent = t('suivi.frais', { montant: euros(c.frais_annulation) });
+  afficherReglement();
   $('recap-factures').replaceChildren(...etat.factures.map((f) => el('p', { classe: 'facture' },
     el('strong', { texte: t('suivi.facture', { numero: f.numero }) }),
     el('span', { texte: t('suivi.facture_detail', {
@@ -515,10 +529,72 @@ function preparerPourboire() {
       return;
     }
     etat.course = { ...etat.course, ...data };
-    await chargerPourboire();
+    await chargerPaiements();
     afficherPourboire();
+    afficherReglement();
     afficherMessage(t('pourboire.merci', { montant: euros(montant) }), 'succes');
   });
+}
+
+// Règlement d'une course payée par le portefeuille ou par virement
+const centimes = (x) => Math.round(Number(x || 0) * 100);
+function somme(paiements) {
+  return paiements.reduce((total, p) => total + centimes(p.montant), 0) / 100;
+}
+
+function afficherReglement() {
+  const c = etat.course;
+  const zone = $('recap-reglement');
+  const paiements = (etat.paiements || []).filter((p) => p.mode === c.mode_paiement);
+  if (!['solde', 'virement'].includes(c.mode_paiement) || !paiements.length) { zone.hidden = true; return; }
+  const regle = somme(paiements.filter((p) => ['encaisse', 'rembourse'].includes(p.statut)));
+  const du = somme(paiements.filter((p) => p.statut === 'a_encaisser'));
+  const contenu = [];
+
+  if (c.mode_paiement === 'solde') {
+    if (regle > 0) contenu.push(el('p', { classe: 'reglement-ok', texte: t('suivi.paye_portefeuille', { montant: euros(regle) }) }));
+    if (du > 0) {
+      contenu.push(el('p', { classe: 'reglement-du', texte: t('suivi.reste_du', { montant: euros(du) }) }),
+        el('a', { classe: 'bouton bouton-principal bouton-petit', id: 'reglement-recharger',
+          href: lienAvecLangue(`${RACINE}client/compte/#compte-recharger`), texte: t('commande.recharger') }));
+    }
+  } else if (du > 0 && etat.societe && etat.societe.iban) {
+    // Virement à faire : à qui, sur quel compte, avec quelle référence
+    const facture = etat.factures.find((f) => f.nature === 'course') || etat.factures[0];
+    const reference = facture ? facture.numero : c.numero;
+    const iban = etat.societe.iban.replace(/(.{4})/g, '$1 ').trim();
+    contenu.push(
+      el('p', { classe: 'reglement-titre', texte: t('suivi.virement_titre', { montant: euros(du) }) }),
+      el('dl', { classe: 'reglement-banque' },
+        ligneBanque('suivi.virement_titulaire', etat.societe.raison_sociale),
+        ligneBanque('suivi.virement_iban', iban, etat.societe.iban),
+        ligneBanque('suivi.virement_bic', etat.societe.bic),
+        ligneBanque('suivi.virement_reference', reference, reference)),
+      el('p', { classe: 'aide', texte: t('suivi.virement_aide') }));
+  } else if (regle > 0 && du === 0) {
+    const recu = paiements.filter((p) => p.encaisse_le).map((p) => p.encaisse_le).sort().pop();
+    contenu.push(el('p', { classe: 'reglement-ok', texte: t('suivi.virement_recu', {
+      date: recu ? dateHeure(recu, { day: 'numeric', month: 'long', year: 'numeric' }) : '' }) }));
+  }
+  zone.hidden = !contenu.length;
+  zone.dataset.mode = c.mode_paiement;
+  zone.replaceChildren(...contenu);
+}
+
+// Ligne des coordonnées bancaires ; « Copier » quand une valeur est donnée
+function ligneBanque(cle, valeur, aCopier = null) {
+  const copier = aCopier ? el('button', { type: 'button', classe: 'bouton-copier', texte: t('suivi.copier'),
+    'aria-label': `${t('suivi.copier')} : ${t(cle)}` }) : null;
+  if (copier) {
+    copier.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(aCopier);
+        copier.textContent = t('suivi.copie');
+        setTimeout(() => { copier.textContent = t('suivi.copier'); }, 2000);
+      } catch (_) { /* presse-papiers refusé : la valeur reste lisible */ }
+    });
+  }
+  return el('div', {}, el('dt', { texte: t(cle) }), el('dd', {}, el('span', { texte: valeur || '—' }), copier));
 }
 
 function afficherPourboire() {
@@ -526,7 +602,7 @@ function afficherPourboire() {
   const terminee = c.statut === 'terminee' && !!c.chauffeur_id;
   const montant = Number(c.pourboire) || 0;
   const fin = finDuPourboire(c);
-  const possible = terminee && montant === 0 && c.mode_paiement !== 'solde' && Date.now() < fin;
+  const possible = terminee && montant === 0 && Date.now() < fin;
   clearTimeout(etat.minuteurPourboire);
 
   // Formulaire, tant que le délai court ; il se retire de lui-même à la fin
@@ -544,7 +620,7 @@ function afficherPourboire() {
   $('recu-pourboire').hidden = !(montant > 0 && p);
   if (montant > 0) {
     // À régler : où et comment ; réglé (ou autre suite) : un simple merci
-    const consigne = p && p.statut === 'a_encaisser' && ['especes', 'carte', 'facture_mensuelle'].includes(p.mode)
+    const consigne = p && p.statut === 'a_encaisser' && ['especes', 'carte', 'facture_mensuelle', 'virement'].includes(p.mode)
       ? `pourboire.donne_${p.mode}` : 'pourboire.donne';
     $('pourboire-donne').textContent = t(consigne, { montant: euros(montant), qui: quiPourboire() });
   }

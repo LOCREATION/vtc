@@ -19,6 +19,10 @@ PNG_GRIS = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUl
 # Fichiers déposés pendant les essais (chemins), pour vérification
 FICHIERS_DEPOSES = []
 FICHIERS_RETIRES = []
+# Mollie simulé (fonction du serveur « mollie ») : paiements créés, et état que
+# « Mollie » donnera à la vérification (l'essai choisit : paid, canceled…)
+MOLLIE_PAIEMENTS = []
+MOLLIE_ETATS = {}
 
 # Comptes des scénarios de test (11_scenarios.sql)
 ADMIN = 'a0000000-0000-4000-8000-000000000001'
@@ -382,6 +386,43 @@ def routeur(uid, auth=None):
         if url.startswith(f'{API}/storage/v1/object/sign/'):
             chemin = urlparse(url).path.split('/object/sign/')[1]
             return await route.fulfill(status=200, headers=entetes, body=json.dumps({'signedURL': f'/object/sign/{chemin}?token=essai'}))
+        # Fonction du serveur « mollie » (supabase/functions/mollie) : mêmes
+        # réponses ; la recharge est demandée avec les droits du client, le
+        # paiement « Mollie » est rattaché et son état rapporté par la base
+        if url.startswith(f'{API}/functions/v1/mollie'):
+            try:
+                corps = json.loads(rq.post_data or '{}')
+            except ValueError:
+                corps = {}
+            if corps.get('action') == 'creer':
+                ok, sortie = appel_rpc('recharge_demander', {'p_montant': corps.get('montant')}, qui, aal)
+                if not ok:
+                    return await route.fulfill(status=400, headers=entetes, body=json.dumps({'erreur': sortie}))
+                r = json.loads(sortie)
+                tr = 'tr_essai' + r['id'].replace('-', '')[:12]
+                systeme(f"select public.recharge_mollie_ouverte({_q(r['id'])}, {_q(tr)}, 'test');")
+                MOLLIE_PAIEMENTS.append({'recharge': r['id'], 'mollie_id': tr, 'montant': r['montant'], 'numero': r['numero']})
+                return await route.fulfill(status=200, headers=entetes, body=json.dumps({
+                    'lien': f'https://www.mollie.com/checkout/select-method/{tr[3:]}', 'recharge': r['id'],
+                    'numero': r['numero'], 'montant': r['montant']}))
+            if corps.get('action') == 'verifier':
+                ok, sortie = appel_rpc('ma_recharge', {'p_recharge': corps.get('recharge')}, qui, aal)
+                if not ok:
+                    return await route.fulfill(status=404, headers=entetes, body=json.dumps({'erreur': sortie}))
+                r = json.loads(sortie)
+                etat_mollie = MOLLIE_ETATS.get(r.get('mollie_id'))
+                if etat_mollie and r['statut'] in ('creee', 'ouverte'):
+                    r.update(json.loads(systeme(
+                        f"select public.recharge_mollie_etat({_q(r['id'])}, {_q(r['mollie_id'])}, {_q(etat_mollie)}, 'test', "
+                        f"{r['montant']}, 'EUR', 'creditcard')::text;")))
+                return await route.fulfill(status=200, headers=entetes, body=json.dumps({
+                    'recharge': r['id'], 'numero': r['numero'], 'montant': r['montant'], 'statut': r['statut'],
+                    'methode': r.get('methode'), 'solde': r.get('solde')}))
+            return await route.fulfill(status=400, headers=entetes, body=json.dumps({'erreur': 'Demande non prise en charge.'}))
+        # Page de paiement de Mollie (simulée : l'essai décide de son résultat)
+        if url.startswith('https://www.mollie.com/'):
+            return await route.fulfill(status=200, content_type='text/html; charset=utf-8',
+                                       body='<!doctype html><title>Mollie</title><h1>Mollie : page de paiement (simulée)</h1>')
         if url.startswith(f'{API}/rest/v1/rpc/'):
             nom = urlparse(url).path.split('/rpc/')[1]
             ok, sortie = appel_rpc(nom, json.loads(rq.post_data or '{}'), qui, aal)

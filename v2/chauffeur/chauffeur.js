@@ -36,7 +36,8 @@ appliquerTraductions();
 
 const $ = (id) => document.getElementById(id);
 const ETATS = { planifiee: 'Réservation', acceptee: 'En route vers le client', arrivee: 'Arrivé au point de prise en charge', en_cours: 'Client à bord' };
-const MODES = { especes: 'Espèces', carte: 'Carte au terminal', facture_mensuelle: 'Facture mensuelle', solde: 'Solde' };
+const MODES = { especes: 'Espèces', carte: 'Carte au terminal', facture_mensuelle: 'Facture mensuelle', solde: 'Portefeuille du client',
+  virement: 'Virement bancaire' };
 const etat = {
   profil: null, fiche: null, enLigne: false, gps: null,
   carte: null, repere: null, audio: null,
@@ -115,6 +116,8 @@ async function demarrer() {
   }
   majBascule();
 
+  // Gains du jour (dans l'angle) : un appui ouvre l'onglet Revenus
+  $('pastille-gains').addEventListener('click', (e) => { e.preventDefault(); ouvrirOnglet('revenus'); });
   await Promise.all([chargerJour(), chargerMesCourses(), chargerReservations()]);
   abonner();
   verifierDemandes();
@@ -455,6 +458,13 @@ async function chargerJour() {
   const ligne = (data || [])[0];
   $('courses-jour').textContent = ligne ? ligne.courses : 0;
   $('ca-jour').textContent = euros(ligne ? Number(ligne.chiffre_affaires) + Number(ligne.attente) : 0);
+  // Dans l'angle : ce que la journée a rapporté, pourboires compris
+  const pourboires = ligne ? Number(ligne.pourboires) : 0;
+  const gains = ligne ? Number(ligne.chiffre_affaires) + Number(ligne.attente) + pourboires : 0;
+  $('gains-jour').textContent = euros(gains);
+  $('gains-detail').textContent = `${ligne ? ligne.courses : 0} course${ligne && ligne.courses > 1 ? 's' : ''} terminée${ligne && ligne.courses > 1 ? 's' : ''} aujourd'hui`
+    + (pourboires > 0 ? `, dont ${euros(pourboires)} de pourboires` : '');
+  $('bandeau-gains').hidden = false;
   chargerFiche();
 }
 

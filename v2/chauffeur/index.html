@@ -58,6 +58,15 @@
       <span class="cloche-pastille" id="cloche-non-lues" hidden></span>
     </button>
   </header>
+  <!-- Gains du jour, dans l'angle, dès la connexion : courses terminées
+       aujourd'hui, attente et pourboires compris ; un appui ouvre Revenus -->
+  <div class="bandeau-gains" id="bandeau-gains" hidden>
+    <a class="pastille-gains" id="pastille-gains" href="?onglet=revenus" aria-describedby="gains-detail">
+      <span class="pastille-gains-libelle">Aujourd'hui</span>
+      <strong class="pastille-gains-montant" id="gains-jour">0,00 €</strong>
+    </a>
+    <span class="visuellement-cache" id="gains-detail"></span>
+  </div>
 
   <main>
     <!-- Compte qui n'est pas (ou plus) chauffeur en service : candidature
@@ -78,7 +87,7 @@
           <button type="button" class="bouton bouton-secondaire bouton-large" id="activer-son" hidden>Activer le son des demandes</button>
           <dl class="chiffres">
             <div><dt>Courses aujourd'hui</dt><dd id="courses-jour">0</dd></div>
-            <div><dt>Chiffre du jour</dt><dd id="ca-jour">0,00 €</dd></div>
+            <div><dt>Chiffre du jour, hors pourboires</dt><dd id="ca-jour">0,00 €</dd></div>
             <div><dt>Note</dt><dd id="note">—</dd></div>
             <div><dt>Acceptation</dt><dd id="acceptation">—</dd></div>
           </dl>

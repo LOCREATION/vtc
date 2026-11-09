@@ -40,8 +40,60 @@
 /* Sous-titre dans un bloc (« Derniers mouvements », « Codes promo ») */
 .sous-titre-compte { margin: 6px 0 0; font-size: 18px; font-weight: 700; }
 
-/* Mon solde */
-.solde-montant { margin: 0; font: 700 34px/1.1 var(--police-titre); letter-spacing: 0.01em; }
+/* Mon portefeuille : solde, disponible, reste dû */
+.solde-montant { margin: 0; font: 700 34px/1.1 var(--police-titre); letter-spacing: 0.01em; font-variant-numeric: tabular-nums; }
+.portefeuille-resume { display: grid; gap: 4px; }
+.portefeuille-resume .aide-client, .portefeuille-resume .alerte { margin: 0; }
+#compte-recharger { display: grid; gap: 12px; justify-items: start; scroll-margin-top: 12px; }
+
+/* Résultat d'une recharge (retour de Mollie) */
+.recharge-etat {
+  display: flex; align-items: center; gap: 10px; margin: 0; padding: 12px 14px; border-radius: var(--rayon-champ);
+  background: #E8EEF8; border-left: 5px solid var(--nuit-2); font-weight: 600;
+}
+.recharge-etat[hidden] { display: none; }
+.recharge-etat[data-ton='succes'] { background: #E3F2E8; border-left-color: var(--vert); color: #124D2A; }
+.recharge-etat[data-ton='erreur'] { background: #FCEDEC; border-left-color: var(--rouge); color: #7E1B15; }
+.recharge-etat .roue {
+  width: 18px; height: 18px; flex: none; border-radius: 50%; border: 3px solid rgba(27, 58, 107, 0.25);
+  border-top-color: var(--nuit-2); animation: recharge-roue 0.8s linear infinite;
+}
+@keyframes recharge-roue { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .recharge-etat .roue { animation: none; } }
+
+/* Formulaire de recharge : montants, sécurité du paiement, bouton Mollie */
+.recharge-formulaire {
+  display: grid; gap: 14px; width: 100%; padding: 16px; border-radius: var(--rayon-champ);
+  background: #F7F9FC; border: 1px solid var(--trait);
+}
+.recharge-formulaire[hidden] { display: none; }
+.recharge-formulaire h3 { margin: 0; }
+.recharge-montants { display: grid; gap: 10px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.pastilles-montant { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.pastille-montant {
+  min-height: 48px; padding: 0 6px; border-radius: var(--rayon-champ); border: 1.5px solid var(--trait);
+  background: var(--blanc); color: var(--nuit); font: 700 18px var(--police-titre); cursor: pointer;
+}
+.pastille-montant:hover { border-color: var(--nuit); }
+.pastille-montant[aria-pressed='true'] { background: var(--nuit); border-color: var(--nuit); color: var(--blanc); }
+.pastille-montant:focus-visible { outline: 3px solid var(--or); outline-offset: 2px; }
+.recharge-securite {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; padding: 12px 14px;
+  border-radius: var(--rayon-champ); background: var(--blanc); border: 1px solid #CFE3D6;
+}
+.recharge-cadenas { color: var(--vert); margin-top: 2px; }
+.recharge-securite-titre { margin: 0 0 4px; font-weight: 700; color: #124D2A; }
+.recharge-securite ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 15px; color: var(--gris); }
+.recharge-actions { display: grid; gap: 10px; }
+.recharge-actions .bouton-secondaire { justify-self: start; }
+
+/* Mes recharges : état de chacune */
+.etat-recharge { justify-self: start; padding: 1px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; background: #E8EEF8; color: var(--nuit-2); }
+.etat-recharge[data-statut='payee'] { background: #DDF3E5; color: var(--vert); }
+.etat-recharge[data-statut='echouee'] { background: #FBE3E1; color: var(--rouge); }
+.etat-recharge[data-statut='annulee'], .etat-recharge[data-statut='expiree'] { background: #EEF1F5; color: var(--gris); }
+#compte-recharges .mouvement-client[data-statut='payee'] .mouvement-montant { color: var(--vert); }
+#compte-recharges .mouvement-client:not([data-statut='payee']) .mouvement-montant { color: var(--gris); }
 
 /* Mouvements du solde, remises des codes promo */
 .mouvements-client { list-style: none; margin: 0; padding: 0; display: grid; }

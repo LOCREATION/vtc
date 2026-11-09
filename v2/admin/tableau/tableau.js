@@ -2,9 +2,13 @@
 // LOC RÉACTION S.A.S — Version 2
 // Administration : tableau de bord
 // -----------------------------------------------------------------------------
-// Deux lectures (fonctions serveur réservées à l'administration) :
+// Trois lectures (fonctions serveur réservées à l'administration) :
 //   - admin_tableau_de_bord : chiffres, statuts, série de 14 jours, alertes ;
-//   - admin_dispatch : positions des chauffeurs et courses actives (carte).
+//   - admin_dispatch : positions des chauffeurs et courses actives (carte) ;
+//   - admin_paiements_resume : portefeuilles des clients, recharges Mollie,
+//     virements et paiements sur place à recevoir, payé ce mois-ci par mode
+//     (barre de répartition) ; alerte si Mollie est encore en mode test.
+//     Une erreur de cette lecture masque son bloc sans gêner le reste.
 // Mise à jour à chaque changement de course ou de position (temps réel), et
 // toutes les minutes au cas où le temps réel serait coupé.
 // =============================================================================
@@ -41,9 +45,10 @@ ouvrirAdministration({ module: 'tableau' }).then(async () => {
 });
 
 async function charger() {
-  const [tdb, dispatch] = await Promise.all([
+  const [tdb, dispatch, paiements] = await Promise.all([
     supabase.rpc('admin_tableau_de_bord'),
-    supabase.rpc('admin_dispatch')
+    supabase.rpc('admin_dispatch'),
+    supabase.rpc('admin_paiements_resume')
   ]);
   if (tdb.error || dispatch.error) {
     afficherMessage(messageErreurAdmin(tdb.error || dispatch.error), 'erreur');
@@ -52,6 +57,7 @@ async function charger() {
   const d = tdb.data;
   afficherChiffres(d);
   afficherStatuts(d.statuts || {});
+  afficherPaiements(paiements.error ? null : paiements.data);
   afficherAlertes(d.alertes || []);
   afficherCarte(dispatch.data);
   afficherGraphique(d.serie || []);
@@ -62,8 +68,8 @@ async function charger() {
 // ---------------------------------------------------------------------------
 // Chiffres clés
 // ---------------------------------------------------------------------------
-function tuile(libelle, valeur, detail) {
-  return el('div', { classe: 'chiffre-cle' },
+function tuile(libelle, valeur, detail, classe = null) {
+  return el('div', { classe: `chiffre-cle${classe ? ` ${classe}` : ''}` },
     el('dt', { texte: libelle }),
     el('dd', { texte: valeur }),
     detail ? el('dd', { classe: 'detail', texte: detail }) : null);
@@ -77,12 +83,66 @@ function afficherChiffres(d) {
   const j = d.jour, s = d.sept_jours, m = d.mois, c = d.chauffeurs;
   $('chiffres').replaceChildren(
     tuile('Aujourd\'hui', euros(j.chiffre_affaires),
-      `${pluriel(j.courses_terminees, 'course terminée', 'courses terminées')}${j.annulations ? ` · ${pluriel(j.annulations, 'annulation', 'annulations')}` : ''}`),
+      `${pluriel(j.courses_terminees, 'course terminée', 'courses terminées')}${j.annulations ? ` · ${pluriel(j.annulations, 'annulation', 'annulations')}` : ''}`,
+      'chiffre-vedette'),
     tuile('7 derniers jours', euros(s.chiffre_affaires), pluriel(s.courses_terminees, 'course', 'courses')),
     tuile('Ce mois-ci', euros(m.chiffre_affaires),
       `${pluriel(m.courses_terminees, 'course', 'courses')}${Number(m.pourboires) > 0 ? ` · ${euros(m.pourboires)} de pourboires` : ''}`),
     tuile('Chauffeurs en ligne', `${c.en_ligne} / ${c.valides}`,
       c.occupes ? `${pluriel(c.occupes, 'en course', 'en course')}` : (c.valides ? 'aucun en course' : 'aucun chauffeur validé')));
+}
+
+// ---------------------------------------------------------------------------
+// Paiements et portefeuilles
+// ---------------------------------------------------------------------------
+// Modes de paiement de la barre (couleurs : tableau.css, data-mode). La
+// légende dit tout en texte : la couleur n'est jamais la seule information.
+const MODES_BARRE = [
+  { code: 'especes', libelle: 'Espèces' },
+  { code: 'carte', libelle: 'Carte au terminal' },
+  { code: 'solde', libelle: 'Portefeuille' },
+  { code: 'virement', libelle: 'Virement' },
+  { code: 'facture_mensuelle', libelle: 'Facture mensuelle' }
+];
+
+function afficherPaiements(p) {
+  $('bloc-paiements').hidden = !p;
+  if (!p) return;
+  const pf = p.portefeuilles, r = p.recharges, a = p.a_recevoir;
+  $('alerte-mollie-test').hidden = !p.mode_test;
+  const tonVirements = a.virements_7_jours ? 'chiffre-rouge' : (Number(a.virements) > 0 ? 'chiffre-or' : null);
+  $('chiffres-paiements').replaceChildren(
+    tuile('Portefeuilles des clients', euros(pf.total), pf.comptes ? pluriel(pf.comptes, 'client avec un solde', 'clients avec un solde') : 'aucun solde'),
+    tuile('Recharges ce mois-ci', euros(r.mois),
+      `${pluriel(r.nb_mois, 'recharge', 'recharges')}${Number(r.jour) > 0 ? ` · ${euros(r.jour)} aujourd'hui` : ''}`),
+    tuile('Virements à recevoir', euros(a.virements),
+      a.nb_virements ? `${pluriel(a.nb_virements, 'virement attendu', 'virements attendus')}${a.virements_7_jours ? ` · ${a.virements_7_jours} depuis plus de 7 jours` : ''}`
+        : 'aucun virement attendu', tonVirements),
+    tuile('À encaisser sur place', euros(a.sur_place),
+      [a.nb_sur_place ? pluriel(a.nb_sur_place, 'paiement en espèces ou par carte', 'paiements en espèces ou par carte') : 'rien à encaisser',
+        Number(a.portefeuille) > 0 ? `reste dû aux portefeuilles ${euros(a.portefeuille)}` : null].filter(Boolean).join(' · '),
+      Number(a.sur_place) > 0 || Number(a.portefeuille) > 0 ? 'chiffre-or' : null));
+
+  // Répartition du payé ce mois-ci
+  const paye = p.paye_mois;
+  const total = Number(paye.total) || 0;
+  const modes = MODES_BARRE.map((m) => ({ ...m, montant: Number(paye[m.code]) || 0 })).filter((m) => m.montant > 0);
+  $('barre-modes').replaceChildren(...modes.map((m) => {
+    const part = el('span', { classe: 'barre-mode', dataset: { mode: m.code } });
+    part.style.flexGrow = String(m.montant);            // largeur proportionnelle au montant
+    return part;
+  }));
+  $('barre-modes').hidden = !total;
+  $('barre-modes').setAttribute('aria-label', total
+    ? `Payé ce mois-ci : ${euros(total)}, dont ${modes.map((m) => `${m.libelle.toLowerCase()} ${euros(m.montant)}`).join(', ')}`
+    : 'Rien de payé ce mois-ci');
+  $('legende-modes').replaceChildren(...(total
+    ? modes.map((m) => el('li', {},
+      el('span', { classe: 'pastille-mode', dataset: { mode: m.code }, 'aria-hidden': 'true' }),
+      el('span', { classe: 'legende-libelle', texte: m.libelle }),
+      el('strong', { texte: euros(m.montant) }),
+      el('span', { classe: 'legende-part', texte: `${Math.round((m.montant / total) * 100)} %` })))
+    : [el('li', { classe: 'vide-admin', texte: 'Rien de payé ce mois-ci pour le moment.' })]));
 }
 
 // ---------------------------------------------------------------------------

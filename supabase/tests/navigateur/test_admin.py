@@ -318,7 +318,7 @@ async def courses(nav):
     # Fiche : course terminée de la veille des essais SQL (paiement à encaisser)
     id_course = valeur("""select c.id from public.courses c join public.paiements p on p.course_id = c.id
                           where c.statut = 'terminee' and p.statut = 'a_encaisser' and p.nature = 'course'
-                            and p.mode <> 'facture_mensuelle' order by c.terminee_le desc limit 1""")
+                            and p.mode in ('especes', 'carte') order by c.terminee_le desc limit 1""")
     await page.goto(SITE + f'admin/courses/?id={id_course}')
     await page.wait_for_selector('#titre-etapes')
     verifier('Commande du client' in await page.inner_text('.chronologie'), 'fiche : étapes horodatées')
@@ -1076,7 +1076,7 @@ async def finances(nav):
              'module Finances ouvert, signalé dans le menu')
 
     # 1. À encaisser : cases de chiffres et liste conformes à la base
-    attendu = valeur("select count(*) || '|' || coalesce(sum(montant), 0) from public.paiements where statut = 'a_encaisser' and mode <> 'facture_mensuelle'").split('|')
+    attendu = valeur("select count(*) || '|' || coalesce(sum(montant), 0) from public.paiements where statut = 'a_encaisser' and mode in ('especes', 'carte')").split('|')
     tuiles = await page.locator('#chiffres-encaissements .chiffre-cle').all_inner_texts()
     verifier(len(tuiles) == 4 and attendu[1].replace('.', ',') in tuiles[0].replace(' ', ' ').replace(' ', '')
              and 'depuis plus de 24 h' in tuiles[0], f'case « À encaisser » : {attendu[1]} € sur place, dont un paiement de plus de 24 h')
@@ -1291,6 +1291,90 @@ def euros_fr(v):
 def texte(s):
     """Texte affiché, espaces insécables remplacées (montants en euros à la française)."""
     return s.replace(' ', ' ').replace(' ', ' ')
+
+
+async def portefeuilles(nav):
+    """Tableau de bord, bloc « Paiements et portefeuilles » : chiffres
+    conformes à la base, répartition du payé par mode (légende en texte),
+    alerte du mode test de Mollie. Finances > Portefeuilles : chiffres,
+    recharges (état, moyen, identifiant Mollie, essai), soldes ; supprimer :
+    recharge payée (pièce comptable) et recharge chez Mollie expliquées et
+    gardées, recharge échouée supprimée."""
+    print('Paiements et portefeuilles')
+    KARIM = valeur("select id from public.profils where prenom = 'Karim' and nom = 'Benali'")
+
+    def recharge(montant, statut):
+        """Recharge de Karim, paiement Mollie (essai) rattaché, puis l'état donné par « Mollie »."""
+        ok, sortie = appel_rpc('recharge_demander', {'p_montant': montant}, KARIM)
+        assert ok, sortie
+        r = json.loads(sortie)
+        tr = 'tr_admin' + r['id'].replace('-', '')[:12]
+        systeme(f"select public.recharge_mollie_ouverte('{r['id']}', '{tr}', 'test');")
+        if statut != 'open':
+            systeme(f"select public.recharge_mollie_etat('{r['id']}', '{tr}', '{statut}', 'test', {montant}, 'EUR', 'applepay');")
+        return {**r, 'mollie_id': tr}
+
+    payee = recharge(40, 'paid')
+    attente = recharge(15, 'open')
+    echouee = recharge(12, 'failed')
+
+    ctx, page, _ = await entrer(nav, mobile=True)
+    await page.goto(SITE + 'admin/')
+    await page.wait_for_selector('#bloc-paiements:not([hidden]) #chiffres-paiements .chiffre-cle')
+    resume = json.loads(appel_rpc('admin_paiements_resume', {}, ADMIN)[1])
+    tuiles = [texte(t) for t in await page.locator('#chiffres-paiements .chiffre-cle').all_inner_texts()]
+    verifier(len(tuiles) == 4 and tuiles[0].startswith('Portefeuilles des clients') and euros_fr(resume['portefeuilles']['total']) in tuiles[0]
+             and euros_fr(resume['recharges']['mois']) in tuiles[1] and euros_fr(resume['a_recevoir']['virements']) in tuiles[2]
+             and euros_fr(resume['a_recevoir']['sur_place']) in tuiles[3],
+             f"bloc « Paiements et portefeuilles » : portefeuilles {euros_fr(resume['portefeuilles']['total'])}, recharges du mois "
+             f"{euros_fr(resume['recharges']['mois'])}, virements et paiements sur place à recevoir, comme dans la base")
+    modes = [m for m in ('especes', 'carte', 'solde', 'virement', 'facture_mensuelle') if float(resume['paye_mois'][m]) > 0]
+    legende = texte(await page.inner_text('#legende-modes'))
+    verifier(await page.locator('#legende-modes li').count() == len(modes) and await page.locator('#barre-modes .barre-mode').count() == len(modes)
+             and all(euros_fr(resume['paye_mois'][m]) in legende for m in modes),
+             f'répartition du payé ce mois-ci : {len(modes)} mode(s), montants en texte dans la légende')
+    verifier(await page.is_visible('#alerte-mollie-test') and 'mode test' in await page.inner_text('#alerte-mollie-test'),
+             'Mollie en mode test : alerte (remplacer la clé de test par la clé live)')
+    await page.evaluate("document.getElementById('bloc-paiements').scrollIntoView({ block: 'start' })")
+    await page.screenshot(path=f'{CAPTURES}/admin-tableau-paiements-telephone.png')
+    await page.evaluate("window.scrollTo(0, 0)")
+    await page.screenshot(path=f'{CAPTURES}/admin-tableau-vedette-telephone.png')
+
+    # Finances > Portefeuilles
+    await page.goto(SITE + 'admin/finances/?vue=portefeuilles')
+    await page.wait_for_selector('#liste-recharges tbody tr')
+    donnees = json.loads(appel_rpc('admin_portefeuilles', {'p_debut': valeur("select (now() at time zone 'Europe/Paris')::date"),
+                                                           'p_fin': valeur("select (now() at time zone 'Europe/Paris')::date")}, ADMIN)[1])
+    tuiles = [texte(t) for t in await page.locator('#chiffres-portefeuilles .chiffre-cle').all_inner_texts()]
+    verifier(len(tuiles) == 4 and euros_fr(donnees['soldes']['total']) in tuiles[0] and 'Chez Mollie' in tuiles[2]
+             and await page.get_attribute('#onglets [aria-selected="true"]', 'aria-selected') == 'true'
+             and await page.inner_text('#onglets [aria-selected="true"]') == 'Portefeuilles',
+             f"onglet Portefeuilles : {euros_fr(donnees['soldes']['total'])} dans les portefeuilles, recharges, chez Mollie, reste dû")
+    ligne = texte(await page.locator('#liste-recharges tbody tr', has_text=payee['numero']).inner_text())
+    verifier('Payée' in ligne and 'Apple Pay' in ligne and payee['mollie_id'] in ligne and 'essai (mode test)' in ligne
+             and euros_fr(40) in ligne and 'Karim' in ligne,
+             f"recharge {payee['numero']} : payée, Apple Pay, identifiant Mollie, essai, client")
+    await page.screenshot(path=f'{CAPTURES}/admin-finances-portefeuilles-telephone.png', full_page=True)
+
+    # Supprimer : payée ou chez Mollie, expliqué et gardé ; échouée, supprimée
+    await page.get_by_role('button', name=f"Supprimer la recharge {payee['numero']}").click()
+    await page.wait_for_selector('#fenetre-conservation')
+    verifier('pièces comptables' in await page.inner_text('#fenetre-conservation'), 'recharge payée : la loi impose de la garder (10 ans)')
+    await page.click('#conservation-compris')
+    await page.get_by_role('button', name=f"Supprimer la recharge {attente['numero']}").click()
+    await page.wait_for_selector('#fenetre-conservation')
+    verifier('peut encore aboutir' in await page.inner_text('#fenetre-conservation'), 'recharge chez Mollie : son paiement peut encore aboutir, gardée')
+    await page.click('#conservation-compris')
+    await page.get_by_role('button', name=f"Supprimer la recharge {echouee['numero']}").click()
+    await page.wait_for_selector('#fenetre-suppression')
+    await page.click('#suppression-confirmer')
+    await page.wait_for_selector('#fenetre-suppression', state='detached')
+    verifier(valeur(f"select count(*) from public.recharges where id in ('{payee['id']}', '{attente['id']}', '{echouee['id']}')") == '2'
+             and valeur(f"select count(*) from prive.journal where action = 'suppression_recharge' and ligne_id = '{echouee['id']}'") == '1',
+             'recharge échouée supprimée (journal) ; payée et en attente gardées')
+    await ctx.close()
+    # Fin de l'essai : la recharge en attente se ferme (expirée) ; le solde de Karim garde ses 40 €
+    systeme(f"select public.recharge_mollie_etat('{attente['id']}', '{attente['mollie_id']}', 'expired', 'test', 15, 'EUR', null);")
 
 
 async def plateformes(nav):
@@ -2251,7 +2335,8 @@ async def suppressions(nav):
 
 
 ETAPES = {'porte': porte, 'tableau': tableau_de_bord, 'dispatch': dispatch, 'courses': courses,
-          'clients': clients, 'entreprises': entreprises, 'finances': finances, 'plateformes': plateformes, 'rh': rh,
+          'clients': clients, 'entreprises': entreprises, 'finances': finances, 'portefeuilles': portefeuilles,
+          'plateformes': plateformes, 'rh': rh,
           'support': support, 'marketing': marketing, 'chauffeurs': chauffeurs, 'flotte': flotte, 'tarifs': tarifs,
           'parametres': parametres, 'suppressions': suppressions}
 

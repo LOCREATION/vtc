@@ -8,7 +8,8 @@
 --     prévenu (« Pourboire en espèces », lien vers la course) et confirmation
 --     de l'encaissement par Paul, lue par Claire ;
 --   - par carte au terminal : refusé après 30 minutes, accepté avant (« Pourboire
---     par carte ») ; course payée par le solde : refusé ;
+--     par carte ») ; course payée par le portefeuille : refusé au-delà du
+--     disponible (le détail du portefeuille est dans 28_portefeuille.sql) ;
 --   - sur facture mensuelle (compte professionnel) : refusé après 24 heures ou
 --     sans heure de fin, accepté avant (« Pourboire reçu », lien des revenus) ;
 --     encaissé par l'administration seulement.
@@ -108,7 +109,7 @@ select test.verifier((select especes_chauffeur_id = :'chauffeur1' from public.pa
 
 
 -- #############################################################################
--- 2. PAR CARTE AU TERMINAL : 30 MINUTES ; PAR LE SOLDE : REFUSÉ
+-- 2. PAR CARTE AU TERMINAL : 30 MINUTES ; PORTEFEUILLE : DANS LE DISPONIBLE
 -- #############################################################################
 call test.course_a_bord('carte', null, null) \gset b_
 call test.terminer(:'b_course');
@@ -116,7 +117,7 @@ select numero as b_numero from public.courses where id = :'b_course' \gset
 call test.systeme();
 update public.courses set mode_paiement = 'solde' where id = :'b_course';
 call test.connexion(:'client1');
-select test.doit_echouer(format('select public.ajouter_pourboire(%L, 2)', :'b_course'), 'par le solde arrive dans une prochaine version');
+select test.doit_echouer(format('select public.ajouter_pourboire(%L, 50)', :'b_course'), 'Solde insuffisant pour ce pourboire');
 call test.systeme();
 update public.courses set mode_paiement = 'carte', terminee_le = now() - interval '31 minutes' where id = :'b_course';
 call test.connexion(:'client1');

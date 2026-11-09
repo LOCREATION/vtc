@@ -140,7 +140,22 @@
         <legend class="etiquette" data-i18n="commande.paiement">Paiement</legend>
         <label class="case"><input type="radio" name="paiement" value="especes" checked><span data-i18n="commande.especes">Espèces</span></label>
         <label class="case"><input type="radio" name="paiement" value="carte"><span data-i18n="commande.carte">Carte bancaire, au terminal du chauffeur</span></label>
+        <!-- Portefeuille : affiché avec ce qui est disponible (mon_portefeuille) -->
+        <label class="case" id="choix-solde" hidden>
+          <input type="radio" name="paiement" value="solde">
+          <span class="libelle-paiement"><span data-i18n="commande.solde">Portefeuille</span><span class="detail-paiement" id="solde-disponible"></span></span>
+        </label>
+        <!-- Virement : proposé quand l'IBAN et le BIC de l'entreprise sont saisis -->
+        <label class="case" id="choix-virement" hidden>
+          <input type="radio" name="paiement" value="virement">
+          <span data-i18n="commande.virement">Virement bancaire</span>
+        </label>
         <div id="choix-comptes-pro"></div>
+        <div class="info-paiement" id="info-solde" aria-live="polite" hidden>
+          <p id="info-solde-texte"></p>
+          <a class="bouton bouton-secondaire bouton-petit" id="lien-recharger" href="../compte/#compte-recharger" hidden data-i18n="commande.recharger">Recharger mon portefeuille</a>
+        </div>
+        <p class="info-paiement" id="info-virement" hidden data-i18n="commande.virement_aide">Après la course, réglez la facture par virement : nos coordonnées bancaires sont sur la page de la course.</p>
       </fieldset>
 
       <!-- Code promo -->

@@ -135,6 +135,7 @@
 .chiffre-cle.chiffre-rouge { border-left: 4px solid var(--rouge); }
 .chiffre-cle.chiffre-rouge .valeur { color: var(--rouge); }
 .chiffre-cle.chiffre-or { border-left: 4px solid var(--or); }
+.chiffre-cle.chiffre-vert { border-left: 4px solid var(--vert); }
 /* Case de chiffre qui mène à la liste correspondante */
 a.chiffre-lien { display: grid; color: inherit; text-decoration: none; border-radius: 14px; }
 a.chiffre-lien .chiffre-cle { height: 100%; }
