@@ -3,7 +3,8 @@
 // Administration : finances — remboursements
 // -----------------------------------------------------------------------------
 // Tous les remboursements d'une période : montant, moyen (virement, carte,
-// espèces), motif, paiement remboursé, course, client, avoir, auteur.
+// espèces, portefeuille), motif, paiement remboursé, course, client, avoir,
+// auteur.
 // Un remboursement se fait depuis le paiement : onglet Encaissements, liste
 // « Encaissés », ou fiche de la course (bouton « Rembourser »). Celui d'une
 // course ou de frais d'annulation crée l'avoir qui corrige la facture.
@@ -72,11 +73,13 @@ async function charger() {
   if (error) { $('liste-remboursements').replaceChildren(el('p', { classe: 'alerte', texte: messageErreurAdmin(error) })); return; }
   const t = data.totaux;
   const periode = periodeCourte(filtres.du, filtres.au);
-  $('chiffres-remboursements').replaceChildren(
+  // (une case absente n'est pas passée : replaceChildren(null) écrirait « null »)
+  $('chiffres-remboursements').replaceChildren(...[
     tuile('Remboursé', euros(t.montant), `${pluriel(data.total, 'remboursement', 'remboursements')} · ${periode}`, Number(t.montant) > 0 ? 'or' : null),
     tuile('Par virement', euros(t.virement), 'depuis le compte bancaire'),
     tuile('Sur la carte', euros(t.carte), 'depuis le terminal de paiement'),
-    tuile('En espèces', euros(t.especes), 'depuis la caisse du bureau'));
+    tuile('En espèces', euros(t.especes), 'depuis la caisse du bureau'),
+    Number(t.solde) > 0 ? tuile('Sur le portefeuille', euros(t.solde), 'recrédité au client') : null].filter(Boolean));
   $('periode-remboursements').textContent = `Période : ${periodeLisible(filtres.du, filtres.au)}`;
   $('liste-remboursements').replaceChildren(tableau({
     colonnes: [

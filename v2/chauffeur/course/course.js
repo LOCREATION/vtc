@@ -32,14 +32,21 @@ appliquerTraductions();
 
 const $ = (id) => document.getElementById(id);
 const idCourse = new URLSearchParams(location.search).get('id');
-const MODES = { especes: 'Espèces', carte: 'Carte bancaire, au terminal', facture_mensuelle: 'Facture mensuelle du compte professionnel', solde: 'Solde' };
+const MODES = { especes: 'Espèces', carte: 'Carte bancaire, au terminal', facture_mensuelle: 'Facture mensuelle du compte professionnel',
+  solde: 'Portefeuille du client', virement: 'Virement bancaire du client' };
+// Portefeuille et virement : le chauffeur n'encaisse rien
+const RIEN_A_ENCAISSER = {
+  solde: 'Payé avec le portefeuille du client : rien à encaisser.',
+  virement: 'Le client règle par virement : rien à encaisser.'
+};
 // Pourboire : comment il se règle, puis ce qu'il est devenu s'il n'est ni à
 // encaisser ni encaissé
 const POURBOIRE_MODES = {
   especes: 'En espèces : le client vous le remet.',
   carte: 'Par carte : à encaisser sur votre terminal.',
   facture_mensuelle: 'Sur la facture mensuelle du compte professionnel : encaissé par l\'administration.',
-  solde: 'Par le solde du client.'
+  solde: 'Payé avec le portefeuille du client.',
+  virement: 'Réglé par virement avec la course : encaissé par l\'administration.'
 };
 const POURBOIRE_SUITES = { echoue: 'Déclaré non réglé.', rembourse: 'Remboursé au client.', annule: 'Annulé.' };
 // Étape suivante selon le statut : [titre, texte, bouton, étape envoyée à la base]
@@ -186,16 +193,24 @@ function afficherAttente() {
 function afficherPaiement() {
   const c = etat.course;
   const paiement = etat.paiements.find((p) => p.nature === 'course');
+  // Portefeuille qui ne suffisait plus : la course est en deux paiements
+  // (prélevé, et reste dû prélevé à la recharge suivante) ; le total s'affiche
+  const totalCourse = etat.paiements.filter((p) => p.nature === 'course')
+    .reduce((total, p) => total + Math.round(Number(p.montant) * 100), 0) / 100;
   const pourboire = etat.paiements.find((p) => p.nature === 'pourboire');
   $('bloc-paiement').hidden = !(c.statut === 'terminee' && (paiement || pourboire));
 
   // Paiement de la course (absent si la course ne coûte rien, code promo)
   $('montant-encaisser').hidden = !paiement;
   $('mode-encaisser').hidden = !paiement;
-  $('confirmer-encaissement').hidden = !(paiement && paiement.statut === 'a_encaisser' && paiement.mode !== 'facture_mensuelle');
-  $('encaisse').hidden = !(paiement && paiement.statut === 'encaisse');
+  const aDistance = !!paiement && ['solde', 'virement'].includes(paiement.mode);
+  $('confirmer-encaissement').hidden = !(paiement && paiement.statut === 'a_encaisser'
+    && !['facture_mensuelle', 'solde', 'virement'].includes(paiement.mode));
+  $('encaisse').hidden = !(paiement && paiement.statut === 'encaisse' && !aDistance);
+  $('rien-a-encaisser').hidden = !aDistance;
+  $('rien-a-encaisser').textContent = aDistance ? RIEN_A_ENCAISSER[paiement.mode] : '';
   if (paiement) {
-    $('montant-encaisser').textContent = euros(paiement.montant);
+    $('montant-encaisser').textContent = euros(totalCourse);
     $('mode-encaisser').textContent = MODES[paiement.mode] || paiement.mode;
     $('confirmer-encaissement').dataset.paiement = paiement.id;
   }
@@ -206,10 +221,11 @@ function afficherPaiement() {
   const especes = pourboire.mode === 'especes';
   $('montant-pourboire').textContent = `Pourboire : ${euros(pourboire.montant)}`;
   $('mode-pourboire').textContent = POURBOIRE_SUITES[pourboire.statut] || POURBOIRE_MODES[pourboire.mode] || pourboire.mode;
-  $('confirmer-pourboire').hidden = !(pourboire.statut === 'a_encaisser' && pourboire.mode !== 'facture_mensuelle');
+  $('confirmer-pourboire').hidden = !(pourboire.statut === 'a_encaisser'
+    && !['facture_mensuelle', 'solde', 'virement'].includes(pourboire.mode));
   $('confirmer-pourboire').dataset.paiement = pourboire.id;
   $('confirmer-pourboire').textContent = especes ? 'Pourboire reçu' : 'Pourboire encaissé';
-  $('pourboire-encaisse').hidden = pourboire.statut !== 'encaisse';
+  $('pourboire-encaisse').hidden = pourboire.statut !== 'encaisse' || ['solde', 'virement'].includes(pourboire.mode);
   $('pourboire-encaisse').textContent = especes ? 'Pourboire reçu.' : 'Pourboire encaissé.';
 }
 

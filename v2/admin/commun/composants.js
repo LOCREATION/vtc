@@ -154,7 +154,7 @@ export const STATUTS_COURSE = {
 };
 
 export const MODES_PAIEMENT = {
-  especes: 'Espèces', carte: 'Carte au terminal', solde: 'Solde', facture_mensuelle: 'Facture mensuelle'
+  especes: 'Espèces', carte: 'Carte au terminal', solde: 'Portefeuille', virement: 'Virement', facture_mensuelle: 'Facture mensuelle'
 };
 
 // Paiements : statut, nature ; moyens de remboursement
@@ -163,7 +163,19 @@ export const STATUTS_PAIEMENT = {
   echoue: { libelle: 'Impayé', ton: 'rouge' }, rembourse: { libelle: 'Remboursé', ton: 'gris' }, annule: { libelle: 'Annulé', ton: 'gris' }
 };
 export const NATURES_PAIEMENT = { course: 'Course', pourboire: 'Pourboire', frais_annulation: 'Frais d\'annulation' };
-export const MODES_REMBOURSEMENT = { virement: 'Virement', carte: 'Sur la carte', especes: 'Espèces' };
+export const MODES_REMBOURSEMENT = { virement: 'Virement', carte: 'Sur la carte', especes: 'Espèces', solde: 'Sur le portefeuille' };
+
+// Recharges du portefeuille (Mollie) : état et moyen de paiement
+export const STATUTS_RECHARGE = {
+  creee: { libelle: 'Sans paiement', ton: 'gris' }, ouverte: { libelle: 'Chez Mollie', ton: 'or' },
+  payee: { libelle: 'Payée', ton: 'vert' }, echouee: { libelle: 'Échouée', ton: 'rouge' },
+  annulee: { libelle: 'Annulée', ton: 'gris' }, expiree: { libelle: 'Expirée', ton: 'gris' }
+};
+export const METHODES_MOLLIE = {
+  creditcard: 'Carte bancaire', applepay: 'Apple Pay', googlepay: 'Google Pay', paypal: 'PayPal', bancontact: 'Bancontact',
+  ideal: 'iDEAL', banktransfer: 'Virement (Mollie)', kbc: 'KBC/CBC', belfius: 'Belfius', eps: 'EPS', przelewy24: 'Przelewy24',
+  klarna: 'Klarna', paybybank: 'Paiement par banque', twint: 'TWINT', trustly: 'Trustly', riverty: 'Riverty', satispay: 'Satispay'
+};
 export const ORIGINES_AVOIR = { remboursement: 'Remboursement', annulation: 'Somme annulée' };
 
 export const TYPES_COURSE = { immediate: 'Immédiate', planifiee: 'Réservation', mise_a_disposition: 'Mise à disposition' };
@@ -660,7 +672,7 @@ export const JOURNAL_TABLES = {
   constantes_paie: 'Constantes de paie', parametres_paie: 'Taux de cotisation', bulletins: 'Bulletins de paie', absences: 'Absences',
   temps_travail: 'Temps de travail', releves_plateformes: 'Relevés des plateformes', campagnes: 'Campagnes',
   avoirs: 'Avoirs', remises_especes: 'Remises d\'espèces', demandes: 'Demandes d\'aide', messages: 'Messages',
-  parrainages: 'Parrainages'
+  parrainages: 'Parrainages', recharges: 'Recharges du portefeuille'
 };
 export const JOURNAL_ACTIONS = {
   INSERT: 'Création', UPDATE: 'Modification', DELETE: 'Suppression',
@@ -674,7 +686,8 @@ export const JOURNAL_ACTIONS = {
   suppression_code_promo: 'Code promo supprimé', suppression_campagne: 'Notification groupée supprimée',
   suppression_parrainage: 'Parrainage supprimé', suppression_demande: 'Demande d\'aide supprimée', suppression_message: 'Message supprimé',
   suppression_salarie: 'Salarié supprimé', suppression_compte_pro: 'Compte professionnel supprimé', suppression_zone: 'Lieu supprimé',
-  suppression_categorie: 'Catégorie supprimée', suppression_tarif: 'Tarif supprimé', suppression_forfait: 'Forfait supprimé'
+  suppression_categorie: 'Catégorie supprimée', suppression_tarif: 'Tarif supprimé', suppression_forfait: 'Forfait supprimé',
+  suppression_recharge: 'Recharge supprimée'
 };
 export const JOURNAL_ROLES = { admin: 'administration', chauffeur: 'chauffeur', client: 'client' };
 

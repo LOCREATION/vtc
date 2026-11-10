@@ -46,6 +46,17 @@
 .pastille-etat[data-en-ligne='true'] { background: #13432A; }
 .pastille-etat[data-en-ligne='true']::before { background: #4ADE80; }
 
+/* Gains du jour : pastille dans l'angle, sous la barre du haut */
+.bandeau-gains { display: flex; justify-content: flex-end; padding: 0 var(--marge); max-width: var(--largeur); margin: -6px auto 8px; }
+.bandeau-gains[hidden] { display: none; }
+.pastille-gains {
+  display: inline-flex; align-items: baseline; gap: 8px; min-height: 40px; padding: 8px 14px; border-radius: var(--rayon-pastille);
+  background: var(--surface-2); border: 1px solid rgba(200, 168, 75, 0.45); color: var(--blanc); text-decoration: none;
+}
+.pastille-gains:hover, .pastille-gains:focus-visible { border-color: var(--or); color: var(--blanc); }
+.pastille-gains-libelle { font-size: 14px; color: #C9D2E3; }
+.pastille-gains-montant { font: 700 20px/1 var(--police-titre); color: #E2C46F; font-variant-numeric: tabular-nums; }
+
 /* Mise en page : une colonne sur téléphone, carte à gauche sur ordinateur */
 .espace-chauffeur { display: grid; gap: 12px; padding: 0 var(--marge) 40px; max-width: var(--largeur); margin: 0 auto; }
 @media (min-width: 960px) {

@@ -14,7 +14,8 @@ export const TYPES_COURSE = { immediate: 'Immédiate', planifiee: 'Réservation'
 
 export const MODES_PAIEMENT = {
   especes: 'Espèces', carte: 'Carte bancaire, au terminal',
-  facture_mensuelle: 'Facture mensuelle du compte professionnel', solde: 'Solde du client'
+  facture_mensuelle: 'Facture mensuelle du compte professionnel', solde: 'Portefeuille du client',
+  virement: 'Virement bancaire du client'
 };
 
 export const STATUTS_PAIEMENT = {

@@ -9,7 +9,10 @@
 //   - déclarer impayé (motif obligatoire, la somme reste due) ;
 //   - annuler tout ou partie d'une somme due : la facture est corrigée par un
 //     avoir, le client est prévenu ;
-//   - rembourser (virement, carte, espèces) : avoir automatique ;
+//   - rembourser (virement, carte, espèces ; portefeuille pour un paiement
+//     fait avec lui) : avoir automatique ;
+//   - virement : « Virement reçu » l'enregistre ; portefeuille (reste dû
+//     quand le solde ne suffisait plus) : « Prélever sur le portefeuille » ;
 //   - paiement sur facture mensuelle : il se règle avec le relevé de
 //     l'entreprise (lien vers la fiche de l'entreprise).
 //   - supprimer : seulement un paiement jamais encaissé et sans facture
@@ -60,8 +63,10 @@ export function actionsPaiement(p, recharger) {
         texte: p.releve_mois ? `Relevé ${avecDe(moisLisible(p.releve_mois))}` : 'Relevé de l\'entreprise' }));
     }
   } else if (du) {
-    actions.push(bouton(p.statut === 'echoue' ? 'Encaisser (réglé depuis)' : 'Confirmer l\'encaissement',
-      () => confirmerEncaissement(p, recharger), 'bouton-principal'));
+    const libelle = p.statut === 'echoue' ? 'Encaisser (réglé depuis)'
+      : p.mode === 'virement' ? 'Virement reçu'
+        : p.mode === 'solde' ? 'Prélever sur le portefeuille' : 'Confirmer l\'encaissement';
+    actions.push(bouton(libelle, () => confirmerEncaissement(p, recharger), 'bouton-principal'));
   }
   if (p.statut === 'a_encaisser' && p.mode !== 'facture_mensuelle') {
     actions.push(bouton('Déclarer impayé', () => declarerImpaye(p, recharger)));
@@ -122,6 +127,20 @@ export async function confirmerEncaissement(p, recharger) {
     });
     if (!fait) return;
     auBureau = choix === 'bureau';
+  } else if (p.mode === 'virement') {
+    const ok = await confirmer({
+      titre: `Enregistrer le virement de ${euros(p.montant)} ?`,
+      texte: `Virement pour ${quoi(p)} : enregistrez-le seulement s'il apparaît sur le compte bancaire de l'entreprise.`,
+      libelle: 'Virement reçu'
+    });
+    if (!ok) return;
+  } else if (p.mode === 'solde') {
+    const ok = await confirmer({
+      titre: `Prélever ${euros(p.montant)} sur le portefeuille ?`,
+      texte: `Reste dû pour ${quoi(p)} : la somme est prélevée sur le portefeuille du client, si son solde suffit (sinon, elle l'est à sa prochaine recharge).`,
+      libelle: 'Prélever'
+    });
+    if (!ok) return;
   } else {
     const ok = await confirmer({
       titre: `Confirmer l'encaissement de ${euros(p.montant)} ?`,
@@ -134,7 +153,8 @@ export async function confirmerEncaissement(p, recharger) {
   if (error) { afficherMessage(messageErreurAdmin(error), 'erreur'); return; }
   afficherMessage(p.mode === 'especes' && !auBureau && p.chauffeur_nom
     ? `Encaissement confirmé : ${euros(p.montant)} à remettre au bureau par ${p.chauffeur_nom}.`
-    : 'Encaissement confirmé.', 'succes');
+    : p.mode === 'virement' ? 'Virement enregistré.'
+      : p.mode === 'solde' ? `${euros(p.montant)} prélevés sur le portefeuille du client.` : 'Encaissement confirmé.', 'succes');
   await recharger();
 }
 
@@ -191,8 +211,9 @@ export async function annulerSomme(p, recharger) {
 export async function rembourserPaiement(p, reste, recharger) {
   const modes = [{ valeur: 'virement', libelle: MODES_REMBOURSEMENT.virement }];
   if (p.mode === 'carte') modes.unshift({ valeur: 'carte', libelle: `${MODES_REMBOURSEMENT.carte} (depuis le terminal de paiement)` });
+  if (p.mode === 'solde') modes.unshift({ valeur: 'solde', libelle: `${MODES_REMBOURSEMENT.solde} (recrédité aussitôt)` });
   modes.push({ valeur: 'especes', libelle: `${MODES_REMBOURSEMENT.especes} (caisse du bureau)` });
-  const parDefaut = p.mode === 'carte' ? 'carte' : p.mode === 'especes' ? 'especes' : 'virement';
+  const parDefaut = p.mode === 'carte' ? 'carte' : p.mode === 'especes' ? 'especes' : p.mode === 'solde' ? 'solde' : 'virement';
   const avecFacture = p.nature !== 'pourboire';
   const fait = await fenetreFormulaire({
     titre: 'Rembourser le client',

@@ -47,6 +47,24 @@
           <ul class="statuts" id="statuts"></ul>
         </section>
 
+        <!-- Paiements et portefeuilles : argent des portefeuilles, recharges
+             Mollie, à recevoir (virements, sur place), payé ce mois-ci par mode -->
+        <section class="carte-admin" id="bloc-paiements" aria-labelledby="titre-paiements" hidden>
+          <div class="carte-entete">
+            <h2 id="titre-paiements">Paiements et portefeuilles</h2>
+            <a class="bouton bouton-secondaire bouton-petit" href="finances/?vue=portefeuilles">Voir les portefeuilles</a>
+          </div>
+          <p class="alerte" id="alerte-mollie-test" hidden>Mollie est en mode test : les recharges sont des essais, aucun vrai
+            paiement n'est encaissé. Avant d'ouvrir aux clients, remplacez dans Supabase (Edge Functions, Secrets) la clé
+            MOLLIE_API_KEY de test par la clé live.</p>
+          <dl class="chiffres-cles" id="chiffres-paiements"></dl>
+          <div class="repartition-modes" id="repartition-modes">
+            <h3 class="repartition-titre" id="titre-repartition">Payé ce mois-ci, par mode</h3>
+            <div class="barre-modes" id="barre-modes" role="img" aria-labelledby="titre-repartition"></div>
+            <ul class="legende-modes" id="legende-modes"></ul>
+          </div>
+        </section>
+
         <div class="grille-2">
           <!-- Alertes -->
           <section class="carte-admin" aria-labelledby="titre-alertes">

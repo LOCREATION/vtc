@@ -7,7 +7,8 @@
 //   - Mes lieux : domicile et travail (adresse cherchée comme à la commande,
 //     précision pour le chauffeur) : raccourcis de l'onglet Accueil ;
 //   - Mes proches : les personnes pour qui commander (proches.js) ;
-//   - Mon solde : montant et derniers mouvements (solde.js) ;
+//   - Mon portefeuille : solde, recharge par Mollie, recharges et derniers
+//     mouvements (solde.js) ;
 //   - Parrainage et codes promo : mon code, mon lien, mes filleuls, code de
 //     mon parrain, codes promo utilisés (parrainage.js) ;
 //   - Compte professionnel : le ou les comptes de son entreprise (lecture
@@ -24,6 +25,7 @@
 //     compte » (donnees.js) ;
 //   - Se déconnecter.
 // Une adresse avec ancre (#compte-lieux, #compte-proches, #compte-solde,
+// #compte-recharger,
 // #compte-parrainage, #compte-pro, #compte-bloc-support, #compte-securite,
 // #compte-notifications, #compte-donnees) amène directement à la section.
 // Lectures : profils, lieux, proches, soldes et écritures, parrainages,

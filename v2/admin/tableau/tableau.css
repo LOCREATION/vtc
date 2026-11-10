@@ -41,3 +41,33 @@
 }
 .bulle-graphique strong { font-size: 16px; }
 .bulle-graphique span { color: #C9D2E3; }
+
+/* Chiffre du jour en vedette : fond bleu nuit, montant en or */
+.chiffre-cle.chiffre-vedette {
+  background: linear-gradient(135deg, var(--nuit) 0%, var(--nuit-2) 100%); border-color: var(--nuit);
+  box-shadow: 0 8px 20px rgba(10, 26, 56, 0.16);
+}
+.chiffre-cle.chiffre-vedette dt, .chiffre-cle.chiffre-vedette dd.detail { color: #C9D2E3; }
+.chiffre-cle.chiffre-vedette dd { color: #E2C46F; }
+
+/* Paiements et portefeuilles */
+#bloc-paiements .alerte { margin: 0; }
+#bloc-paiements .chiffres-cles { margin: 0; }
+.repartition-modes { display: grid; gap: 10px; }
+.repartition-titre { margin: 4px 0 0; font-size: 17px; }
+.barre-modes { display: flex; height: 18px; border-radius: 999px; overflow: hidden; background: var(--bitume); gap: 2px; }
+.barre-modes[hidden] { display: none; }
+.barre-mode { min-width: 6px; flex-basis: 0; }
+.legende-modes { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+@media (min-width: 700px) { .legende-modes { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; } }
+.legende-modes li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 10px; align-items: center; }
+.legende-modes li.vide-admin { display: block; }
+.pastille-mode { width: 12px; height: 12px; border-radius: 3px; }
+[data-mode='especes'] { --couleur-mode: #1A6B3A; }
+[data-mode='carte'] { --couleur-mode: #1B3A6B; }
+[data-mode='solde'] { --couleur-mode: #C8A84B; }
+[data-mode='virement'] { --couleur-mode: #6B4FA0; }
+[data-mode='facture_mensuelle'] { --couleur-mode: #7A8699; }
+.barre-mode, .pastille-mode { background: var(--couleur-mode, var(--gris)); }
+.legende-libelle { color: var(--nuit); }
+.legende-part { color: var(--gris); font-size: 14px; min-width: 3.2em; text-align: right; }

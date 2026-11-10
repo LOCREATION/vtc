@@ -4,8 +4,10 @@
      Espace client : adresse « /client/compte/ » (avec une ancre : #compte-solde,
      #compte-parrainage…)
      Lien des notifications du parrainage (« Parrainage validé », « Bienvenue
-     chez LOC RÉACTION ») : renvoie à l'onglet Compte de l'espace client, à la
-     section indiquée, la langue (?lang=en) gardée.
+     chez LOC RÉACTION ») et du portefeuille : renvoie à l'onglet Compte de
+     l'espace client, à la section indiquée, la langue (?lang=en) gardée.
+     Retour de la page de paiement de Mollie : ?recharge=<id> est gardé (le
+     résultat de la recharge s'affiche dans « Mon portefeuille »).
      ============================================================================= -->
 <html lang="fr">
 <head>
@@ -17,9 +19,13 @@
   <link rel="icon" href="../../commun/img/icone.svg" type="image/svg+xml">
   <script>
     (function () {
-      var langue = new URLSearchParams(location.search).get('lang');
-      var ancre = /^#compte-[a-z-]{2,40}$/.test(location.hash) ? location.hash : '';
-      location.replace('../?' + (langue === 'en' || langue === 'fr' ? 'lang=' + langue + '&' : '') + 'onglet=compte' + ancre);
+      var parametres = new URLSearchParams(location.search);
+      var langue = parametres.get('lang');
+      var recharge = parametres.get('recharge');
+      recharge = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(recharge || '') ? recharge : '';
+      var ancre = /^#compte-[a-z-]{2,40}$/.test(location.hash) ? location.hash : (recharge ? '#compte-solde' : '');
+      location.replace('../?' + (langue === 'en' || langue === 'fr' ? 'lang=' + langue + '&' : '') + 'onglet=compte'
+        + (recharge ? '&recharge=' + recharge : '') + ancre);
     })();
   </script>
 </head>

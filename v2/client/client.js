@@ -13,6 +13,9 @@
 // ouvre son suivi (client/course/), « /client/activite/ » l'onglet Activité,
 // « /client/compte/#compte-solde » l'onglet Compte à cette section,
 // « /client/demandes/?id=… » la demande dans « Mes demandes au support ».
+// Portefeuille : ?recharge=<id> (retour de la page de paiement de Mollie)
+// ouvre l'onglet Compte, où la section « Mon portefeuille » vérifie et
+// affiche le résultat de la recharge.
 // « Mes demandes au support » (commun/support.js) : panneau ouvert par-dessus
 // la page, depuis Compte, la page d'une course (« Signaler un problème »), une
 // notification, ou l'adresse : ?demande=<id> (lien d'une notification),
@@ -43,6 +46,10 @@ const contexte = {
   get profil() { return etat.profil; },
   majProfil(champs) { etat.profil = { ...etat.profil, ...champs }; },
   ouvrirOnglet: (code) => ouvrirOnglet(code),
+  // Portefeuille : formulaire de recharge à ouvrir (bouton « Recharger » de
+  // l'accueil) ou recharge à vérifier (retour de Mollie) ; lus une fois par
+  // la section « Mon portefeuille » de l'onglet Compte
+  recharge: { ouvrir: false, verifier: null },
   // options : { demande } (une demande), { nouvelle: true, course } (nouvelle
   // demande, course facultative), rien (la liste)
   ouvrirSupport: (options) => (etat.support ? etat.support.ouvrir(options) : null),
@@ -93,6 +100,8 @@ async function demarrer() {
   const adresse = new URLSearchParams(location.search);
   const demande = adresse.get('demande');
   const signaler = adresse.get('signaler');
+  const recharge = adresse.get('recharge');
+  if (recharge && IDENTIFIANT.test(recharge)) contexte.recharge.verifier = recharge;
   await ouvrirOnglet(ongletDeLAdresse(), { historique: 'remplacer' });
   if (demande && IDENTIFIANT.test(demande)) etat.support.ouvrir({ demande });
   else if (signaler && IDENTIFIANT.test(signaler)) etat.support.ouvrir({ nouvelle: true, course: signaler });

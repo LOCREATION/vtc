@@ -599,7 +599,11 @@ async function modifier(c, recharger) {
       motif: /^[A-Z0-9]{2,3}[0-9]{1,4}[A-Z]?$/, messageMotif: 'Format : AF1234, EZY4521…' },
     { nom: 'terminal', libelle: 'Terminal', type: 'texte', longueur: 40 },
     { nom: 'mode_paiement', libelle: 'Mode de paiement', type: 'choix', requis: true,
+      // Le portefeuille et la facture mensuelle se choisissent à la commande
+      // (contrôles de la base) : proposés seulement s'ils sont déjà le mode
       options: [{ valeur: 'especes', libelle: 'Espèces' }, { valeur: 'carte', libelle: 'Carte au terminal' },
+        { valeur: 'virement', libelle: 'Virement' },
+        ...(c.mode_paiement === 'solde' ? [{ valeur: 'solde', libelle: 'Portefeuille' }] : []),
         ...(c.mode_paiement === 'facture_mensuelle' ? [{ valeur: 'facture_mensuelle', libelle: 'Facture mensuelle' }] : [])] },
     { nom: 'prix_total', libelle: 'Prix annoncé TTC (€)', type: 'nombre', requis: true, min: 0, pas: '0.01', plein: true,
       aide: 'À changer seulement en accord avec le client : la modification est inscrite au journal.' }

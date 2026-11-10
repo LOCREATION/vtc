@@ -78,6 +78,25 @@
 .recap-liste dt { color: var(--gris); }
 .recap-liste dd { margin: 0; font-weight: 600; text-align: right; }
 .facture { padding: 12px 14px; border-radius: var(--rayon-champ); background: var(--bitume); display: grid; gap: 2px; }
+
+/* Règlement : portefeuille (payé, reste dû) ou virement (coordonnées) */
+.reglement { display: grid; gap: 8px; justify-items: start; padding: 12px 14px; border-radius: var(--rayon-champ);
+  background: #E3F2E8; border-left: 5px solid var(--vert); }
+.reglement[hidden] { display: none; }
+.reglement[data-mode='virement'] { background: #E8EEF8; border-left-color: var(--nuit-2); }
+.reglement p { margin: 0; }
+.reglement-ok { font-weight: 600; color: #124D2A; }
+.reglement[data-mode='virement'] .reglement-ok { color: var(--nuit); }
+.reglement-du { font-weight: 600; color: #7A4B00; }
+.reglement-titre { font-family: var(--police-titre); font-weight: 700; font-size: 19px; }
+.reglement-banque { margin: 0; display: grid; gap: 6px; width: 100%; }
+.reglement-banque div { display: grid; gap: 0; }
+.reglement-banque dt { color: var(--gris); font-size: 14px; }
+.reglement-banque dd { margin: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.bouton-copier { flex: none; min-height: 36px; padding: 0 12px; border-radius: var(--rayon-pastille); border: 1.5px solid var(--nuit-2);
+  background: var(--blanc); color: var(--nuit-2); font: 600 14px var(--police); cursor: pointer; }
+.bouton-copier:hover { background: var(--nuit-2); color: var(--blanc); }
 .facture strong { font-family: var(--police-titre); font-weight: 600; font-size: 18px; }
 .bouton-danger { color: var(--rouge); }
 .bouton-danger-plein { background: var(--rouge); color: var(--blanc); }

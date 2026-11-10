@@ -29,3 +29,31 @@
 .etat-course-client { margin: 0; font-family: var(--police-titre); font-weight: 700; font-size: 22px; }
 .trajet-court { margin: 0; overflow-wrap: anywhere; }
 .carte-course-client .bouton { justify-self: start; }
+
+/* Mon portefeuille : carte bleu nuit, solde en or, actions en bas.
+   Contrastes : or #E2C46F sur #0A1A38 ≈ 9,6:1 ; textes #C9D2E3 ≈ 11:1. */
+.carte-portefeuille {
+  display: grid; gap: 6px; padding: 18px 18px 16px; border-radius: var(--rayon-feuille);
+  background: linear-gradient(135deg, var(--nuit) 0%, var(--nuit-2) 100%); color: var(--blanc);
+  box-shadow: 0 10px 24px rgba(10, 26, 56, 0.18); position: relative; overflow: hidden;
+}
+.carte-portefeuille::after {
+  content: ''; position: absolute; right: -40px; top: -40px; width: 140px; height: 140px; border-radius: 50%;
+  border: 18px solid rgba(200, 168, 75, 0.14); pointer-events: none;
+}
+.portefeuille-entete { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.portefeuille-entete h2 { color: var(--blanc); font-size: 20px; }
+.portefeuille-icone { color: #E2C46F; flex: none; }
+.portefeuille-montant {
+  margin: 2px 0 0; font: 700 40px/1.05 var(--police-titre); color: #E2C46F; letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.portefeuille-detail { margin: 0; color: #C9D2E3; font-size: 15px; }
+.portefeuille-alerte {
+  margin: 0; padding: 8px 10px; border-radius: var(--rayon-champ); background: rgba(255, 255, 255, 0.1);
+  color: var(--blanc); font-size: 15px; border-left: 4px solid #F2B8B5;
+}
+.portefeuille-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 8px; position: relative; z-index: 1; }
+.portefeuille-actions .bouton { min-width: 140px; }
+.lien-portefeuille { color: var(--blanc); font-weight: 600; text-underline-offset: 4px; }
+.lien-portefeuille:hover { color: #E2C46F; }

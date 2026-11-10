@@ -3,6 +3,9 @@
 // Espace client : onglet Accueil
 // -----------------------------------------------------------------------------
 //   - « Bonjour Claire » ;
+//   - Mon portefeuille : le solde, dès la connexion, ce qui est réservé pour
+//     les courses à venir ou le reste dû, « Recharger » (formulaire de
+//     l'onglet Compte, ouvert directement) et « Mouvements » ;
 //   - course en cours (recherche, chauffeur en route, arrivé, à bord) : son
 //     état et « Suivre ma course » (client/course/) ;
 //   - « Où allez-vous ? » : la commande (client/commande/), où se choisissent
@@ -11,11 +14,12 @@
 //     « Ajouter… »), aéroports desservis : la commande s'ouvre avec
 //     l'arrivée déjà choisie ;
 //   - prochaine réservation.
-// Lectures : lieux (les siens), zones (aéroports), courses (les siennes).
+// Lectures : lieux (les siens), zones (aéroports), courses (les siennes),
+// mon_portefeuille (solde, réservé, reste dû).
 // =============================================================================
 import { supabase } from '../../commun/supabase.js';
 import { t, lienAvecLangue } from '../../commun/i18n.js';
-import { el, dateHeure } from '../../commun/outils.js';
+import { el, dateHeure, euros } from '../../commun/outils.js';
 import { etatCourse, enCours, aVenir } from '../activite/etats.js';
 
 // Noms courts des aéroports pour les raccourcis (sinon : nom complet de la base)
@@ -28,12 +32,13 @@ const NOMS_COURTS = {
 
 export async function afficher(conteneur, contexte) {
   const moi = contexte.profil.id;
-  const [lieux, zones, courses] = await Promise.all([
+  const [lieux, zones, courses, portefeuille] = await Promise.all([
     supabase.from('lieux').select('id, type, libelle, adresse, latitude, longitude').eq('client_id', moi),
     supabase.from('zones').select('code, nom, type, latitude, longitude').eq('active', true).eq('type', 'aeroport').order('nom'),
     supabase.from('courses').select('id, numero, type, statut, prise_en_charge_le, depart_adresse, arrivee_adresse, chauffeur_prenom')
       .eq('client_id', moi).in('statut', ['planifiee', 'recherche', 'a_attribuer', 'acceptee', 'arrivee', 'en_cours'])
-      .order('prise_en_charge_le', { ascending: true }).limit(20)
+      .order('prise_en_charge_le', { ascending: true }).limit(20),
+    supabase.rpc('mon_portefeuille')
   ]);
   for (const r of [lieux, zones, courses]) if (r.error) throw r.error;
 
@@ -47,6 +52,8 @@ export async function afficher(conteneur, contexte) {
   // Les blocs absents (null) sont écartés : replaceChildren(null) écrirait « null »
   conteneur.replaceChildren(...[
     el('h1', { id: 'accueil-client-titre', texte: prenom ? t('client.bonjour', { prenom }) : t('client.bonjour_seul') }),
+    // Portefeuille (absent si sa lecture échoue : l'accueil reste utilisable)
+    portefeuille.error ? null : cartePortefeuille(portefeuille.data, contexte),
     enCoursMaintenant ? carteCourse(enCoursMaintenant, 'client.course_en_cours', 'client.suivre', 'accueil-en-cours') : null,
     el('a', { classe: 'ou-allez-vous', id: 'ou-allez-vous', href: lienAvecLangue('commande/') },
       el('span', { classe: 'ou-allez-vous-icone', 'aria-hidden': 'true' }, iconeLoupe()),
@@ -61,6 +68,42 @@ export async function afficher(conteneur, contexte) {
     prochaine ? carteCourse(prochaine, 'client.prochaine', 'client.voir', 'accueil-prochaine') : null,
     el('a', { classe: 'bouton bouton-secondaire bouton-large', id: 'accueil-toutes-courses', href: lienAvecLangue('?onglet=activite'),
       texte: t('client.toutes_courses'), onclick: (e) => { e.preventDefault(); contexte.ouvrirOnglet('activite'); } })].filter(Boolean));
+}
+
+// Mon portefeuille : solde en grand, réservé ou reste dû, actions
+function cartePortefeuille(pf, contexte) {
+  const solde = Number(pf.solde) || 0;
+  const engage = Number(pf.engage) || 0;
+  const du = Number(pf.du) || 0;
+  let detail;
+  if (du > 0) detail = el('p', { classe: 'portefeuille-alerte', id: 'accueil-portefeuille-du', texte: t('solde.du', { montant: euros(du) }) });
+  else if (engage > 0) detail = el('p', { classe: 'portefeuille-detail', texte: t('solde.reserve', { montant: euros(engage) }) });
+  else detail = el('p', { classe: 'portefeuille-detail', texte: t(solde > 0 ? 'portefeuille.aide' : 'portefeuille.vide') });
+
+  // « Recharger » : l'onglet Compte s'ouvre sur le formulaire de recharge
+  const recharger = el('a', { classe: 'bouton bouton-principal', id: 'accueil-recharger', href: lienAvecLangue('?onglet=compte'),
+    texte: t('portefeuille.recharger') });
+  recharger.addEventListener('click', (e) => {
+    e.preventDefault();
+    contexte.recharge.ouvrir = true;
+    contexte.ouvrirOnglet('compte');
+  });
+  const details = el('a', { classe: 'lien-portefeuille', id: 'accueil-mouvements', href: lienAvecLangue('?onglet=compte'),
+    texte: t('portefeuille.details') });
+  details.addEventListener('click', async (e) => {
+    e.preventDefault();
+    await contexte.ouvrirOnglet('compte');
+    const section = document.getElementById('compte-solde');
+    if (section) section.scrollIntoView({ block: 'start' });
+  });
+
+  return el('section', { classe: 'carte-portefeuille', id: 'accueil-portefeuille', 'aria-labelledby': 'accueil-portefeuille-titre' },
+    el('div', { classe: 'portefeuille-entete' },
+      el('h2', { id: 'accueil-portefeuille-titre', texte: t('portefeuille.titre') }),
+      iconePortefeuille()),
+    el('p', { classe: 'portefeuille-montant', id: 'accueil-solde', texte: euros(solde) }),
+    detail,
+    el('div', { classe: 'portefeuille-actions' }, recharger, details));
 }
 
 // Carte d'une course : état, trajet, heure, lien vers son suivi
@@ -92,6 +135,28 @@ function raccourciLieu(lieu, type, contexte) {
     if (section) section.scrollIntoView({ block: 'start' });
   });
   return bouton;
+}
+
+function iconePortefeuille() {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('width', '28');
+  svg.setAttribute('height', '28');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('stroke', 'currentColor');
+  svg.setAttribute('stroke-width', '1.8');
+  svg.setAttribute('stroke-linecap', 'round');
+  svg.setAttribute('stroke-linejoin', 'round');
+  for (const d of ['M3 7.5A2.5 2.5 0 0 1 5.5 5H18v3', 'M3 7.5v10A2.5 2.5 0 0 0 5.5 20H20a1 1 0 0 0 1-1v-4',
+    'M21 11h-4a2 2 0 0 0 0 4h4v-4z']) {
+    const trait = document.createElementNS(ns, 'path');
+    trait.setAttribute('d', d);
+    svg.append(trait);
+  }
+  svg.classList.add('portefeuille-icone');
+  return svg;
 }
 
 function iconeLoupe() {

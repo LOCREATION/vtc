@@ -19,6 +19,18 @@
 .groupe-proche { display: grid; gap: 14px; }
 .paiement { border: none; margin: 0; padding: 0; display: grid; }
 .paiement legend { padding: 0; margin-bottom: 4px; }
+.paiement .case[hidden] { display: none; }
+.libelle-paiement { display: grid; gap: 2px; }
+.detail-paiement { color: var(--gris); font-size: 15px; font-weight: 500; }
+/* Portefeuille ou virement choisi : ce qui se passe à la fin de la course */
+.info-paiement {
+  display: grid; gap: 8px; justify-items: start; margin: 4px 0 0; padding: 10px 12px; border-radius: var(--rayon-champ);
+  background: #E8EEF8; border-left: 4px solid var(--nuit-2); font-size: 15px;
+}
+.info-paiement[hidden] { display: none; }
+.info-paiement p { margin: 0; }
+.info-paiement[data-etat='ok'] { background: #E3F2E8; border-left-color: var(--vert); }
+.info-paiement[data-etat='manque'] { background: #FBF3DC; border-left-color: var(--or); }
 .ligne-code { display: flex; gap: 8px; }
 .ligne-code .saisie { text-transform: uppercase; }
 .ligne-code .bouton { flex: none; }
